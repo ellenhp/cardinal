@@ -1,0 +1,334 @@
+package earth.maps.cardinal.ui
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import earth.maps.cardinal.R
+import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.viewmodel.PlaceCardViewModel
+
+@Composable
+fun PlaceCardScreen(
+    place: Place,
+    onBack: () -> Unit,
+    onGetDirections: (Place) -> Unit,
+    viewModel: PlaceCardViewModel,
+    onPeekHeightChange: (dp: Dp) -> Unit
+) {
+    val density = LocalDensity.current
+
+    // Check if place is saved when screen is opened
+    LaunchedEffect(place) {
+        viewModel.checkIfPlaceIsSaved(place)
+    }
+
+    BackHandler {
+        onBack()
+    }
+
+    // Use the loaded place from viewModel if available
+    val displayedPlace = viewModel.place.value ?: place
+    
+    // State for save place dialog
+    var showSavePlaceDialog by remember { mutableStateOf(false) }
+    
+    // State for unsave confirmation dialog
+    var showUnsaveConfirmationDialog by remember { mutableStateOf(false) }
+    
+    // Temporary place to save (used in dialog)
+    var placeToSave by remember { mutableStateOf(place) }
+
+    // Place details content
+    val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+            .onGloballyPositioned { coordinates ->
+                val heightInDp = with(density) { coordinates.size.height.toDp() }
+                onPeekHeightChange(heightInDp + sheetPeekHeightEmpirical)
+            },
+    ) {
+        // Place name and type
+        Text(
+            text = displayedPlace.name,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = displayedPlace.type,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Address information
+        displayedPlace.address?.let { address ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    modifier = Modifier.size(dimensionResource(dimen.icon_size))
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 16.dp)
+                ) {
+                    address.houseNumber?.let { houseNumber ->
+                        Text(
+                            text = houseNumber,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    address.road?.let { road ->
+                        Text(
+                            text = road,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    Text(
+                        text = buildString {
+                            address.city?.let { append("$it, ") }
+                            address.state?.let { append("$it ") }
+                            address.postcode?.let { append(it) }
+                        }.trim().trimEnd(','),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    address.country?.let { country ->
+                        Text(
+                            text = country,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Action buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Save/Unsave button
+            Button(
+                onClick = { 
+                    if (viewModel.isPlaceSaved.value) {
+                        // Show confirmation dialog for unsaving
+                        showUnsaveConfirmationDialog = true
+                    } else {
+                        // Show dialog for saving
+                        placeToSave = displayedPlace
+                        showSavePlaceDialog = true
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = if (viewModel.isPlaceSaved.value) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (viewModel.isPlaceSaved.value) {
+                            stringResource(R.string.unsave_place)
+                        } else {
+                            stringResource(R.string.save_place)
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Get directions button
+            Button(
+                onClick = { onGetDirections(displayedPlace) },
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.get_directions))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+    
+    // Save Place Dialog
+    if (showSavePlaceDialog) {
+        SavePlaceDialog(
+            place = placeToSave,
+            onDismiss = { showSavePlaceDialog = false },
+            onSaveAsHome = { updatedPlace ->
+                viewModel.savePlaceAsHome(updatedPlace)
+                showSavePlaceDialog = false
+            },
+            onSaveAsWork = { updatedPlace ->
+                viewModel.savePlaceAsWork(updatedPlace)
+                showSavePlaceDialog = false
+            },
+            onSaveAsOther = { updatedPlace ->
+                viewModel.savePlace(updatedPlace)
+                showSavePlaceDialog = false
+            }
+        )
+    }
+    
+    // Unsave Confirmation Dialog
+    if (showUnsaveConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showUnsaveConfirmationDialog = false },
+            title = { Text(stringResource(R.string.unsave_place)) },
+            text = { Text(stringResource(R.string.are_you_sure_you_want_to_delete, displayedPlace.name)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.unsavePlace(displayedPlace)
+                        showUnsaveConfirmationDialog = false
+                    }
+                ) {
+                    Text(stringResource(R.string.unsave_place))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showUnsaveConfirmationDialog = false }
+                ) {
+                    Text(stringResource(R.string.cancel_button))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun SavePlaceDialog(
+    place: Place,
+    onDismiss: () -> Unit,
+    onSaveAsHome: (Place) -> Unit,
+    onSaveAsWork: (Place) -> Unit,
+    onSaveAsOther: (Place) -> Unit
+) {
+    var placeName by remember { mutableStateOf(place.name) }
+    var placeType by remember { mutableStateOf(place.type) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.save_place)) },
+        text = {
+            Column {
+                OutlinedButton(
+                    onClick = { onSaveAsHome(place.copy(icon = "home")) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Home,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.set_as_home))
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                OutlinedButton(
+                    onClick = { onSaveAsWork(place.copy(icon = "work")) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Place,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.set_as_work))
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                OutlinedButton(
+                    onClick = { onSaveAsOther(place) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.save_button))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel_button))
+            }
+        }
+    )
+}

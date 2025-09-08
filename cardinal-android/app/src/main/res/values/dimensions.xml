@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="padding">16dp</dimen>
+    <dimen name="padding_minor">12dp</dimen>
+    <dimen name="empirical_bottom_sheet_handle_height">54dp</dimen>
+    <dimen name="icon_size">24dp</dimen>
+</resources>
