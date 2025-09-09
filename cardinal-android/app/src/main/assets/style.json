@@ -12,7 +12,7 @@
       "tiles": [
         "http://127.0.0.1:{port}/openmaptiles/{z}/{x}/{y}.pbf"
       ],
-      "maxzoom": 6
+      "maxzoom": 14
     },
     "landcover": {
       "type": "vector",

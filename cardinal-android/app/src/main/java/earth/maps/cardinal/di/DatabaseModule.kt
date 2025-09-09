@@ -7,6 +7,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import earth.maps.cardinal.data.AppDatabase
+import earth.maps.cardinal.data.OfflineAreaDao
 import earth.maps.cardinal.data.PlaceDao
 import javax.inject.Singleton
 
@@ -23,5 +24,10 @@ object DatabaseModule {
     @Provides
     fun providePlaceDao(appDatabase: AppDatabase): PlaceDao {
         return appDatabase.placeDao()
+    }
+
+    @Provides
+    fun provideOfflineAreaDao(appDatabase: AppDatabase): OfflineAreaDao {
+        return appDatabase.offlineAreaDao()
     }
 }

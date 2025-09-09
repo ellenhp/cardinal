@@ -13,7 +13,9 @@ import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,9 +38,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.gson.Gson
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.ui.OfflineAreasScreen
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import earth.maps.cardinal.viewmodel.MapViewModel
+import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
@@ -79,6 +83,7 @@ fun AppContent(
     val configuration = LocalConfiguration.current
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
+    var showOfflineAreas by remember { mutableStateOf(false) }
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
@@ -178,13 +183,29 @@ fun AppContent(
                             .align(Alignment.BottomStart)
                             .padding(start = 16.dp, bottom = 16.dp),
                         onClick = {
-                            // TODO: Implement download functionality
+                            showOfflineAreas = true
                         }
                     ) {
                         Icon(
                             painter = painterResource(earth.maps.cardinal.R.drawable.cloud_download_24dp),
                             contentDescription = "Download"
                         )
+                    }
+                }
+
+                // Offline Areas Bottom Sheet
+                if (showOfflineAreas) {
+                    val sheetState = rememberModalBottomSheetState()
+                    ModalBottomSheet(
+                        onDismissRequest = { showOfflineAreas = false },
+                        sheetState = sheetState
+                    ) {
+                        cameraState.projection?.queryVisibleRegion()?.let {
+                            OfflineAreasScreen(
+                                currentViewport = it,
+                                onDismiss = { showOfflineAreas = false }
+                            )
+                        }
                     }
                 }
             }

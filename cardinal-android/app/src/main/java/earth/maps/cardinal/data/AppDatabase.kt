@@ -6,12 +6,13 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [PlaceEntity::class],
-    version = 1,
+    entities = [PlaceEntity::class, OfflineArea::class],
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun placeDao(): PlaceDao
+    abstract fun offlineAreaDao(): OfflineAreaDao
 
     companion object {
         @Volatile

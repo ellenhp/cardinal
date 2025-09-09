@@ -27,6 +27,8 @@ class Tileserver(private val context: Context) {
     private var terrainDatabase: SQLiteDatabase? = null
     private var landcoverDatabase: SQLiteDatabase? = null
     private var basemapDatabase: SQLiteDatabase? = null
+    private var offlineAreasDatabase: SQLiteDatabase? = null
+    private val SINGLE_DATABASE_NAME = "offline_areas.mbtiles"
 
     fun start() {
         // Initialize the mbtiles databases
@@ -140,19 +142,30 @@ class Tileserver(private val context: Context) {
                         return@get
                     }
 
-                    // MBTiles uses TMS coordinate system, but most map libraries use XYZ
-                    // Convert Y coordinate from XYZ to TMS
+                    // MBTiles uses TMS (Tile Map Service) coordinate system where Y=0 is at the bottom
+                    // Most map libraries use XYZ coordinate system where Y=0 is at the top
+                    // Convert Y coordinate from XYZ to TMS: TMS_Y = 2^zoom - 1 - XYZ_Y
                     val tmsY = (2.0.pow(z.toDouble()) - 1 - y).toLong()
 
-                    val tileData = getTileData(basemapDatabase, z, x, tmsY)
+                    // First try to get tile from built-in database
+                    var tileData = getTileData(basemapDatabase, z, x, tmsY)
+                    
+                    // If not found, try offline databases
+                    if (tileData == null) {
+                        tileData = getTileDataFromOfflineDatabases(z, x, y)
+                    }
+                    
                     if (tileData != null) {
-                        call.response.header("content-encoding", "gzip")
+                        // Only set gzip header for built-in database tiles
+                        if (tileData == getTileData(basemapDatabase, z, x, tmsY)) {
+                            call.response.header("content-encoding", "gzip")
+                        }
                         call.respondBytes(tileData, contentType = ContentType.Application.ProtoBuf)
                     } else {
                         call.respondBytes(
                             bytes = ByteArray(0),
                             contentType = ContentType.Application.ProtoBuf,
-                            status = HttpStatusCode.NotFound
+                            status = HttpStatusCode.BadGateway
                         )
                     }
                 }
@@ -177,6 +190,8 @@ class Tileserver(private val context: Context) {
         landcoverDatabase = null
         basemapDatabase?.close()
         basemapDatabase = null
+        offlineAreasDatabase?.close()
+        offlineAreasDatabase = null
 
         Log.d(TAG, "Tile server stopped")
     }
@@ -242,7 +257,6 @@ class Tileserver(private val context: Context) {
             val basemapFile = copyDatabaseToStorage("basemap.mbtiles") ?: return
 
             Log.d(TAG, "Opening databases.")
-            // Open the databases
             terrainDatabase =
                 SQLiteDatabase.openDatabase(
                     terrainFile.absolutePath,
@@ -261,9 +275,70 @@ class Tileserver(private val context: Context) {
                     null,
                     SQLiteDatabase.OPEN_READONLY
                 )
+            
+            // Open or create the single offline areas database
+            val offlineAreasFile = File(context.filesDir, SINGLE_DATABASE_NAME)
+            offlineAreasDatabase =
+                SQLiteDatabase.openOrCreateDatabase(
+                    offlineAreasFile.absolutePath,
+                    null
+                )
+            
+            // Initialize the schema if needed
+            initializeOfflineAreasSchema(offlineAreasDatabase!!)
+            
+            Log.d(TAG, "Offline areas database opened/created successfully")
+            
             Log.d(TAG, "MBTiles database initialized successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing MBTiles database", e)
+        }
+    }
+
+    private fun initializeOfflineAreasSchema(db: SQLiteDatabase) {
+        try {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS tiles (
+                    zoom_level INTEGER,
+                    tile_column INTEGER,
+                    tile_row INTEGER,
+                    tile_data BLOB,
+                    area_id TEXT
+                )
+                """.trimIndent()
+            )
+            
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS areas (
+                    area_id TEXT PRIMARY KEY,
+                    name TEXT,
+                    north REAL,
+                    south REAL,
+                    east REAL,
+                    west REAL,
+                    min_zoom INTEGER,
+                    max_zoom INTEGER,
+                    download_date INTEGER
+                )
+                """.trimIndent()
+            )
+            
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS tile_index ON tiles (zoom_level, tile_column, tile_row, area_id)")
+            
+            // Insert basic metadata if it doesn't exist
+            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('name', 'Cardinal Maps Offline Areas')")
+            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('type', 'baselayer')")
+            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('version', '1.0')")
+            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('description', 'Offline map tiles for Cardinal Maps')")
+            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('format', 'pbf')")
+            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('minzoom', '0')")
+            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('maxzoom', '14')")
+            // Specify that we're using TMS coordinate system
+            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('scheme', 'tms')")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing offline areas schema", e)
         }
     }
 
@@ -302,5 +377,54 @@ class Tileserver(private val context: Context) {
         } finally {
             cursor?.close()
         }
+    }
+
+    /**
+     * Get tile data from offline area databases
+     */
+    private fun getTileDataFromOfflineDatabases(
+        zoomLevel: Int,
+        tileColumn: Long,
+        tileRow: Long
+    ): ByteArray? {
+        // Try the single offline areas database
+        if (offlineAreasDatabase != null) {
+            // Convert XYZ to TMS coordinate system for MBTiles
+            val tmsTileRow = (2.0.pow(zoomLevel.toDouble()) - 1 - tileRow).toLong()
+            
+            var cursor: android.database.Cursor? = null
+            return try {
+                // Query the single database for tiles from any area
+                val query =
+                    "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ? LIMIT 1"
+                cursor = offlineAreasDatabase?.rawQuery(
+                    query,
+                    arrayOf(zoomLevel.toString(), tileColumn.toString(), tmsTileRow.toString())
+                )
+
+                if (cursor?.moveToFirst() == true) {
+                    val blobIndex = cursor.getColumnIndex("tile_data")
+                    if (blobIndex != -1) {
+                        val blob = cursor.getBlob(blobIndex)
+                        Log.d(TAG, "Tile found in single offline database: $zoomLevel/$tileColumn/$tileRow (TMS: $tmsTileRow)")
+                        blob
+                    } else {
+                        Log.w(TAG, "Blob index -1 in single offline database")
+                        null
+                    }
+                } else {
+                    Log.d(TAG, "Tile not found in single offline database: $zoomLevel/$tileColumn/$tileRow (TMS: $tmsTileRow)")
+                    null
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error retrieving tile data from single offline database for $zoomLevel/$tileColumn/$tileRow", e)
+                null
+            } finally {
+                cursor?.close()
+            }
+        }
+        
+        Log.d(TAG, "Tile not found in offline database")
+        return null
     }
 }
