@@ -132,24 +132,36 @@ fun OfflineAreasScreen(
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    LinearProgressIndicator(
-                        progress = { if (totalTiles > 0) downloadProgress.toFloat() / totalTiles.toFloat() else 0f },
-                        modifier = Modifier.fillMaxWidth(),
-                        color = ProgressIndicatorDefaults.linearColor,
-                        trackColor = ProgressIndicatorDefaults.linearTrackColor,
-                        strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-                    )
-                    Text(
-                        text = stringResource(
-                            R.string.download_progress,
-                            downloadProgress,
-                            totalTiles
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier
-                            .padding(top = 8.dp)
-                            .align(Alignment.End)
-                    )
+                LinearProgressIndicator(
+                    progress = { if (totalTiles > 0) downloadProgress.toFloat() / totalTiles.toFloat() else 0f },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = ProgressIndicatorDefaults.linearColor,
+                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
+                )
+                Text(
+                    text = stringResource(
+                        R.string.download_progress,
+                        downloadProgress,
+                        totalTiles
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .align(Alignment.End)
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = { viewModel.cancelDownload() }
+                    ) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
                 }
             }
         }
