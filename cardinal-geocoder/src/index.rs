@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use tantivy::{
-    collector::TopDocs, query::{PhraseQuery, Query, QueryParser,  TermQuery}, schema::{
+    collector::TopDocs, directory::MmapDirectory, query::{PhraseQuery, Query, QueryParser,  TermQuery}, schema::{
         IndexRecordOption, OwnedValue, Schema, SchemaBuilder, TextFieldIndexing, TextOptions, Value, INDEXED, STORED
     }, tokenizer::{Language, LowerCaser, SimpleTokenizer, Stemmer, TextAnalyzer}, TantivyDocument, Term
 };
@@ -115,7 +115,53 @@ impl AirmailIndex {
         }
     }
 
-        fn search_inner(&self, query: Box<dyn Query>) -> Result<Vec<PointOfInterest>, AirmailError> {
+    pub fn new_in_dir(lang: &str, dir: &str) -> Result<AirmailIndex, AirmailError> {
+        let mmap_dir = MmapDirectory::open(dir)?;
+        let index = tantivy::Index::open_or_create(mmap_dir, AirmailIndex::schema(lang))?;
+
+        let tokenizers = index.tokenizers();
+
+        let stemmer_lang = match lang {
+            "ar" => Some(Language::Arabic),
+            "da" => Some(Language::Danish),
+            "nl" => Some(Language::Dutch),
+            "en" => Some(Language::English),
+            "fi" => Some(Language::Finnish),
+            "fr" => Some(Language::French),
+            "de" => Some(Language::German),
+            "el" => Some(Language::Greek),
+            "hu" => Some(Language::Hungarian),
+            "it" => Some(Language::Italian),
+            "no" => Some(Language::Norwegian),
+            "pt" => Some(Language::Portuguese),
+            "ro" => Some(Language::Romanian),
+            "ru" => Some(Language::Russian),
+            "es" => Some(Language::Spanish),
+            "sv" => Some(Language::Swedish),
+            "ta" => Some(Language::Tamil),
+            "tr" => Some(Language::Turkish),
+            _ => None,
+        };
+
+        let tokenizer = if let Some(stemmer_lang) = stemmer_lang {
+            TextAnalyzer::builder(SimpleTokenizer::default())
+                .filter(LowerCaser)
+                .filter(Stemmer::new(stemmer_lang))
+                .build()
+        } else {
+            TextAnalyzer::builder(SimpleTokenizer::default())
+                .filter(LowerCaser)
+                .build()
+        };
+        tokenizers.register(lang, tokenizer);
+
+        Ok(AirmailIndex {
+            index,
+            lang: lang.to_string(),
+        })
+    }
+
+    fn search_inner(&self, query: Box<dyn Query>) -> Result<Vec<PointOfInterest>, AirmailError> {
         let reader = self.index.reader()?;
         let searcher = reader.searcher();
         let top_docs = searcher.search(&query, &TopDocs::with_limit(10))?;
@@ -249,6 +295,11 @@ impl AirmailIndex {
         }
         Ok(count as u64)
     }
+}
+
+#[uniffi::export]
+pub fn new_airmail_index(lang: String, storage_dir: String) -> Result<AirmailIndex, AirmailError> {
+    AirmailIndex::new_in_dir(&lang, &storage_dir)
 }
 
 #[cfg(test)]
