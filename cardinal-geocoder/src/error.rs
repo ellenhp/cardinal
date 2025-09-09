@@ -18,6 +18,9 @@ pub enum AirmailError {
     
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
+
+    #[error("Please call begin_ingestion to initialize the writer transaction prior to ingesting tiles")]
+    InvalidIngestionState,
 }
 
 impl From<mvt_reader::error::ParserError> for AirmailError {

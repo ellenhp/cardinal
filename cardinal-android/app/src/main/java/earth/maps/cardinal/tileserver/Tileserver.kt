@@ -147,17 +147,20 @@ class Tileserver(private val context: Context) {
                     // Convert Y coordinate from XYZ to TMS: TMS_Y = 2^zoom - 1 - XYZ_Y
                     val tmsY = (2.0.pow(z.toDouble()) - 1 - y).toLong()
 
+                    var isGzipped = true
+
                     // First try to get tile from built-in database
                     var tileData = getTileData(basemapDatabase, z, x, tmsY)
                     
                     // If not found, try offline databases
                     if (tileData == null) {
                         tileData = getTileDataFromOfflineDatabases(z, x, y)
+                        isGzipped = false
                     }
                     
                     if (tileData != null) {
                         // Only set gzip header for built-in database tiles
-                        if (tileData == getTileData(basemapDatabase, z, x, tmsY)) {
+                        if (isGzipped) {
                             call.response.header("content-encoding", "gzip")
                         }
                         call.respondBytes(tileData, contentType = ContentType.Application.ProtoBuf)

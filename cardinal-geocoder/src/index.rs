@@ -1,9 +1,18 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::{Arc, Mutex},
+};
 
 use tantivy::{
-    collector::TopDocs, directory::MmapDirectory, query::{PhraseQuery, Query, QueryParser,  TermQuery}, schema::{
-        IndexRecordOption, OwnedValue, Schema, SchemaBuilder, TextFieldIndexing, TextOptions, Value, INDEXED, STORED
-    }, tokenizer::{Language, LowerCaser, SimpleTokenizer, Stemmer, TextAnalyzer}, TantivyDocument, Term
+    TantivyDocument, Term,
+    collector::TopDocs,
+    directory::MmapDirectory,
+    query::{PhraseQuery, Query, QueryParser, TermQuery},
+    schema::{
+        INDEXED, IndexRecordOption, OwnedValue, STORED, Schema, SchemaBuilder, TextFieldIndexing,
+        TextOptions, Value,
+    },
+    tokenizer::{Language, LowerCaser, SimpleTokenizer, Stemmer, TextAnalyzer},
 };
 
 use crate::error::AirmailError;
@@ -22,6 +31,7 @@ fn all_subsequences(tokens: &[String]) -> Vec<Vec<String>> {
 #[derive(uniffi::Object)]
 pub struct AirmailIndex {
     index: tantivy::Index,
+    writer: Mutex<Option<Arc<Mutex<tantivy::IndexWriter>>>>,
     lang: String,
 }
 
@@ -31,7 +41,7 @@ static FIELD_CONTENT: &str = "content";
 static FIELD_TAGS: &str = "tags";
 
 impl AirmailIndex {
-        fn schema(lang: &str) -> Schema {
+    fn schema(lang: &str) -> Schema {
         let text_options = TextOptions::default().set_indexing_options(
             TextFieldIndexing::default()
                 .set_index_option(IndexRecordOption::WithFreqsAndPositions)
@@ -112,6 +122,7 @@ impl AirmailIndex {
         AirmailIndex {
             index,
             lang: lang.to_string(),
+            writer: Mutex::new(None),
         }
     }
 
@@ -158,6 +169,7 @@ impl AirmailIndex {
         Ok(AirmailIndex {
             index,
             lang: lang.to_string(),
+            writer: Mutex::new(None),
         })
     }
 
@@ -189,8 +201,6 @@ impl AirmailIndex {
 
         Ok(results)
     }
-
-
 }
 
 #[uniffi::export]
@@ -231,23 +241,37 @@ impl AirmailIndex {
         self.search_inner(query)
     }
 
+    pub fn begin_ingestion(&self) -> Result<(), AirmailError> {
+        *self.writer.lock().unwrap() = Some(Arc::new(Mutex::new(
+            self.index
+                .writer(20_000_000)
+                .map_err(|err| AirmailError::Tantivy(err))?,
+        )));
+        Ok(())
+    }
 
     pub fn ingest_tile(&self, mvt: Vec<u8>) -> Result<u64, AirmailError> {
         let mut count = 0usize;
         let alphabetic_regex = regex::Regex::new("[a-z]+")?;
         let schema = AirmailIndex::schema(&self.lang);
         let reader = mvt_reader::Reader::new(mvt)?;
-        let layers = reader
-            .get_layer_names()?;
+        let layers = reader.get_layer_names()?;
         if let Some((poi_layer_id, _)) = layers
             .iter()
             .enumerate()
             .filter(|(_, layer)| layer.as_str() == Some("poi"))
             .next()
         {
-            let mut writer = self.index.writer(15_000_000)?;
-            let features = reader
-                .get_features(poi_layer_id)?;
+            let writer = {
+                let lock = self.writer.lock().unwrap();
+                if let Some(writer) = lock.as_ref() {
+                    writer.clone()
+                } else {
+                    return Err(AirmailError::InvalidIngestionState);
+                }
+            };
+
+            let features = reader.get_features(poi_layer_id)?;
 
             for feature in &features {
                 let mut tags = HashMap::new();
@@ -287,13 +311,26 @@ impl AirmailIndex {
                     for parent in poi.s2cell_parents {
                         doc.add_u64(self.field_s2cell_parents(), parent);
                     }
-                    writer.add_document(doc)?;
+                    writer.lock().unwrap().add_document(doc)?;
                     count += 1;
                 }
             }
-            writer.commit()?;
         }
         Ok(count as u64)
+    }
+
+    pub fn commit_ingestion(&self) -> Result<(), AirmailError> {
+        let writer = {
+            let lock = self.writer.lock().unwrap();
+            if let Some(writer) = lock.as_ref() {
+                writer.clone()
+            } else {
+                return Err(AirmailError::InvalidIngestionState);
+            }
+        };
+        writer.lock().unwrap().commit()?;
+        *self.writer.lock().unwrap() = None;
+        Ok(())
     }
 }
 
