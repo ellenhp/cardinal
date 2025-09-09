@@ -18,6 +18,7 @@ gson = "2.13.1"
 hilt = "2.57.1"
 hiltPlugin = "2.57.1"
 hiltNavigationCompose = "1.2.0"
+cargo-ndk = "0.3.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -61,3 +62,4 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hiltPlugin" }
+cargo-ndk = { id = "com.github.willir.rust.cargo-ndk-android", version.ref = "cargo-ndk" }
