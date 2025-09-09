@@ -28,4 +28,34 @@
     <string name="save_button">Save</string>
     <string name="set_as_home">Set as Home</string>
     <string name="set_as_work">Set as Work</string>
+    
+    <!-- Offline Areas -->
+    <string name="offline_areas_title">Offline Areas</string>
+    <string name="download_new_area">Download current viewport</string>
+    <string name="downloading_area">Downloading %1$s</string>
+    <string name="download_progress">%1$d / %2$d tiles</string>
+    <string name="saved_offline_areas">Saved Offline Areas</string>
+    <string name="no_offline_areas">No offline areas downloaded yet</string>
+    <string name="delete_area">Delete Area</string>
+    <string name="confirm_delete">Confirm Delete</string>
+    <string name="delete_area_confirmation">Are you sure you want to delete \"%1$s\"?</string>
+    <string name="status_label">Status: %1$s</string>
+    <string name="status_pending">Pending</string>
+    <string name="status_downloading">Downloading</string>
+    <string name="status_completed">Completed</string>
+    <string name="status_failed">Failed</string>
+    <string name="downloaded_on">Downloaded on: %1$s</string>
+    <string name="zoom_levels">Zoom levels: %1$d - %2$d</string>
+    <string name="file_size">File size: %1$s</string>
+    <string name="area_name">Area Name</string>
+    <string name="area_bounds">Area Bounds</string>
+    <string name="min_zoom">Min Zoom</string>
+    <string name="max_zoom">Max Zoom</string>
+    <string name="estimated_tiles">Estimated tiles to download: %1$d</string>
+    <string name="download">Download</string>
+    <string name="cancel">Cancel</string>
+    <string name="close">Close</string>
+    <string name="delete">Delete</string>
+    <string name="name_required">Name is required</string>
+    <string name="valid_zoom_levels_required">Valid zoom levels are required (0-18)</string>
 </resources>

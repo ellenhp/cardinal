@@ -48,10 +48,10 @@ fun MapView(
     onRequestLocationPermission: () -> Unit,
     hasLocationPermission: Boolean,
     targetViewport: CameraPosition? = null,
-    fabInsets: PaddingValues
+    fabInsets: PaddingValues,
+    cameraState: CameraState = rememberCameraState()
 ) {
     val context = LocalContext.current
-    val cameraState = rememberCameraState()
     val styleState = rememberStyleState()
 
     // Load saved viewport on initial composition

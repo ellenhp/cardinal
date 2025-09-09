@@ -1,0 +1,475 @@
+package earth.maps.cardinal.ui
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import earth.maps.cardinal.R
+import earth.maps.cardinal.data.DownloadStatus
+import earth.maps.cardinal.data.OfflineArea
+import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
+import org.maplibre.compose.util.VisibleRegion
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OfflineAreasScreen(
+    currentViewport: VisibleRegion,
+    viewModel: OfflineAreasViewModel = hiltViewModel(),
+    onDismiss: () -> Unit
+) {
+    val offlineAreas by viewModel.offlineAreas
+    val isDownloading by viewModel.isDownloading
+    val downloadProgress by viewModel.downloadProgress
+    val totalTiles by viewModel.totalTiles
+    val currentAreaName by viewModel.currentAreaName
+
+    var showDownloadDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var areaToDelete by remember { mutableStateOf<OfflineArea?>(null) }
+
+    // Format for displaying dates
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(dimensionResource(R.dimen.padding_minor))
+    ) {
+        // Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.offline_areas_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.close)
+                )
+            }
+        }
+
+        // Download button
+        Button(
+            onClick = { showDownloadDialog = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            enabled = !isDownloading
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.cloud_download_24dp),
+                contentDescription = null,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Text(text = stringResource(R.string.download_new_area))
+        }
+
+        // Progress indicator when downloading
+        if (isDownloading) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.downloading_area, currentAreaName),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                LinearProgressIndicator(
+                    progress = { if (totalTiles > 0) downloadProgress.toFloat() / totalTiles.toFloat() else 0f },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = ProgressIndicatorDefaults.linearColor,
+                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
+                )
+                Text(
+                    text = stringResource(
+                        R.string.download_progress,
+                        downloadProgress,
+                        totalTiles
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .align(Alignment.End)
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = { viewModel.cancelDownload() }
+                    ) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+                }
+            }
+        }
+
+        // List of offline areas
+        Text(
+            text = stringResource(R.string.saved_offline_areas),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        if (offlineAreas.isEmpty()) {
+            Text(
+                text = stringResource(R.string.no_offline_areas),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .align(Alignment.CenterHorizontally)
+            )
+        } else {
+            LazyColumn {
+                items(offlineAreas) { area ->
+                    OfflineAreaItem(
+                        area = area,
+                        dateFormat = dateFormat,
+                        onDeleteClick = {
+                            areaToDelete = area
+                            showDeleteDialog = true
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    // Download dialog
+    if (showDownloadDialog) {
+        DownloadAreaDialog(
+            currentViewport = currentViewport,
+            onDismiss = { showDownloadDialog = false },
+            onDownload = { name, north, south, east, west, minZoom, maxZoom ->
+                viewModel.startDownload(north, south, east, west, minZoom, maxZoom, name)
+                showDownloadDialog = false
+            }
+        )
+    }
+
+    // Delete confirmation dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text(stringResource(R.string.confirm_delete)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.delete_area_confirmation,
+                        areaToDelete?.name ?: ""
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        areaToDelete?.let { viewModel.deleteOfflineArea(it) }
+                        showDeleteDialog = false
+                        areaToDelete = null
+                    }
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        areaToDelete = null
+                    }
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun OfflineAreaItem(
+    area: OfflineArea,
+    dateFormat: SimpleDateFormat,
+    onDeleteClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = area.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.delete_area)
+                    )
+                }
+            }
+
+            // Status
+            val statusText = when (area.status) {
+                DownloadStatus.PENDING -> stringResource(R.string.status_pending)
+                DownloadStatus.DOWNLOADING -> stringResource(R.string.status_downloading)
+                DownloadStatus.COMPLETED -> stringResource(R.string.status_completed)
+                DownloadStatus.FAILED -> stringResource(R.string.status_failed)
+            }
+
+            Text(
+                text = stringResource(R.string.status_label, statusText),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            // Date
+            val dateString = dateFormat.format(Date(area.downloadDate))
+            Text(
+                text = stringResource(R.string.downloaded_on, dateString),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            // Zoom levels
+            Text(
+                text = stringResource(R.string.zoom_levels, area.minZoom, area.maxZoom),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            // File size
+            val fileSizeText = formatFileSize(area.fileSize)
+            Text(
+                text = stringResource(R.string.file_size, fileSizeText),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun DownloadAreaDialog(
+    currentViewport: VisibleRegion,
+    onDismiss: () -> Unit,
+    onDownload: (name: String, north: Double, south: Double, east: Double, west: Double, minZoom: Int, maxZoom: Int) -> Unit
+) {
+    val viewModel: OfflineAreasViewModel = hiltViewModel()
+
+    // Calculate default bounding box from current viewport
+    val (defaultNorth, defaultSouth, defaultEast, defaultWest) = calculateBoundingBoxFromViewport(
+        currentViewport
+    )
+
+    // Pre-fill area name with current date/time
+    val currentTime = System.currentTimeMillis()
+    val date = Date(currentTime)
+    val dateFormat = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault())
+    val initialName = "Offline Map ${dateFormat.format(date)}"
+
+    var nameState by remember { mutableStateOf(initialName) }
+
+    // Create a FocusRequester to request focus on the text field
+    val focusRequester = remember { FocusRequester() }
+
+    val north = defaultNorth.toDouble()
+    val south = defaultSouth.toDouble()
+    val east = defaultEast.toDouble()
+    val west = defaultWest.toDouble()
+    val minZoom = 7
+    val maxZoom = 14
+
+    var nameError by remember { mutableStateOf(false) }
+
+    // Calculate estimated tile count (fixed zoom levels 7-14)
+    val estimatedTileCount by remember(north, south, east, west) {
+        mutableIntStateOf(
+            if (north >= south && east >= west) {
+                viewModel.estimateTileCount(north, south, east, west, minZoom, maxZoom)
+            } else {
+                0
+            }
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.download_new_area)) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                OutlinedTextField(
+                    value = nameState,
+                    onValueChange = { newValue ->
+                        nameState = newValue
+                        nameError = false
+                    },
+                    label = { Text(stringResource(R.string.area_name)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester), // Attach the FocusRequester to the text field
+                    isError = nameError,
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge
+                )
+                LaunchedEffect(Unit) {
+                    focusRequester.requestFocus()
+                }
+                if (nameError) {
+                    Text(
+                        text = stringResource(R.string.name_required),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+
+                Text(
+                    text = stringResource(R.string.estimated_tiles, estimatedTileCount),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    // Validate inputs
+                    var valid = true
+                    val name = nameState
+
+                    if (name.isBlank()) {
+                        nameError = true
+                        valid = false
+                    }
+
+                    if (valid) {
+                        onDownload(
+                            name,
+                            north,
+                            south,
+                            east,
+                            west,
+                            minZoom,
+                            maxZoom
+                        )
+                    }
+                }
+            ) {
+                Text(stringResource(R.string.download))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
+}
+
+fun formatFileSize(bytes: Long): String {
+    return when {
+        bytes >= 1_000_000_000 -> "%.1f GB".format(bytes / 1_000_000_000.0)
+        bytes >= 1_000_000 -> "%.1f MB".format(bytes / 1_000_000.0)
+        bytes >= 1_000 -> "%.1f KB".format(bytes / 1_000.0)
+        else -> "$bytes B"
+    }
+}
+
+fun calculateBoundingBoxFromViewport(
+    viewport: VisibleRegion
+): BoundingBox {
+    val north = viewport.farLeft.latitude
+    val south = viewport.nearRight.latitude
+    val east = viewport.nearRight.longitude
+    val west = viewport.farLeft.longitude
+
+    return BoundingBox(
+        north.toString(),
+        south.toString(),
+        east.toString(),
+        west.toString()
+    )
+}
+
+data class BoundingBox(
+    val north: String,
+    val south: String,
+    val east: String,
+    val west: String
+)
