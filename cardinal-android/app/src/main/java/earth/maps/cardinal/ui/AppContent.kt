@@ -129,12 +129,13 @@ fun AppContent(
                         val place = placeJson?.let { Gson().fromJson(it, Place::class.java) }
                         place?.let { place ->
 
+                            viewModel.setPlace(place)
+
                             DisposableEffect(place) {
-                                viewModel.setPlace(place)
                                 val position = Position(place.longitude, place.latitude)
-                                if (mapPins.isEmpty()) {
-                                    mapPins.add(position)
-                                }
+                                // Clear any existing pins and add the new one to ensure only one pin is shown at a time
+                                mapPins.clear()
+                                mapPins.add(position)
                                 coroutineScope.launch {
                                     cameraState.animateTo(
                                         CameraPosition(
