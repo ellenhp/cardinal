@@ -17,6 +17,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -84,7 +85,6 @@ fun AppContent(
                     startDestination = "home"
                 ) {
                     composable("home") {
-                        mapPins.clear()
                         val viewModel: HomeViewModel = hiltViewModel()
                         val managePlacesViewModel: ManagePlacesViewModel = hiltViewModel()
                         var isSearchFocused by remember { mutableStateOf(false) }
@@ -128,19 +128,33 @@ fun AppContent(
                         val placeJson = backStackEntry.arguments?.getString("place")
                         val place = placeJson?.let { Gson().fromJson(it, Place::class.java) }
                         place?.let { place ->
-                            if (mapPins.isEmpty() && place.longitude != null && place.latitude != null) {
-                                val position = Position(place.longitude, place.latitude)
-                                LaunchedEffect(place) {
-                                    cameraState.animateTo(CameraPosition(target = position, zoom = 15.0))
-                                }
-                                mapPins.add(position)
-                            }
 
                             viewModel.setPlace(place)
+
+                            DisposableEffect(place) {
+                                val position = Position(place.longitude, place.latitude)
+                                // Clear any existing pins and add the new one to ensure only one pin is shown at a time
+                                mapPins.clear()
+                                mapPins.add(position)
+                                coroutineScope.launch {
+                                    cameraState.animateTo(
+                                        CameraPosition(
+                                            target = position,
+                                            zoom = 15.0
+                                        )
+                                    )
+                                }
+                                onDispose {
+                                    mapPins.clear()
+                                }
+                            }
+
                             PlaceCardScreen(
                                 place = place,
                                 viewModel = viewModel,
-                                onBack = { navController.popBackStack() },
+                                onBack = {
+                                    navController.popBackStack()
+                                },
                                 onGetDirections = { /* TODO: Implement directions functionality */ },
                                 onPeekHeightChange = { peekHeight = it }
                             )
