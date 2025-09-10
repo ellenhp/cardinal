@@ -252,7 +252,13 @@ impl AirmailIndex {
         Ok(())
     }
 
-    pub fn ingest_tile(&self, mvt: Vec<u8>) -> Result<u64, AirmailError> {
+    pub fn ingest_tile_with_coordinates(
+        &self,
+        mvt: Vec<u8>,
+        tile_x: u32,
+        tile_y: u32,
+        tile_z: u8,
+    ) -> Result<u64, AirmailError> {
         let mut count = 0usize;
         let alphabetic_regex = regex::Regex::new("[a-z]+")?;
         let schema = AirmailIndex::schema(&self.lang);
@@ -273,6 +279,7 @@ impl AirmailIndex {
                 }
             };
 
+            let extent = reader.get_layer_metadata()?[poi_layer_id].extent;
             let features = reader.get_features(poi_layer_id)?;
 
             for feature in &features {
@@ -285,9 +292,15 @@ impl AirmailIndex {
                         _ => continue,
                     };
                 }
-                if let Some(poi) =
-                    InputPoi::from_tags(&self.lang, feature.get_geometry().clone(), &tags)
-                {
+                if let Some(poi) = InputPoi::from_tags_with_transform(
+                    &self.lang,
+                    feature.get_geometry().clone(),
+                    &tags,
+                    tile_x,
+                    tile_y,
+                    tile_z,
+                    extent,
+                ) {
                     let poi: SchemafiedPoi = poi.into();
 
                     let mut doc = TantivyDocument::default();
@@ -358,9 +371,16 @@ mod test {
         let index = AirmailIndex::new_in_ram("en");
 
         let start = Instant::now();
+        index.begin_ingestion().unwrap();
         let count = index
-            .ingest_tile(include_bytes!("../testdata/z14.pbf").to_vec())
+            .ingest_tile_with_coordinates(
+                include_bytes!("../testdata/z14.pbf").to_vec(),
+                2624,
+                5718,
+                14,
+            )
             .expect("Failed to ingest tile.");
+        index.commit_ingestion().unwrap();
 
         dbg!(count);
         dbg!(start.elapsed());
@@ -377,9 +397,16 @@ mod test {
         let index = AirmailIndex::new_in_ram("en");
 
         let start = Instant::now();
+        index.begin_ingestion().unwrap();
         let count = index
-            .ingest_tile(include_bytes!("../testdata/z14.pbf").to_vec())
+            .ingest_tile_with_coordinates(
+                include_bytes!("../testdata/z14.pbf").to_vec(),
+                2624,
+                5718,
+                14,
+            )
             .expect("Failed to ingest tile.");
+        index.commit_ingestion().unwrap();
 
         dbg!(count);
         dbg!(start.elapsed());
@@ -399,9 +426,16 @@ mod test {
         let index = AirmailIndex::new_in_ram("en");
 
         let start = Instant::now();
+        index.begin_ingestion().unwrap();
         let count = index
-            .ingest_tile(include_bytes!("../testdata/z14.pbf").to_vec())
+            .ingest_tile_with_coordinates(
+                include_bytes!("../testdata/z14.pbf").to_vec(),
+                2624,
+                5718,
+                14,
+            )
             .expect("Failed to ingest tile.");
+        index.commit_ingestion().unwrap();
 
         dbg!(count);
         dbg!(start.elapsed());

@@ -19,6 +19,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -38,12 +39,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.gson.Gson
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.ui.OfflineAreasScreen
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import earth.maps.cardinal.viewmodel.MapViewModel
-import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
+import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
@@ -58,27 +58,12 @@ fun AppContent(
     onRequestLocationPermission: () -> Unit,
     hasLocationPermission: Boolean
 ) {
+    val mapPins = remember { mutableStateListOf<Position>() }
     val cameraState = rememberCameraState()
-    val mapView: @Composable (onMapInteraction: () -> Unit, fabInsets: PaddingValues, targetViewport: CameraPosition?) -> Unit =
-        { onMapInteraction, fabInsets, targetViewport ->
-            port?.let { port ->
-                MapView(
-                    port = port,
-                    mapViewModel = mapViewModel,
-                    onMapInteraction = onMapInteraction,
-                    onRequestLocationPermission = onRequestLocationPermission,
-                    hasLocationPermission = hasLocationPermission,
-                    fabInsets = fabInsets,
-                    targetViewport = targetViewport,
-                    cameraState = cameraState
-                )
-            }
-        }
 
     val scaffoldState = rememberBottomSheetScaffoldState()
     var peekHeight by remember { mutableStateOf(0.dp) }
     var fabHeight by remember { mutableStateOf(0.dp) }
-    var targetViewport by remember { mutableStateOf<CameraPosition?>(null) }
     var sheetSwipeEnabled by remember { mutableStateOf(true) }
     val configuration = LocalConfiguration.current
     val coroutineScope = rememberCoroutineScope()
@@ -99,6 +84,7 @@ fun AppContent(
                     startDestination = "home"
                 ) {
                     composable("home") {
+                        mapPins.clear()
                         val viewModel: HomeViewModel = hiltViewModel()
                         val managePlacesViewModel: ManagePlacesViewModel = hiltViewModel()
                         var isSearchFocused by remember { mutableStateOf(false) }
@@ -142,6 +128,14 @@ fun AppContent(
                         val placeJson = backStackEntry.arguments?.getString("place")
                         val place = placeJson?.let { Gson().fromJson(it, Place::class.java) }
                         place?.let { place ->
+                            if (mapPins.isEmpty() && place.longitude != null && place.latitude != null) {
+                                val position = Position(place.longitude, place.latitude)
+                                LaunchedEffect(place) {
+                                    cameraState.animateTo(CameraPosition(target = position, zoom = 15.0))
+                                }
+                                mapPins.add(position)
+                            }
+
                             viewModel.setPlace(place)
                             PlaceCardScreen(
                                 place = place,
@@ -158,16 +152,23 @@ fun AppContent(
         },
         content = {
             Box(modifier = Modifier.fillMaxSize()) {
-                mapView(
-                    {},
-                    PaddingValues(
-                        start = 0.dp,
-                        top = 0.dp,
-                        end = 0.dp,
-                        bottom = configuration.screenHeightDp.dp - fabHeight
-                    ),
-                    targetViewport
-                )
+                port?.let { port ->
+                    MapView(
+                        port = port,
+                        mapViewModel = mapViewModel,
+                        onMapInteraction = { },
+                        onRequestLocationPermission = onRequestLocationPermission,
+                        hasLocationPermission = hasLocationPermission,
+                        fabInsets = PaddingValues(
+                            start = 0.dp,
+                            top = 0.dp,
+                            end = 0.dp,
+                            bottom = configuration.screenHeightDp.dp - fabHeight
+                        ),
+                        cameraState = cameraState,
+                        mapPins = mapPins
+                    )
+                }
 
                 // Download FAB that displays when zoom level is >= 10 with slide animation
                 AnimatedVisibility(
@@ -181,7 +182,7 @@ fun AppContent(
                     FloatingActionButton(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .padding(start = 16.dp, bottom = 16.dp),
+                            .padding(start = 16.dp, bottom = 12.dp),
                         onClick = {
                             showOfflineAreas = true
                         }

@@ -28,6 +28,8 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
                 // Populate address from available tags
                 val address = buildAddress(tagMap)
 
+                Log.d("POI", "${poi.lat}/${poi.lng}")
+
                 GeocodeResult(
                     displayName = displayName,
                     latitude = poi.lat,
@@ -64,7 +66,7 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
         }
         try {
             // Ingest the tile into the geocoder index
-            airmailIndex.ingestTile(tileData)
+            airmailIndex.ingestTileWithCoordinates(tileData, x.toUInt(), y.toUInt(), zoom.toUByte())
         } catch (e: Exception) {
             // Log the error but don't throw as this shouldn't break the tile download process
             Log.e(TAG, "Error processing tile $zoom/$x/$y", e)
