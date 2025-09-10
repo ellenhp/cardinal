@@ -7,12 +7,15 @@ import earth.maps.cardinal.geocoding.TileProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.Triple
 
 class TileDownloadService(
     private val context: Context,
@@ -68,7 +71,6 @@ class TileDownloadService(
 
                 // Calculate tile ranges for each zoom level
                 var totalTiles = 0
-                var downloadedTiles = 0
 
                 for (zoom in minZoom..min(maxZoom, MAX_BASEMAP_ZOOM)) {
                     val (minX, maxX, minY, maxY) = calculateTileRange(
@@ -81,6 +83,7 @@ class TileDownloadService(
                     totalTiles += (maxX - minX + 1) * (maxY - minY + 1)
                 }
 
+                var downloadedTiles = 0
                 try {
                     tileProcessor?.beginTileProcessing()
                     // Pre-compile the insert statement for better performance
@@ -89,7 +92,10 @@ class TileDownloadService(
                     )
 
                     try {
-                        // Download tiles for each layer
+                        // Process tiles in a streaming fashion with bounded parallelization
+                        // to avoid loading all tile coordinates into memory at once
+                        val maxConcurrentDownloads = 10
+                        
                         for (zoom in minZoom..min(maxZoom, MAX_BASEMAP_ZOOM)) {
                             val (minX, maxX, minY, maxY) = calculateTileRange(
                                 north,
@@ -98,22 +104,44 @@ class TileDownloadService(
                                 west,
                                 zoom
                             )
-
-                            // Download basemap tiles
-                            for (x in minX..maxX) {
-                                for (y in minY..maxY) {
-                                    if (downloadAndStoreTile(
-                                            zoom,
-                                            x,
-                                            y,
-                                            areaId,  // Use areaId as identifier instead of "basemap"
+                            
+                            // Process tiles in chunks for this zoom level to maintain bounded memory usage
+                            var x = minX
+                            while (x <= maxX) {
+                                val xEnd = min(x + maxConcurrentDownloads - 1, maxX)
+                                
+                                // Create a coroutine scope for this batch of downloads
+                                val batchScope = CoroutineScope(Dispatchers.IO + Job())
+                                
+                                // Collect tile coordinates for this batch
+                                val batchCoordinates = mutableListOf<Triple<Int, Int, Int>>()
+                                for (xBatch in x..xEnd) {
+                                    for (y in minY..maxY) {
+                                        batchCoordinates.add(Triple(zoom, xBatch, y))
+                                    }
+                                }
+                                
+                                // Process this batch with parallel downloads
+                                val downloadTasks = batchCoordinates.map { (z, xCoord, yCoord) ->
+                                    batchScope.async {
+                                        val success = downloadAndStoreTile(
+                                            z,
+                                            xCoord,
+                                            yCoord,
+                                            areaId,
                                             insertStatement
                                         )
-                                    ) {
-                                        downloadedTiles++
+                                        if (success) {
+                                            downloadedTiles++
+                                        }
+                                        progressCallback(downloadedTiles, totalTiles)
                                     }
-                                    progressCallback(downloadedTiles, totalTiles)
                                 }
+                                
+                                // Wait for all downloads in this batch to complete
+                                val results = downloadTasks.awaitAll()
+
+                                x = xEnd + 1
                             }
                         }
                     } finally {
