@@ -72,9 +72,9 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
     }
 
     private fun buildAddressString(tags: Map<String, String>): String {
-        val houseNumber = tags["addr:housenumber"]
-        val road = tags["addr:street"]
-        val city = tags["addr:city"]
+        val houseNumber = tags["addr:housenumber"] ?: tags["addr_housenumber"]
+        val road = tags["addr:street"] ?: tags["addr_street"]
+        val city = tags["addr:city"] ?: tags["addr_city"]
 
         return when {
             houseNumber != null && road != null -> "$houseNumber $road"
@@ -86,12 +86,12 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
 
     private fun buildAddress(tags: Map<String, String>): Address {
         return Address(
-            houseNumber = tags["addr:housenumber"],
-            road = tags["addr:street"],
-            city = tags["addr:city"],
-            state = tags["addr:state"],
-            postcode = tags["addr:postcode"],
-            country = tags["addr:country"]
+            houseNumber = tags["addr:housenumber"] ?: tags["addr_housenumber"],
+            road = tags["addr:street"] ?: tags["addr_street"],
+            city = tags["addr:city"] ?: tags["addr_city"],
+            state = tags["addr:state"] ?: tags["addr_state"],
+            postcode = tags["addr:postcode"] ?: tags["addr_postcode"],
+            country = tags["addr:country"] ?: tags["addr_country"]
         )
     }
 

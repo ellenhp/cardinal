@@ -71,9 +71,9 @@ impl InputPoi {
         tile_z: u8,
         extent: u32,
     ) -> Option<InputPoi> {
-        let house_number = tags.get("addr:housenumber").map(ToString::to_string);
-        let road = tags.get("addr:street").map(ToString::to_string);
-        let unit = tags.get("addr:unit").map(ToString::to_string);
+        let house_number = tags.get("addr_housenumber").map(ToString::to_string);
+        let road = tags.get("addr_street").map(ToString::to_string);
+        let unit = tags.get("addr_unit").map(ToString::to_string);
 
         let names = {
             let names: Vec<String> = tags
