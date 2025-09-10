@@ -37,9 +37,7 @@ import io.github.dellisd.spatialk.geojson.Point
 import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraState
-import org.maplibre.compose.expressions.dsl.const
 import org.maplibre.compose.expressions.dsl.image
-import org.maplibre.compose.expressions.dsl.rgbColor
 import org.maplibre.compose.layers.SymbolLayer
 import org.maplibre.compose.map.MapOptions
 import org.maplibre.compose.map.MaplibreMap
@@ -109,7 +107,6 @@ fun MapView(
                     id = "map-pins",
                     source = rememberGeoJsonSource(GeoJsonData.Features(FeatureCollection(features = pinFeatures))),
                     iconImage = image(painterResource(drawable.map_pin)),
-                    iconColor = rgbColor(const(0), const(0), const(0))
                 )
             }
         } else {
