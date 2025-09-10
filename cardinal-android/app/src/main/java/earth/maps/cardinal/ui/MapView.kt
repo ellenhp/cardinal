@@ -23,20 +23,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.ui.map.LocationPuck
 import earth.maps.cardinal.viewmodel.MapViewModel
+import io.github.dellisd.spatialk.geojson.Feature
+import io.github.dellisd.spatialk.geojson.FeatureCollection
+import io.github.dellisd.spatialk.geojson.Point
+import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
-import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.CameraState
-import org.maplibre.compose.camera.rememberCameraState
+import org.maplibre.compose.expressions.dsl.const
+import org.maplibre.compose.expressions.dsl.image
+import org.maplibre.compose.expressions.dsl.rgbColor
+import org.maplibre.compose.layers.SymbolLayer
 import org.maplibre.compose.map.MapOptions
 import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.map.OrnamentOptions
 import org.maplibre.compose.material3.DisappearingCompassButton
+import org.maplibre.compose.sources.GeoJsonData
+import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
 import org.maplibre.compose.style.rememberStyleState
 
@@ -47,17 +57,18 @@ fun MapView(
     onMapInteraction: () -> Unit,
     onRequestLocationPermission: () -> Unit,
     hasLocationPermission: Boolean,
-    targetViewport: CameraPosition? = null,
+    mapPins: List<Position>,
     fabInsets: PaddingValues,
-    cameraState: CameraState = rememberCameraState()
+    cameraState: CameraState
 ) {
     val context = LocalContext.current
     val styleState = rememberStyleState()
+    val pinFeatures = mapPins.map { Feature(geometry = Point(it)) }
 
     // Load saved viewport on initial composition
     LaunchedEffect(Unit) {
         val savedViewport = mapViewModel.loadViewport()
-        if (savedViewport != null && targetViewport == null) {
+        if (savedViewport != null) {
             cameraState.animateTo(savedViewport)
         }
     }
@@ -67,13 +78,6 @@ fun MapView(
         onDispose {
             // Save current viewport
             mapViewModel.saveViewport(cameraState.position)
-        }
-    }
-
-    // Center on target location when provided
-    targetViewport?.let { viewport ->
-        LaunchedEffect(viewport) {
-            cameraState.animateTo(viewport)
         }
     }
 
@@ -100,6 +104,13 @@ fun MapView(
             ) {
                 val location by mapViewModel.locationFlow.collectAsState()
                 location?.let { LocationPuck(it) }
+
+                SymbolLayer(
+                    id = "map-pins",
+                    source = rememberGeoJsonSource(GeoJsonData.Features(FeatureCollection(features = pinFeatures))),
+                    iconImage = image(painterResource(drawable.map_pin)),
+                    iconColor = rgbColor(const(0), const(0), const(0))
+                )
             }
         } else {
             // Handle invalid port - could show an error message

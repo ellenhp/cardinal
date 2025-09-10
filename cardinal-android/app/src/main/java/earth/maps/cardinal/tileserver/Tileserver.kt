@@ -329,17 +329,6 @@ class Tileserver(private val context: Context) {
             )
             
             db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS tile_index ON tiles (zoom_level, tile_column, tile_row, area_id)")
-            
-            // Insert basic metadata if it doesn't exist
-            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('name', 'Cardinal Maps Offline Areas')")
-            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('type', 'baselayer')")
-            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('version', '1.0')")
-            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('description', 'Offline map tiles for Cardinal Maps')")
-            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('format', 'pbf')")
-            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('minzoom', '0')")
-            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('maxzoom', '14')")
-            // Specify that we're using TMS coordinate system
-            db.execSQL("INSERT OR IGNORE INTO metadata (name, value) VALUES ('scheme', 'tms')")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing offline areas schema", e)
         }
