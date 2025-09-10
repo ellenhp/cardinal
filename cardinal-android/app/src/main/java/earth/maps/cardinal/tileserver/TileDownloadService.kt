@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import androidx.core.database.sqlite.transaction
+import earth.maps.cardinal.geocoding.TileProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -15,7 +16,10 @@ import java.net.URL
 import kotlin.math.max
 import kotlin.math.min
 
-class TileDownloadService(private val context: Context) {
+class TileDownloadService(
+    private val context: Context,
+    private val tileProcessor: TileProcessor? = null
+) {
     private val TAG = "TileDownloadService"
     private val coroutineScope = CoroutineScope(Dispatchers.IO + Job())
     private var downloadJob: Job? = null
@@ -78,37 +82,41 @@ class TileDownloadService(private val context: Context) {
                     totalTiles += (maxX - minX + 1) * (maxY - minY + 1)
                 }
 
-                db.transaction {
-                    // Download tiles for each layer
-                    for (zoom in minZoom..min(maxZoom, MAX_BASEMAP_ZOOM)) {
-                        val (minX, maxX, minY, maxY) = calculateTileRange(
-                            north,
-                            south,
-                            east,
-                            west,
-                            zoom
-                        )
+                try {
+                    tileProcessor?.beginTileProcessing()
+                    db.transaction {
+                        // Download tiles for each layer
+                        for (zoom in minZoom..min(maxZoom, MAX_BASEMAP_ZOOM)) {
+                            val (minX, maxX, minY, maxY) = calculateTileRange(
+                                north,
+                                south,
+                                east,
+                                west,
+                                zoom
+                            )
 
-                        // Download basemap tiles
-                        for (x in minX..maxX) {
-                            for (y in minY..maxY) {
-                                if (downloadAndStoreTile(
-                                        this!!,
-                                        BASEMAP_TILE_URL,
-                                        zoom,
-                                        x,
-                                        y,
-                                        areaId  // Use areaId as identifier instead of "basemap"
-                                    )
-                                ) {
-                                    downloadedTiles++
+                            // Download basemap tiles
+                            for (x in minX..maxX) {
+                                for (y in minY..maxY) {
+                                    if (downloadAndStoreTile(
+                                            this!!,
+                                            BASEMAP_TILE_URL,
+                                            zoom,
+                                            x,
+                                            y,
+                                            areaId  // Use areaId as identifier instead of "basemap"
+                                        )
+                                    ) {
+                                        downloadedTiles++
+                                    }
+                                    progressCallback(downloadedTiles, totalTiles)
                                 }
-                                progressCallback(downloadedTiles, totalTiles)
                             }
                         }
                     }
+                } finally {
+                    tileProcessor?.endTileProcessing()
                 }
-
                 // Store area metadata
                 storeAreaMetadata(db, areaId, north, south, east, west, minZoom, maxZoom, name)
 
@@ -268,6 +276,15 @@ class TileDownloadService(private val context: Context) {
                 statement.executeInsert()
                 statement.close()
                 statement = null
+
+                // Notify the tile processor if available
+                tileProcessor?.let { processor ->
+                    try {
+                        processor.processTile(data, zoom, x, y)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error processing tile $layer/$zoom/$x/$y in tile processor", e)
+                    }
+                }
 
                 Log.d(TAG, "Downloaded tile $layer/$zoom/$x/$y")
                 true

@@ -20,6 +20,7 @@ import javax.inject.Inject
 class OfflineAreasViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val offlineAreaRepository: OfflineAreaRepository,
+    private val tileDownloadService: TileDownloadService,
 ) : ViewModel() {
 
     val offlineAreas = mutableStateOf<List<OfflineArea>>(emptyList())
@@ -72,8 +73,6 @@ class OfflineAreasViewModel @Inject constructor(
             offlineAreaRepository.insertOfflineArea(offlineArea)
 
             // Start tile download using single database
-            val tileDownloadService = TileDownloadService(context)
-
             tileDownloadService.downloadTiles(
                 north, south, east, west,
                 minZoom, maxZoom,
@@ -108,7 +107,6 @@ class OfflineAreasViewModel @Inject constructor(
 
     fun cancelDownload() {
         // Cancel the download
-        val tileDownloadService = TileDownloadService(context)
         tileDownloadService.cancelDownload()
         isDownloading.value = false
     }
@@ -116,7 +114,6 @@ class OfflineAreasViewModel @Inject constructor(
     fun deleteOfflineArea(offlineArea: OfflineArea) {
         viewModelScope.launch {
             // Delete tiles from the single database
-            val tileDownloadService = TileDownloadService(context)
             tileDownloadService.deleteTilesForArea(offlineArea.id)
 
             // Delete the offline area entry from Room database
@@ -155,7 +152,6 @@ class OfflineAreasViewModel @Inject constructor(
         maxZoom: Int
     ): Int {
         // Use the same logic as in TileDownloadService
-        val tileDownloadService = TileDownloadService(context)
         var totalTiles = 0
 
         for (zoom in minZoom..kotlin.math.min(maxZoom, 14)) {

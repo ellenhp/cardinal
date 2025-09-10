@@ -48,7 +48,7 @@ android {
              workingDir = file("../../cardinal-geocoder")
             commandLine = listOf("cargo", "run", "--bin", "uniffi-bindgen", "generate", "--library", "../cardinal-android/app/src/main/jniLibs/arm64-v8a/libcardinal_geocoder.so", "--language", "kotlin", "--out-dir", bDir.toString())
             
-            dependsOn("buildCargoNdk${variant.name.capitalize()}")
+            dependsOn("buildCargoNdkRelease")
         }
         
         // Add dependency from Java compilation to generateBindings task
@@ -65,8 +65,10 @@ android {
 }
 
 cargoNdk {
+    targets = arrayListOf("arm64", "x86_64")
     module = "../cardinal-geocoder"  // Directory containing Cargo.toml
     librariesNames = arrayListOf("libcardinal_geocoder.so")
+    buildType = "release"
 }
 
 dependencies {
