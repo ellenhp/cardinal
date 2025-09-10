@@ -22,8 +22,6 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
                     tagMap[tag.key] = tag.value
                 }
 
-                Log.d("ADDR", "$tagMap")
-
                 // Get display name from name tag or create from address components
                 val displayName = tagMap["name"] ?: buildAddressString(tagMap)
 
