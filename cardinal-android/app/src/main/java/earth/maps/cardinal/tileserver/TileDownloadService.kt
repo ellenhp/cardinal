@@ -25,7 +25,7 @@ class TileDownloadService(
 
     companion object {
         private const val MAX_BASEMAP_ZOOM = 14
-        private const val SINGLE_DATABASE_NAME = "offline_areas.mbtiles"
+        private const val OFFLINE_DATABASE_NAME = "offline_areas.mbtiles"
         private const val PMTILES_EXTENSION = ".pmtiles"
     }
 
@@ -55,8 +55,8 @@ class TileDownloadService(
         downloadJob = coroutineScope.launch {
             var db: SQLiteDatabase? = null
             try {
-                // Use single database for all downloads
-                val outputFile = File(context.filesDir, SINGLE_DATABASE_NAME)
+                // Use offline database for all downloads
+                val outputFile = File(context.filesDir, OFFLINE_DATABASE_NAME)
                 val dbExists = outputFile.exists()
 
                 db = SQLiteDatabase.openOrCreateDatabase(outputFile, null)
@@ -102,7 +102,6 @@ class TileDownloadService(
                             // Download basemap tiles
                             for (x in minX..maxX) {
                                 for (y in minY..maxY) {
-                                    Log.d(TAG, "Attempting to download tile $areaId/$zoom/$x/$y")
                                     if (downloadAndStoreTile(
                                             zoom,
                                             x,
@@ -111,10 +110,6 @@ class TileDownloadService(
                                             insertStatement
                                         )
                                     ) {
-                                        Log.d(
-                                            TAG,
-                                            "Successfully downloaded and stored tile $areaId/$zoom/$x/$y"
-                                        )
                                         downloadedTiles++
                                     }
                                     progressCallback(downloadedTiles, totalTiles)
@@ -266,7 +261,6 @@ class TileDownloadService(
             val data = pmtilesReader.getTile(zoom, x, y)
 
             if (data != null) {
-                Log.d(TAG, "Downloaded tile successfully, now storing ${data.size} bytes into db.")
                 // Convert XYZ to TMS coordinate system for MBTiles
                 // MBTiles uses TMS (Tile Map Service) coordinate system where Y=0 is at the bottom
                 // Most map libraries use XYZ coordinate system where Y=0 is at the top
@@ -283,20 +277,15 @@ class TileDownloadService(
                 insertStatement.executeInsert()
                 insertStatement.clearBindings()
 
-                Log.d(TAG, "Inserted tile into offline database.")
-
                 // Notify the tile processor if available
                 tileProcessor?.let { processor ->
                     try {
-                        Log.d(TAG, "Processing tile.")
                         processor.processTile(data, zoom, x, y)
-                        Log.d(TAG, "Processed tile.")
                     } catch (e: Exception) {
                         Log.w(TAG, "Error processing tile $layer/$zoom/$x/$y in tile processor", e)
                     }
                 }
 
-                Log.d(TAG, "Downloaded tile $layer/$zoom/$x/$y")
                 true
             } else {
                 Log.w(TAG, "Failed to download tile $layer/$zoom/$x/$y: Tile not found in PMTiles")
@@ -378,16 +367,16 @@ class TileDownloadService(
     }
 
     /**
-     * Delete tiles for a specific area ID from the single database
+     * Delete tiles for a specific area ID from the database
      * Only deletes tiles that are exclusively used by this area (no shared tiles)
      */
     fun deleteTilesForArea(areaId: String): Boolean {
         var db: SQLiteDatabase? = null
         try {
-            // Open the single database
-            val outputFile = File(context.filesDir, SINGLE_DATABASE_NAME)
+            // Open the offline database
+            val outputFile = File(context.filesDir, OFFLINE_DATABASE_NAME)
             if (!outputFile.exists()) {
-                Log.d(TAG, "Single database file does not exist, nothing to delete")
+                Log.d(TAG, "Offline database file does not exist, nothing to delete")
                 return true
             }
 
