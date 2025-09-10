@@ -15,15 +15,31 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object GeocodingModule {
 
+    var geocodingService: OfflineGeocodingService? = null
+
     @Provides
     @Singleton
     fun provideGeocodingService(@ApplicationContext context: Context): GeocodingService {
-        return OfflineGeocodingService(context)
+        val globalGeocodingService = geocodingService
+        if (globalGeocodingService != null) {
+            return globalGeocodingService
+        } else {
+            val newGeocoder = OfflineGeocodingService(context)
+            geocodingService = newGeocoder
+            return newGeocoder
+        }
     }
 
     @Provides
     @Singleton
     fun provideTileProcessor(@ApplicationContext context: Context): TileProcessor {
-        return OfflineGeocodingService(context)
+        val globalGeocodingService = geocodingService
+        if (globalGeocodingService != null) {
+            return globalGeocodingService
+        } else {
+            val newGeocoder = OfflineGeocodingService(context)
+            geocodingService = newGeocoder
+            return newGeocoder
+        }
     }
 }

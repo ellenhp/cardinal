@@ -1,6 +1,7 @@
 package earth.maps.cardinal.geocoding
 
 import android.content.Context
+import android.util.Log
 import earth.maps.cardinal.data.Address
 import earth.maps.cardinal.data.GeocodeResult
 import kotlinx.coroutines.flow.Flow
@@ -35,7 +36,8 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
                 )
             }
             emit(geocodeResults)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e(TAG, "Geocode failed with exception", e)
             // If there's an error, return empty list
             emit(emptyList())
         }
@@ -65,7 +67,7 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
             airmailIndex.ingestTile(tileData)
         } catch (e: Exception) {
             // Log the error but don't throw as this shouldn't break the tile download process
-            android.util.Log.e("OfflineGeocodingService", "Error processing tile $zoom/$x/$y", e)
+            Log.e(TAG, "Error processing tile $zoom/$x/$y", e)
         }
     }
 
@@ -91,5 +93,9 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
             postcode = tags["addr:postcode"],
             country = tags["addr:country"]
         )
+    }
+
+    companion object {
+        const val TAG = "OfflineGeocodingService"
     }
 }

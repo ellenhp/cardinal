@@ -31,6 +31,8 @@ fn all_subsequences(tokens: &[String]) -> Vec<Vec<String>> {
 #[derive(uniffi::Object)]
 pub struct AirmailIndex {
     index: tantivy::Index,
+    // I'm going to hell and/or prison for this, but we can't mutate `self` in a uniffi-exposed function.
+    // Moreover, we need to mutate the IndexWriter itself so I think we need a mutex there too.
     writer: Mutex<Option<Arc<Mutex<tantivy::IndexWriter>>>>,
     lang: String,
 }
@@ -242,7 +244,7 @@ impl AirmailIndex {
     }
 
     pub fn begin_ingestion(&self) -> Result<(), AirmailError> {
-        *self.writer.lock().unwrap() = Some(Arc::new(Mutex::new(
+        *self.writer.lock().expect("Failed to lock writer mutex") = Some(Arc::new(Mutex::new(
             self.index
                 .writer(20_000_000)
                 .map_err(|err| AirmailError::Tantivy(err))?,
@@ -263,7 +265,7 @@ impl AirmailIndex {
             .next()
         {
             let writer = {
-                let lock = self.writer.lock().unwrap();
+                let lock = self.writer.lock().expect("Failed to lock writer mutex");
                 if let Some(writer) = lock.as_ref() {
                     writer.clone()
                 } else {
@@ -311,7 +313,10 @@ impl AirmailIndex {
                     for parent in poi.s2cell_parents {
                         doc.add_u64(self.field_s2cell_parents(), parent);
                     }
-                    writer.lock().unwrap().add_document(doc)?;
+                    writer
+                        .lock()
+                        .expect("Failed to lock writer mutex")
+                        .add_document(doc)?;
                     count += 1;
                 }
             }
@@ -321,15 +326,18 @@ impl AirmailIndex {
 
     pub fn commit_ingestion(&self) -> Result<(), AirmailError> {
         let writer = {
-            let lock = self.writer.lock().unwrap();
+            let lock = self.writer.lock().expect("Failed to lock writer mutex");
             if let Some(writer) = lock.as_ref() {
                 writer.clone()
             } else {
                 return Err(AirmailError::InvalidIngestionState);
             }
         };
-        writer.lock().unwrap().commit()?;
-        *self.writer.lock().unwrap() = None;
+        writer
+            .lock()
+            .expect("Failed to lock writer mutex")
+            .commit()?;
+        *self.writer.lock().expect("Failed to lock writer mutex") = None;
         Ok(())
     }
 }
