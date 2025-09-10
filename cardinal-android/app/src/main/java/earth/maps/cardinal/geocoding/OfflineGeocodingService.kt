@@ -28,8 +28,6 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
                 // Populate address from available tags
                 val address = buildAddress(tagMap)
 
-                Log.d("POI", "${poi.lat}/${poi.lng}")
-
                 GeocodeResult(
                     displayName = displayName,
                     latitude = poi.lat,
