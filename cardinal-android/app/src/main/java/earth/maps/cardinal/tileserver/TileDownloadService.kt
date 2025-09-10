@@ -3,7 +3,6 @@ package earth.maps.cardinal.tileserver
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
-import androidx.core.database.sqlite.transaction
 import earth.maps.cardinal.geocoding.TileProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -11,23 +10,23 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 
 class TileDownloadService(
     private val context: Context,
-    private val tileProcessor: TileProcessor? = null
+    private val tileProcessor: TileProcessor? = null,
+    private val pmtilesReader: PMTilesReader
 ) {
     private val TAG = "TileDownloadService"
     private val coroutineScope = CoroutineScope(Dispatchers.IO + Job())
     private var downloadJob: Job? = null
 
     companion object {
-        private const val BASEMAP_TILE_URL = "https://maps.earth/tileserver/data/default"
         private const val MAX_BASEMAP_ZOOM = 14
         private const val SINGLE_DATABASE_NAME = "offline_areas.mbtiles"
+        private const val PMTILES_EXTENSION = ".pmtiles"
     }
 
     /**
@@ -84,7 +83,12 @@ class TileDownloadService(
 
                 try {
                     tileProcessor?.beginTileProcessing()
-                    db.transaction {
+                    // Pre-compile the insert statement for better performance
+                    val insertStatement = db.compileStatement(
+                        "INSERT OR REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data, area_id) VALUES (?, ?, ?, ?, ?)"
+                    )
+
+                    try {
                         // Download tiles for each layer
                         for (zoom in minZoom..min(maxZoom, MAX_BASEMAP_ZOOM)) {
                             val (minX, maxX, minY, maxY) = calculateTileRange(
@@ -98,20 +102,31 @@ class TileDownloadService(
                             // Download basemap tiles
                             for (x in minX..maxX) {
                                 for (y in minY..maxY) {
+                                    Log.d(TAG, "Attempting to download tile $areaId/$zoom/$x/$y")
                                     if (downloadAndStoreTile(
-                                            this!!,
-                                            BASEMAP_TILE_URL,
                                             zoom,
                                             x,
                                             y,
-                                            areaId  // Use areaId as identifier instead of "basemap"
+                                            areaId,  // Use areaId as identifier instead of "basemap"
+                                            insertStatement
                                         )
                                     ) {
+                                        Log.d(
+                                            TAG,
+                                            "Successfully downloaded and stored tile $areaId/$zoom/$x/$y"
+                                        )
                                         downloadedTiles++
                                     }
                                     progressCallback(downloadedTiles, totalTiles)
                                 }
                             }
+                        }
+                    } finally {
+                        // Close the statement
+                        try {
+                            insertStatement.close()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error closing insert statement", e)
                         }
                     }
                 } finally {
@@ -240,47 +255,42 @@ class TileDownloadService(
      * Download and store a single tile
      */
     private suspend fun downloadAndStoreTile(
-        db: SQLiteDatabase,
-        baseUrl: String,
         zoom: Int,
         x: Int,
         y: Int,
-        layer: String
+        layer: String,
+        insertStatement: android.database.sqlite.SQLiteStatement
     ): Boolean = withContext(Dispatchers.IO) {
-        var statement: android.database.sqlite.SQLiteStatement? = null
         try {
-            val url = URL("$baseUrl/$zoom/$x/$y.pbf")
-            val connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 5000
-            connection.readTimeout = 10000
+            // Use PMTilesReader to get the tile data
+            val data = pmtilesReader.getTile(zoom, x, y)
 
-            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                val data = connection.inputStream.readBytes()
-
+            if (data != null) {
+                Log.d(TAG, "Downloaded tile successfully, now storing ${data.size} bytes into db.")
                 // Convert XYZ to TMS coordinate system for MBTiles
                 // MBTiles uses TMS (Tile Map Service) coordinate system where Y=0 is at the bottom
                 // Most map libraries use XYZ coordinate system where Y=0 is at the top
                 // Conversion formula: TMS_Y = 2^zoom - 1 - XYZ_Y
-                val tmsY = (Math.pow(2.0, zoom.toDouble()) - 1 - y).toInt()
+                val tmsY = (2.0.pow(zoom.toDouble()) - 1 - y).toInt()
 
                 // Store in database with area_id
-                statement = db.compileStatement(
-                    "INSERT OR REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data, area_id) VALUES (?, ?, ?, ?, ?)"
-                )
-                statement.bindLong(1, zoom.toLong())
-                statement.bindLong(2, x.toLong())
-                statement.bindLong(3, tmsY.toLong())
-                statement.bindBlob(4, data)
-                statement.bindString(5, layer)  // layer parameter now contains the areaId
-                statement.executeInsert()
-                statement.close()
-                statement = null
+                // Reuse pre-compiled statement for better performance
+                insertStatement.bindLong(1, zoom.toLong())
+                insertStatement.bindLong(2, x.toLong())
+                insertStatement.bindLong(3, tmsY.toLong())
+                insertStatement.bindBlob(4, data)
+                insertStatement.bindString(5, layer)  // layer parameter now contains the areaId
+                insertStatement.executeInsert()
+                insertStatement.clearBindings()
+
+                Log.d(TAG, "Inserted tile into offline database.")
 
                 // Notify the tile processor if available
                 tileProcessor?.let { processor ->
                     try {
+                        Log.d(TAG, "Processing tile.")
                         processor.processTile(data, zoom, x, y)
+                        Log.d(TAG, "Processed tile.")
                     } catch (e: Exception) {
                         Log.w(TAG, "Error processing tile $layer/$zoom/$x/$y in tile processor", e)
                     }
@@ -289,17 +299,10 @@ class TileDownloadService(
                 Log.d(TAG, "Downloaded tile $layer/$zoom/$x/$y")
                 true
             } else {
-                Log.w(TAG, "Failed to download tile $layer/$zoom/$x/$y: ${connection.responseCode}")
+                Log.w(TAG, "Failed to download tile $layer/$zoom/$x/$y: Tile not found in PMTiles")
                 false
             }
         } catch (e: Exception) {
-            // Close statement if it's open
-            try {
-                statement?.close()
-            } catch (closeException: Exception) {
-                Log.e(TAG, "Error closing statement", closeException)
-            }
-
             Log.e(TAG, "Error downloading tile $layer/$zoom/$x/$y", e)
             false
         }
