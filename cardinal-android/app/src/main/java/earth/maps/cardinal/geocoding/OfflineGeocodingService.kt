@@ -51,10 +51,12 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
     }
 
     override suspend fun beginTileProcessing() {
+        Log.d(TAG, "Beginning tile processing")
         airmailIndex.beginIngestion()
     }
 
     override suspend fun endTileProcessing() {
+        Log.d(TAG, "Ending tile processing")
         airmailIndex.commitIngestion()
     }
 

@@ -43,7 +43,9 @@ import org.maplibre.compose.layers.SymbolLayer
 import org.maplibre.compose.map.MapOptions
 import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.map.OrnamentOptions
+import org.maplibre.compose.map.RenderOptions
 import org.maplibre.compose.material3.DisappearingCompassButton
+import org.maplibre.compose.offline.rememberOfflineManager
 import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
@@ -101,7 +103,7 @@ fun MapView(
                 cameraState = cameraState,
                 baseStyle = BaseStyle.Uri("http://127.0.0.1:$port/style_$styleVariant.json"),
                 styleState = styleState,
-                options = MapOptions(ornamentOptions = OrnamentOptions.AllDisabled)
+                options = MapOptions(ornamentOptions = OrnamentOptions.AllDisabled, renderOptions = RenderOptions())
             ) {
                 val location by mapViewModel.locationFlow.collectAsState()
                 location?.let { LocationPuck(it) }
