@@ -2,6 +2,7 @@ package earth.maps.cardinal.ui
 
 import android.content.Context
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -63,6 +64,8 @@ fun MapView(
     val styleState = rememberStyleState()
     val pinFeatures = mapPins.map { Feature(geometry = Point(it)) }
 
+    val styleVariant = if (isSystemInDarkTheme()) "dark" else "light"
+
     // Load saved viewport on initial composition
     LaunchedEffect(Unit) {
         val savedViewport = mapViewModel.loadViewport()
@@ -96,7 +99,7 @@ fun MapView(
             MaplibreMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraState = cameraState,
-                baseStyle = BaseStyle.Uri("http://127.0.0.1:$port/style.json"),
+                baseStyle = BaseStyle.Uri("http://127.0.0.1:$port/style_$styleVariant.json"),
                 styleState = styleState,
                 options = MapOptions(ornamentOptions = OrnamentOptions.AllDisabled)
             ) {

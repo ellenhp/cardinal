@@ -43,18 +43,35 @@ class Tileserver(private val context: Context) {
                     call.respondText("Tile Server is running!")
                 }
 
-                get("/style.json") {
+                get("/style_light.json") {
                     try {
-                        val styleJson = readAssetFile("style.json")
+                        val styleJson = readAssetFile("style_light.json")
                         val modifiedStyleJson = styleJson.replace("{port}", port.toString())
                         call.respondText(
                             modifiedStyleJson,
                             contentType = ContentType.Application.Json
                         )
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error reading style.json", e)
+                        Log.e(TAG, "Error reading style_light.json", e)
                         call.respondText(
-                            "Error reading style.json",
+                            "Error reading style_light.json",
+                            status = HttpStatusCode.InternalServerError
+                        )
+                    }
+                }
+
+                get("/style_dark.json") {
+                    try {
+                        val styleJson = readAssetFile("style_dark.json")
+                        val modifiedStyleJson = styleJson.replace("{port}", port.toString())
+                        call.respondText(
+                            modifiedStyleJson,
+                            contentType = ContentType.Application.Json
+                        )
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error reading style_dark.json", e)
+                        call.respondText(
+                            "Error reading style_dark.json",
                             status = HttpStatusCode.InternalServerError
                         )
                     }

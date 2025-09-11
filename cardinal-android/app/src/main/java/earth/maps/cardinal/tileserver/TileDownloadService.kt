@@ -4,6 +4,11 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import earth.maps.cardinal.geocoding.TileProcessor
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -19,17 +24,19 @@ import kotlin.Triple
 
 class TileDownloadService(
     private val context: Context,
-    private val tileProcessor: TileProcessor? = null,
-    private val pmtilesReader: PMTilesReader
+    private val tileProcessor: TileProcessor? = null
 ) {
     private val TAG = "TileDownloadService"
     private val coroutineScope = CoroutineScope(Dispatchers.IO + Job())
     private var downloadJob: Job? = null
+    private val httpClient = HttpClient(Android) {
+        install(ContentNegotiation)
+    }
 
     companion object {
         private const val MAX_BASEMAP_ZOOM = 14
         private const val OFFLINE_DATABASE_NAME = "offline_areas.mbtiles"
-        private const val PMTILES_EXTENSION = ".pmtiles"
+        private const val TILE_URL_TEMPLATE = "https://pmtiles.ellenhp.workers.dev/planet-250825.pmtiles/planet-250825/{z}/{x}/{y}.mvt"
     }
 
     /**
@@ -285,42 +292,43 @@ class TileDownloadService(
         insertStatement: android.database.sqlite.SQLiteStatement
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            // Use PMTilesReader to get the tile data
-            val data = pmtilesReader.getTile(zoom, x, y)
+            // Build the URL for the tile
+            val url = TILE_URL_TEMPLATE
+                .replace("{z}", zoom.toString())
+                .replace("{x}", x.toString())
+                .replace("{y}", y.toString())
+            
+            // Use ktor to get the tile data
+            val data = httpClient.get(url).body<ByteArray>()
 
-            if (data != null) {
-                // Convert XYZ to TMS coordinate system for MBTiles
-                // MBTiles uses TMS (Tile Map Service) coordinate system where Y=0 is at the bottom
-                // Most map libraries use XYZ coordinate system where Y=0 is at the top
-                // Conversion formula: TMS_Y = 2^zoom - 1 - XYZ_Y
-                val tmsY = (2.0.pow(zoom.toDouble()) - 1 - y).toInt()
+            // Convert XYZ to TMS coordinate system for MBTiles
+            // MBTiles uses TMS (Tile Map Service) coordinate system where Y=0 is at the bottom
+            // Most map libraries use XYZ coordinate system where Y=0 is at the top
+            // Conversion formula: TMS_Y = 2^zoom - 1 - XYZ_Y
+            val tmsY = (2.0.pow(zoom.toDouble()) - 1 - y).toInt()
 
-                // Store in database with area_id
-                // Reuse pre-compiled statement for better performance
-                insertStatement.bindLong(1, zoom.toLong())
-                insertStatement.bindLong(2, x.toLong())
-                insertStatement.bindLong(3, tmsY.toLong())
-                insertStatement.bindBlob(4, data)
-                insertStatement.bindString(5, layer)  // layer parameter now contains the areaId
-                insertStatement.executeInsert()
-                insertStatement.clearBindings()
+            // Store in database with area_id
+            // Reuse pre-compiled statement for better performance
+            insertStatement.bindLong(1, zoom.toLong())
+            insertStatement.bindLong(2, x.toLong())
+            insertStatement.bindLong(3, tmsY.toLong())
+            insertStatement.bindBlob(4, data)
+            insertStatement.bindString(5, layer)  // layer parameter now contains the areaId
+            insertStatement.executeInsert()
+            insertStatement.clearBindings()
 
-                // Notify the tile processor if available
-                tileProcessor?.let { processor ->
-                    try {
-                        processor.processTile(data, zoom, x, y)
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Error processing tile $layer/$zoom/$x/$y in tile processor", e)
-                    }
+            // Notify the tile processor if available
+            tileProcessor?.let { processor ->
+                try {
+                    processor.processTile(data, zoom, x, y)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error processing tile $layer/$zoom/$x/$y in tile processor", e)
                 }
-
-                true
-            } else {
-                Log.w(TAG, "Failed to download tile $layer/$zoom/$x/$y: Tile not found in PMTiles")
-                false
             }
+
+            true
         } catch (e: Exception) {
-            Log.e(TAG, "Error downloading tile $layer/$zoom/$x/$y", e)
+            Log.e(TAG, "Error downloading tile $layer/$zoom/$x/$y via HTTP", e)
             false
         }
     }
