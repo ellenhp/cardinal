@@ -246,7 +246,7 @@ impl AirmailIndex {
     pub fn begin_ingestion(&self) -> Result<(), AirmailError> {
         *self.writer.lock().expect("Failed to lock writer mutex") = Some(Arc::new(Mutex::new(
             self.index
-                .writer(20_000_000)
+                .writer(15_000_000)
                 .map_err(|err| AirmailError::Tantivy(err))?,
         )));
         Ok(())
@@ -259,6 +259,16 @@ impl AirmailIndex {
         tile_y: u32,
         tile_z: u8,
     ) -> Result<u64, AirmailError> {
+        // Clone the writer outside the lock to avoid holding the lock while doing work
+        let writer = {
+            let lock = self.writer.lock().expect("Failed to lock writer mutex");
+            if let Some(writer) = lock.as_ref() {
+                writer.clone()
+            } else {
+                return Err(AirmailError::InvalidIngestionState);
+            }
+        };
+
         let mut count = 0usize;
         let alphabetic_regex = regex::Regex::new("[a-z]+")?;
         let schema = AirmailIndex::schema(&self.lang);
@@ -270,15 +280,6 @@ impl AirmailIndex {
             .filter(|(_, layer)| layer.as_str() == Some("poi"))
             .next()
         {
-            let writer = {
-                let lock = self.writer.lock().expect("Failed to lock writer mutex");
-                if let Some(writer) = lock.as_ref() {
-                    writer.clone()
-                } else {
-                    return Err(AirmailError::InvalidIngestionState);
-                }
-            };
-
             let extent = reader.get_layer_metadata()?[poi_layer_id].extent;
             let features = reader.get_features(poi_layer_id)?;
 
@@ -326,6 +327,8 @@ impl AirmailIndex {
                     for parent in poi.s2cell_parents {
                         doc.add_u64(self.field_s2cell_parents(), parent);
                     }
+
+                    // Acquire the inner lock only when needed
                     writer
                         .lock()
                         .expect("Failed to lock writer mutex")
@@ -338,6 +341,7 @@ impl AirmailIndex {
     }
 
     pub fn commit_ingestion(&self) -> Result<(), AirmailError> {
+        // Clone the writer outside the lock to avoid holding the lock while doing work
         let writer = {
             let lock = self.writer.lock().expect("Failed to lock writer mutex");
             if let Some(writer) = lock.as_ref() {
@@ -346,10 +350,14 @@ impl AirmailIndex {
                 return Err(AirmailError::InvalidIngestionState);
             }
         };
+
+        // Acquire the inner lock only when needed
         writer
             .lock()
             .expect("Failed to lock writer mutex")
             .commit()?;
+
+        // Release the writer
         *self.writer.lock().expect("Failed to lock writer mutex") = None;
         Ok(())
     }

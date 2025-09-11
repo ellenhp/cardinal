@@ -48,6 +48,7 @@ import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
+import org.maplibre.compose.offline.rememberOfflineManager
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,6 +62,7 @@ fun AppContent(
 ) {
     val mapPins = remember { mutableStateListOf<Position>() }
     val cameraState = rememberCameraState()
+    val offlineManager = rememberOfflineManager()
 
     val scaffoldState = rememberBottomSheetScaffoldState()
     var peekHeight by remember { mutableStateOf(0.dp) }
@@ -70,6 +72,11 @@ fun AppContent(
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     var showOfflineAreas by remember { mutableStateOf(false) }
+
+    LaunchedEffect(key1 = Unit) {
+        offlineManager.setTileCountLimit(0)
+        offlineManager.clearAmbientCache()
+    }
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,

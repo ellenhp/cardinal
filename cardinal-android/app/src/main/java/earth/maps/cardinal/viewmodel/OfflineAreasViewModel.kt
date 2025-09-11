@@ -2,6 +2,7 @@ package earth.maps.cardinal.viewmodel
 
 import android.content.Context
 import android.location.Location
+import android.util.Log
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -70,6 +71,9 @@ class OfflineAreasViewModel @Inject constructor(
                 status = DownloadStatus.DOWNLOADING
             )
 
+            Log.d("OfflineAreasViewModel", "Starting download for area: $name (ID: $areaId)")
+            Log.d("OfflineAreasViewModel", "Bounds: N=$north, S=$south, E=$east, W=$west, Zoom: $minZoom-$maxZoom")
+
             offlineAreaRepository.insertOfflineArea(offlineArea)
 
             // Start tile download using single database
@@ -81,8 +85,10 @@ class OfflineAreasViewModel @Inject constructor(
                 { progress, total ->
                     downloadProgress.intValue = progress
                     totalTiles.intValue = total
+                    Log.v("OfflineAreasViewModel", "Download progress: $progress/$total")
                 },
                 { success, fileSize ->
+                    Log.d("OfflineAreasViewModel", "Download completed for area: $name (ID: $areaId), success: $success, file size: $fileSize")
                     // Update the offline area with the result
                     val updatedArea = if (success) {
                         offlineArea.copy(

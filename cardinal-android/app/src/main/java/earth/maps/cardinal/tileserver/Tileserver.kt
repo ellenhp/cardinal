@@ -43,18 +43,35 @@ class Tileserver(private val context: Context) {
                     call.respondText("Tile Server is running!")
                 }
 
-                get("/style.json") {
+                get("/style_light.json") {
                     try {
-                        val styleJson = readAssetFile("style.json")
+                        val styleJson = readAssetFile("style_light.json")
                         val modifiedStyleJson = styleJson.replace("{port}", port.toString())
                         call.respondText(
                             modifiedStyleJson,
                             contentType = ContentType.Application.Json
                         )
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error reading style.json", e)
+                        Log.e(TAG, "Error reading style_light.json", e)
                         call.respondText(
-                            "Error reading style.json",
+                            "Error reading style_light.json",
+                            status = HttpStatusCode.InternalServerError
+                        )
+                    }
+                }
+
+                get("/style_dark.json") {
+                    try {
+                        val styleJson = readAssetFile("style_dark.json")
+                        val modifiedStyleJson = styleJson.replace("{port}", port.toString())
+                        call.respondText(
+                            modifiedStyleJson,
+                            contentType = ContentType.Application.Json
+                        )
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error reading style_dark.json", e)
+                        call.respondText(
+                            "Error reading style_dark.json",
                             status = HttpStatusCode.InternalServerError
                         )
                     }
@@ -128,19 +145,20 @@ class Tileserver(private val context: Context) {
 
                 // Serve tiles from basemap.mbtiles.
                 get("/openmaptiles/{z}/{x}/{y}.pbf") {
-                    val basemapDatabase = basemapDatabase ?: return@get
-
                     val z = call.parameters["z"]?.toIntOrNull()
                     val x = call.parameters["x"]?.toLongOrNull()
                     val y = call.parameters["y"]?.toLongOrNull()
 
                     if (z == null || x == null || y == null) {
+                        Log.w(TAG, "Invalid tile coordinates: z=$z, x=$x, y=$y")
                         call.respondText(
                             "Invalid tile coordinates",
                             status = HttpStatusCode.BadRequest
                         )
                         return@get
                     }
+
+                    Log.d(TAG, "Requesting tile: /openmaptiles/$z/$x/$y.pbf")
 
                     // MBTiles uses TMS (Tile Map Service) coordinate system where Y=0 is at the bottom
                     // Most map libraries use XYZ coordinate system where Y=0 is at the top
@@ -149,22 +167,37 @@ class Tileserver(private val context: Context) {
 
                     var isGzipped = true
 
+                    val basemapDatabase = basemapDatabase
+
                     // First try to get tile from built-in database
-                    var tileData = getTileData(basemapDatabase, z, x, tmsY)
+                    var tileData = if (basemapDatabase != null) {
+                        getTileData(basemapDatabase, z, x, tmsY)
+                    } else {
+                        Log.w(TAG, "Basemap database is null")
+                        null
+                    }
                     
                     // If not found, try offline databases
                     if (tileData == null) {
+                        Log.d(TAG, "Tile not found in basemap database, checking offline databases")
                         tileData = getTileDataFromOfflineDatabases(z, x, y)
                         isGzipped = false
+                    } else {
+                        Log.d(TAG, "Tile found in basemap database")
                     }
                     
                     if (tileData != null) {
+                        Log.d(TAG, "Serving tile /openmaptiles/$z/$x/$y.pbf, size: ${tileData.size} bytes, gzipped: $isGzipped")
                         // Only set gzip header for built-in database tiles
                         if (isGzipped) {
                             call.response.header("content-encoding", "gzip")
                         }
                         call.respondBytes(tileData, contentType = ContentType.Application.ProtoBuf)
                     } else {
+                        Log.d(TAG, "Tile not found: /openmaptiles/$z/$x/$y.pbf")
+                        // If we respond with NotFound here (as would make sense) it will cause maplibre to cache the
+                        // fact that this tile doesn't exist in this source, which we don't want because it will never
+                        // retry, nor will it overzoom the previous tiles.
                         call.respondBytes(
                             bytes = ByteArray(0),
                             contentType = ContentType.Application.ProtoBuf,
@@ -279,7 +312,7 @@ class Tileserver(private val context: Context) {
                     SQLiteDatabase.OPEN_READONLY
                 )
             
-            // Open or create the single offline areas database
+            // Open or create the offline areas database
             val offlineAreasFile = File(context.filesDir, SINGLE_DATABASE_NAME)
             offlineAreasDatabase =
                 SQLiteDatabase.openOrCreateDatabase(
@@ -353,14 +386,14 @@ class Tileserver(private val context: Context) {
                 val blobIndex = cursor.getColumnIndex("tile_data")
                 if (blobIndex != -1) {
                     val blob = cursor.getBlob(blobIndex)
-                    Log.d(TAG, "Tile size: ${blob.size}")
+                    Log.v(TAG, "Found tile $zoomLevel/$tileColumn/$tileRow, size: ${blob.size} bytes")
                     blob
                 } else {
-                    Log.w(TAG, "Blob index -1")
+                    Log.w(TAG, "Blob index -1 for tile $zoomLevel/$tileColumn/$tileRow")
                     null
                 }
             } else {
-                Log.d(TAG, "Tile $zoomLevel/$tileColumn/$tileRow not found")
+                Log.v(TAG, "Tile $zoomLevel/$tileColumn/$tileRow not found")
                 null
             }
         } catch (e: Exception) {
@@ -379,14 +412,14 @@ class Tileserver(private val context: Context) {
         tileColumn: Long,
         tileRow: Long
     ): ByteArray? {
-        // Try the single offline areas database
+        // Try the offline areas database
         if (offlineAreasDatabase != null) {
             // Convert XYZ to TMS coordinate system for MBTiles
             val tmsTileRow = (2.0.pow(zoomLevel.toDouble()) - 1 - tileRow).toLong()
             
             var cursor: android.database.Cursor? = null
             return try {
-                // Query the single database for tiles from any area
+                // Query the database for tiles from any area
                 val query =
                     "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ? LIMIT 1"
                 cursor = offlineAreasDatabase?.rawQuery(
@@ -398,18 +431,18 @@ class Tileserver(private val context: Context) {
                     val blobIndex = cursor.getColumnIndex("tile_data")
                     if (blobIndex != -1) {
                         val blob = cursor.getBlob(blobIndex)
-                        Log.d(TAG, "Tile found in single offline database: $zoomLevel/$tileColumn/$tileRow (TMS: $tmsTileRow)")
+                        Log.d(TAG, "Tile found in offline database: $zoomLevel/$tileColumn/$tileRow (TMS: $tmsTileRow)")
                         blob
                     } else {
-                        Log.w(TAG, "Blob index -1 in single offline database")
+                        Log.w(TAG, "Blob index -1 in offline database")
                         null
                     }
                 } else {
-                    Log.d(TAG, "Tile not found in single offline database: $zoomLevel/$tileColumn/$tileRow (TMS: $tmsTileRow)")
+                    Log.d(TAG, "Tile not found in offline database: $zoomLevel/$tileColumn/$tileRow (TMS: $tmsTileRow)")
                     null
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error retrieving tile data from single offline database for $zoomLevel/$tileColumn/$tileRow", e)
+                Log.e(TAG, "Error retrieving tile data from offline database for $zoomLevel/$tileColumn/$tileRow", e)
                 null
             } finally {
                 cursor?.close()

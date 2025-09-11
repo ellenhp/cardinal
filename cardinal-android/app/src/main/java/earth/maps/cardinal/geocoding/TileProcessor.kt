@@ -15,7 +15,7 @@ interface TileProcessor {
     suspend fun endTileProcessing()
 
     /**
-     * Process a map tile for geocoding.
+     * Process a map tile for geocoding. This function must be thread-safe.
      * @param tileData The raw tile data (MVT format)
      * @param zoom The zoom level of the tile
      * @param x The x coordinate of the tile

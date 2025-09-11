@@ -2,6 +2,7 @@ package earth.maps.cardinal.ui
 
 import android.content.Context
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -42,7 +43,9 @@ import org.maplibre.compose.layers.SymbolLayer
 import org.maplibre.compose.map.MapOptions
 import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.map.OrnamentOptions
+import org.maplibre.compose.map.RenderOptions
 import org.maplibre.compose.material3.DisappearingCompassButton
+import org.maplibre.compose.offline.rememberOfflineManager
 import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
@@ -62,6 +65,8 @@ fun MapView(
     val context = LocalContext.current
     val styleState = rememberStyleState()
     val pinFeatures = mapPins.map { Feature(geometry = Point(it)) }
+
+    val styleVariant = if (isSystemInDarkTheme()) "dark" else "light"
 
     // Load saved viewport on initial composition
     LaunchedEffect(Unit) {
@@ -96,9 +101,9 @@ fun MapView(
             MaplibreMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraState = cameraState,
-                baseStyle = BaseStyle.Uri("http://127.0.0.1:$port/style.json"),
+                baseStyle = BaseStyle.Uri("http://127.0.0.1:$port/style_$styleVariant.json"),
                 styleState = styleState,
-                options = MapOptions(ornamentOptions = OrnamentOptions.AllDisabled)
+                options = MapOptions(ornamentOptions = OrnamentOptions.AllDisabled, renderOptions = RenderOptions())
             ) {
                 val location by mapViewModel.locationFlow.collectAsState()
                 location?.let { LocationPuck(it) }
