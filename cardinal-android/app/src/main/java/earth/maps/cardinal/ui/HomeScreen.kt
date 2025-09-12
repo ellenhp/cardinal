@@ -106,9 +106,7 @@ private fun SearchPanelContent(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // Search box with "Where to?" placeholder
         val density = LocalDensity.current
-        val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
 
         // Measure the height of this row for peekHeight
         Column(
@@ -116,9 +114,10 @@ private fun SearchPanelContent(
                 .fillMaxWidth()
                 .onGloballyPositioned { coordinates ->
                     val heightInDp = with(density) { coordinates.size.height.toDp() }
-                    onPeekHeightChange(heightInDp + sheetPeekHeightEmpirical)
+                    onPeekHeightChange(heightInDp)
                 }
         ) {
+            // Search box with "Where to?" placeholder
             TextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
@@ -160,7 +159,7 @@ private fun SearchPanelContent(
             // Find pinned places
             val homePlace = savedPlaces.find { it.icon == "home" }
             val workPlace = savedPlaces.find { it.icon == "work" }
-            
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -178,7 +177,7 @@ private fun SearchPanelContent(
                     place = workPlace,
                     onPlaceSelected = onPlaceSelected
                 )
-                
+
                 FilledTonalIconButton(
                     modifier = Modifier.size(48.dp),
                     onClick = {
@@ -424,7 +423,7 @@ private fun generatePlaceId(result: GeocodeResult): Int {
             append(address.country ?: "")
         }
     }
-    
+
     // Generate a hash code and ensure it's positive
     return abs(uniqueString.hashCode())
 }

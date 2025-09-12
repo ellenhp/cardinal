@@ -5,15 +5,26 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -27,11 +38,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -39,6 +52,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.gson.Gson
+import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
@@ -72,24 +86,26 @@ fun AppContent(
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     var showOfflineAreas by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = Unit) {
         offlineManager.setTileCountLimit(0)
         offlineManager.clearAmbientCache()
     }
 
+    val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
+
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetSwipeEnabled = sheetSwipeEnabled,
         modifier = Modifier,
-        sheetPeekHeight = peekHeight,
+        sheetPeekHeight = peekHeight + sheetPeekHeightEmpirical,
         sheetContent = {
             Box(modifier = Modifier.onGloballyPositioned {
                 fabHeight = with(density) { it.positionOnScreen().y.toDp() - 50.dp }
             }) {
                 NavHost(
-                    navController = navController,
-                    startDestination = "home"
+                    navController = navController, startDestination = "home"
                 ) {
                     composable("home") {
                         val viewModel: HomeViewModel = hiltViewModel()
@@ -126,8 +142,7 @@ fun AppContent(
                             },
                             onPeekHeightChange = { peekHeight = it },
                             isSearchFocused = isSearchFocused,
-                            onSearchFocusChange = { isSearchFocused = it }
-                        )
+                            onSearchFocusChange = { isSearchFocused = it })
                     }
 
                     composable("place_card?place={place}") { backStackEntry ->
@@ -146,8 +161,7 @@ fun AppContent(
                                 coroutineScope.launch {
                                     cameraState.animateTo(
                                         CameraPosition(
-                                            target = position,
-                                            zoom = 15.0
+                                            target = position, zoom = 15.0
                                         )
                                     )
                                 }
@@ -163,8 +177,7 @@ fun AppContent(
                                     navController.popBackStack()
                                 },
                                 onGetDirections = { /* TODO: Implement directions functionality */ },
-                                onPeekHeightChange = { peekHeight = it }
-                            )
+                                onPeekHeightChange = { peekHeight = it })
                         }
                     }
                 }
@@ -191,6 +204,50 @@ fun AppContent(
                     )
                 }
 
+                Box(
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
+                ) {
+                    // Avatar icon button in top left
+                    FloatingActionButton(
+                        onClick = { showSettings = true },
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(16.dp)
+                            .size(64.dp)
+                            .border(
+                                width = 4.dp,
+                                color = MaterialTheme.colorScheme.surface,
+                                shape = CircleShape
+                            ),
+                        containerColor = MaterialTheme.colorScheme.surfaceDim,
+                        shape = CircleShape
+                    ) {
+                        Text(
+                            text = "\uD83E\uDD55", // Carrot emoji
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(12.dp)
+                            .size(24.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                        )
+                        Icon(
+                            modifier = Modifier.padding(4.dp),
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
                 // Download FAB that displays when zoom level is >= 10 with slide animation
                 AnimatedVisibility(
                     modifier = Modifier
@@ -203,11 +260,9 @@ fun AppContent(
                     FloatingActionButton(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .padding(start = 16.dp, bottom = 12.dp),
-                        onClick = {
+                            .padding(start = 16.dp, bottom = 12.dp), onClick = {
                             showOfflineAreas = true
-                        }
-                    ) {
+                        }) {
                         Icon(
                             painter = painterResource(earth.maps.cardinal.R.drawable.cloud_download_24dp),
                             contentDescription = "Download"
@@ -219,18 +274,25 @@ fun AppContent(
                 if (showOfflineAreas) {
                     val sheetState = rememberModalBottomSheetState()
                     ModalBottomSheet(
-                        onDismissRequest = { showOfflineAreas = false },
-                        sheetState = sheetState
+                        onDismissRequest = { showOfflineAreas = false }, sheetState = sheetState
                     ) {
                         cameraState.projection?.queryVisibleRegion()?.let {
                             OfflineAreasScreen(
-                                currentViewport = it,
-                                onDismiss = { showOfflineAreas = false }
-                            )
+                                currentViewport = it, onDismiss = { showOfflineAreas = false })
                         }
                     }
                 }
+
+                // Settings Bottom Sheet
+                if (showSettings) {
+                    val sheetState = rememberModalBottomSheetState()
+                    ModalBottomSheet(
+                        onDismissRequest = { showSettings = false }, sheetState = sheetState
+                    ) {
+                        SettingsScreen(
+                            onDismiss = { showSettings = false })
+                    }
+                }
             }
-        }
-    )
+        })
 }

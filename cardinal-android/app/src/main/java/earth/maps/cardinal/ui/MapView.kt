@@ -45,7 +45,6 @@ import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.map.OrnamentOptions
 import org.maplibre.compose.map.RenderOptions
 import org.maplibre.compose.material3.DisappearingCompassButton
-import org.maplibre.compose.offline.rememberOfflineManager
 import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
@@ -103,7 +102,10 @@ fun MapView(
                 cameraState = cameraState,
                 baseStyle = BaseStyle.Uri("http://127.0.0.1:$port/style_$styleVariant.json"),
                 styleState = styleState,
-                options = MapOptions(ornamentOptions = OrnamentOptions.AllDisabled, renderOptions = RenderOptions())
+                options = MapOptions(
+                    ornamentOptions = OrnamentOptions.AllDisabled,
+                    renderOptions = RenderOptions()
+                )
             ) {
                 val location by mapViewModel.locationFlow.collectAsState()
                 location?.let { LocationPuck(it) }
@@ -111,7 +113,13 @@ fun MapView(
                 SymbolLayer(
                     id = "map-pins",
                     source = rememberGeoJsonSource(GeoJsonData.Features(FeatureCollection(features = pinFeatures))),
-                    iconImage = image(painterResource(drawable.map_pin)),
+                    iconImage = image(
+                        if (isSystemInDarkTheme()) {
+                            painterResource(drawable.map_pin_dark)
+                        } else {
+                            painterResource(drawable.map_pin_light)
+                        }
+                    ),
                 )
             }
         } else {
