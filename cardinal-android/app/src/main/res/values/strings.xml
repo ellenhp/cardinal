@@ -6,6 +6,7 @@
     <string name="pin_destination">Pin Destination</string>
     <string name="where_to">Where to?</string>
     <string name="content_description_search">Search</string>
+    <string name="content_description_clear_search">Clear search</string>
     <string name="locate_me_content_description">Locate me</string>
     
     <!-- Place Card Screen -->

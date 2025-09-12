@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
@@ -134,6 +135,19 @@ private fun SearchPanelContent(
                         imageVector = Icons.Default.Search,
                         contentDescription = stringResource(string.content_description_search)
                     )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        FilledTonalIconButton(
+                            onClick = { onSearchQueryChange("") },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = stringResource(string.content_description_clear_search)
+                            )
+                        }
+                    }
                 },
                 colors = TextFieldDefaults.colors(
                     focusedIndicatorColor = Color.Transparent,
