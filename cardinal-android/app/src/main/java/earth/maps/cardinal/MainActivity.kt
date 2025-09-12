@@ -3,6 +3,7 @@ package earth.maps.cardinal
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.res.Resources
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
@@ -17,7 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import earth.maps.cardinal.tileserver.TileserverService
 import earth.maps.cardinal.ui.AppContent
-import earth.maps.cardinal.ui.theme.CardinalMapsTheme
+import earth.maps.cardinal.ui.theme.AppTheme
 import earth.maps.cardinal.viewmodel.MapViewModel
 
 @AndroidEntryPoint
@@ -64,7 +65,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            CardinalMapsTheme {
+            AppTheme {
                 val navController = rememberNavController()
                 val mapViewModel: MapViewModel = hiltViewModel()
 

@@ -382,7 +382,7 @@ fun DownloadAreaDialog(
                     label = { Text(stringResource(R.string.area_name)) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .focusRequester(focusRequester), // Attach the FocusRequester to the text field
+                        .focusRequester(focusRequester),
                     isError = nameError,
                     singleLine = true,
                     textStyle = MaterialTheme.typography.bodyLarge

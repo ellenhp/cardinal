@@ -11,9 +11,9 @@
     
     <!-- Place Card Screen -->
     <string name="content_description_back">Back</string>
-    <string name="save_place">Save Place</string>
-    <string name="unsave_place">Unsave Place</string>
-    <string name="get_directions">Get Directions</string>
+    <string name="save_place">Favorite</string>
+    <string name="unsave_place">Unsave</string>
+    <string name="get_directions">Directions</string>
     <string name="cancel_button">Cancel</string>
     <string name="delete_button">Delete</string>
     <string name="are_you_sure_you_want_to_delete">Are you sure you want to delete \"%1$s\"?</string>
@@ -58,5 +58,5 @@
     <string name="close">Close</string>
     <string name="delete">Delete</string>
     <string name="name_required">Name is required</string>
-    <string name="valid_zoom_levels_required">Valid zoom levels are required (0-18)</string>
+    <string name="cardinal_maps_settings_heading">Cardinal Maps</string>
 </resources>
