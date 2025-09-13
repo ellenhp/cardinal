@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import earth.maps.cardinal.R
+import earth.maps.cardinal.data.AppPreferenceRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
@@ -24,7 +25,10 @@ import java.io.FileOutputStream
 import kotlin.math.pow
 
 
-class Tileserver(private val context: Context) {
+class Tileserver(
+    private val context: Context,
+    private val appPreferenceRepository: AppPreferenceRepository
+) {
     private val TAG = "Tileserver"
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? =
         null
@@ -514,8 +518,7 @@ class Tileserver(private val context: Context) {
      * Check if the app is in offline mode
      */
     private fun isOfflineMode(): Boolean {
-        val appPreferences = earth.maps.cardinal.data.AppPreferences(context)
-        return appPreferences.loadOfflineMode()
+        return appPreferenceRepository.offlineMode.value
     }
 
     /**

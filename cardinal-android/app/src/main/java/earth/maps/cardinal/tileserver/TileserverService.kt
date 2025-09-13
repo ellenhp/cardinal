@@ -9,15 +9,11 @@ import earth.maps.cardinal.data.AppPreferenceRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 class TileserverService : Service() {
     private lateinit var tileserver: Tileserver
     private val TAG = "TileserverService"
-    
+
     // For accessing offline mode preference
     private lateinit var appPreferenceRepository: AppPreferenceRepository
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -32,17 +28,21 @@ class TileserverService : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "Creating tile server service")
-        
+
         // Initialize the AppPreferenceRepository
         appPreferenceRepository = AppPreferenceRepository(this)
-        
-        tileserver = Tileserver(this) // Pass context to Tileserver
+
+        tileserver =
+            Tileserver(this, appPreferenceRepository) // Pass context and repository to Tileserver
         tileserver.start()
         Log.d(TAG, "Tile server service created and started")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "Tile server service started with intent: $intent, flags: $flags, startId: $startId")
+        Log.d(
+            TAG,
+            "Tile server service started with intent: $intent, flags: $flags, startId: $startId"
+        )
         return START_STICKY // Restart service if it's killed
     }
 
