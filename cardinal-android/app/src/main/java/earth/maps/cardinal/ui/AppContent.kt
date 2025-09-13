@@ -2,9 +2,6 @@ package earth.maps.cardinal.ui
 
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -23,10 +20,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -45,7 +42,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -53,11 +49,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.gson.Gson
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import earth.maps.cardinal.viewmodel.MapViewModel
+import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
 import io.github.dellisd.spatialk.geojson.BoundingBox
 import io.github.dellisd.spatialk.geojson.Position
@@ -74,21 +72,18 @@ fun AppContent(
     mapViewModel: MapViewModel,
     port: Int?,
     onRequestLocationPermission: () -> Unit,
-    hasLocationPermission: Boolean
+    hasLocationPermission: Boolean,
+    appPreferenceRepository: AppPreferenceRepository
 ) {
     val mapPins = remember { mutableStateListOf<Position>() }
     val cameraState = rememberCameraState()
     val offlineManager = rememberOfflineManager()
-
-    val scaffoldState = rememberBottomSheetScaffoldState()
     var peekHeight by remember { mutableStateOf(0.dp) }
     var fabHeight by remember { mutableStateOf(0.dp) }
     var sheetSwipeEnabled by remember { mutableStateOf(true) }
     val configuration = LocalConfiguration.current
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
-    var showOfflineAreas by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
     var selectedOfflineArea by remember { mutableStateOf<OfflineArea?>(null) }
 
     LaunchedEffect(key1 = Unit) {
@@ -97,6 +92,19 @@ fun AppContent(
     }
 
     val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
+
+    var allowPartialExpansion by remember { mutableStateOf(true) }
+    val bottomSheetState =
+        rememberStandardBottomSheetState(
+            initialValue = SheetValue.PartiallyExpanded,
+            confirmValueChange = { newState ->
+                when (newState) {
+                    SheetValue.Hidden -> false // Always false!
+                    SheetValue.Expanded -> true // Always true!
+                    SheetValue.PartiallyExpanded -> allowPartialExpansion // Allow composables to control this
+                }
+            })
+    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState)
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
@@ -111,6 +119,12 @@ fun AppContent(
                     navController = navController, startDestination = "home"
                 ) {
                     composable("home") {
+                        LaunchedEffect(key1 = Unit) {
+                            // The home screen starts partially expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.partialExpand()
+                            }
+                        }
                         val viewModel: HomeViewModel = hiltViewModel()
                         val managePlacesViewModel: ManagePlacesViewModel = hiltViewModel()
                         var isSearchFocused by remember { mutableStateOf(false) }
@@ -149,6 +163,12 @@ fun AppContent(
                     }
 
                     composable("place_card?place={place}") { backStackEntry ->
+                        LaunchedEffect(key1 = Unit) {
+                            // The place card starts partially expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.partialExpand()
+                            }
+                        }
                         val viewModel: PlaceCardViewModel = hiltViewModel()
                         val placeJson = backStackEntry.arguments?.getString("place")
                         val place = placeJson?.let { Gson().fromJson(it, Place::class.java) }
@@ -165,7 +185,8 @@ fun AppContent(
                                     cameraState.animateTo(
                                         CameraPosition(
                                             target = position, zoom = 15.0
-                                        )
+                                        ),
+                                        duration = appPreferenceRepository.animationSpeedDurationValue
                                     )
                                 }
                                 onDispose {
@@ -182,6 +203,74 @@ fun AppContent(
                                 onGetDirections = { /* TODO: Implement directions functionality */ },
                                 onPeekHeightChange = { peekHeight = it })
                         }
+                    }
+
+                    composable(Screen.OfflineAreas.route) {
+                        LaunchedEffect(key1 = Unit) {
+                            peekHeight = configuration.screenHeightDp.dp / 3
+                            // The offline areas screen starts partially expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.partialExpand()
+                            }
+                        }
+                        DisposableEffect(key1 = Unit) {
+                            onDispose {
+                                selectedOfflineArea = null
+                            }
+                        }
+                        val viewModel: OfflineAreasViewModel = hiltViewModel()
+                        cameraState.projection?.queryVisibleRegion()?.let { visibleRegion ->
+                            OfflineAreasScreen(
+                                currentViewport = visibleRegion,
+                                viewModel = viewModel,
+                                onDismiss = { navController.popBackStack() },
+                                onAreaSelected = { area ->
+                                    coroutineScope.launch {
+                                        scaffoldState.bottomSheetState.partialExpand()
+                                        cameraState.animateTo(
+                                            boundingBox = BoundingBox(
+                                                area.west,
+                                                area.south,
+                                                area.east,
+                                                area.north
+                                            ),
+                                            padding = PaddingValues(
+                                                configuration.screenWidthDp.dp / 4,
+                                                configuration.screenHeightDp.dp / 4,
+                                                configuration.screenWidthDp.dp / 4,
+                                                configuration.screenHeightDp.dp / 2
+                                            ),
+                                            duration = appPreferenceRepository.animationSpeedDurationValue
+                                        )
+                                    }
+                                    selectedOfflineArea = area
+                                }
+                            )
+                        }
+                    }
+
+                    composable(Screen.Settings.route) {
+                        LaunchedEffect(key1 = Unit) {
+                            // Don't allow partial expansion while we're in this state.
+                            allowPartialExpansion = false
+                            sheetSwipeEnabled = false
+                            // The settings screen is always fully expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.expand()
+                            }
+                        }
+                        DisposableEffect(Unit) {
+                            onDispose {
+                                // Re-enable partial expansion when leaving this screen
+                                allowPartialExpansion = true
+                                sheetSwipeEnabled = true
+                            }
+                        }
+                        SettingsScreen(
+                            onDismiss = { navController.popBackStack() },
+                            appPreferenceRepository = appPreferenceRepository,
+                            navController = navController
+                        )
                     }
                 }
 
@@ -204,7 +293,8 @@ fun AppContent(
                         ),
                         cameraState = cameraState,
                         mapPins = mapPins,
-                        selectedOfflineArea = if (showOfflineAreas) selectedOfflineArea else null
+                        appPreferences = appPreferenceRepository,
+                        selectedOfflineArea = selectedOfflineArea
                     )
                 }
 
@@ -213,7 +303,7 @@ fun AppContent(
                 ) {
                     // Avatar icon button in top left
                     FloatingActionButton(
-                        onClick = { showSettings = true },
+                        onClick = { navController.navigate(Screen.Settings.route) },
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(16.dp)
@@ -249,81 +339,6 @@ fun AppContent(
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurface
                         )
-                    }
-                }
-
-                // Download FAB that displays when zoom level is >= 10 with slide animation
-                AnimatedVisibility(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(bottom = configuration.screenHeightDp.dp - fabHeight),
-                    visible = cameraState.position.zoom >= 7.0,
-                    enter = slideInHorizontally(initialOffsetX = { -it }),
-                    exit = slideOutHorizontally(targetOffsetX = { -it })
-                ) {
-                    FloatingActionButton(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 16.dp, bottom = 12.dp), onClick = {
-                            showOfflineAreas = true
-                        }) {
-                        Icon(
-                            painter = painterResource(earth.maps.cardinal.R.drawable.cloud_download_24dp),
-                            contentDescription = "Download"
-                        )
-                    }
-                }
-
-                // Offline Areas Bottom Sheet
-                if (showOfflineAreas) {
-                    val sheetState = rememberModalBottomSheetState()
-                    ModalBottomSheet(
-                        onDismissRequest = {
-                            showOfflineAreas = false
-                            selectedOfflineArea = null
-                        },
-                        sheetState = sheetState
-                    ) {
-                        cameraState.projection?.queryVisibleRegion()?.let {
-                            OfflineAreasScreen(
-                                currentViewport = it,
-                                onDismiss = {
-                                    showOfflineAreas = false
-                                    selectedOfflineArea = null
-                                },
-                                onAreaSelected = { area ->
-                                    selectedOfflineArea = area
-                                    coroutineScope.launch {
-                                        sheetState.partialExpand()
-                                        cameraState.animateTo(
-                                            boundingBox = BoundingBox(
-                                                west = area.west,
-                                                east = area.east,
-                                                north = area.north,
-                                                south = area.south
-                                            ),
-                                            padding = PaddingValues(
-                                                start = configuration.screenWidthDp.dp / 4,
-                                                end = configuration.screenWidthDp.dp / 4,
-                                                top = configuration.screenWidthDp.dp / 4,
-                                                bottom = configuration.screenHeightDp.dp * 5 / 8
-                                            )
-                                        )
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // Settings Bottom Sheet
-                if (showSettings) {
-                    val sheetState = rememberModalBottomSheetState()
-                    ModalBottomSheet(
-                        onDismissRequest = { showSettings = false }, sheetState = sheetState
-                    ) {
-                        SettingsScreen(
-                            onDismiss = { showSettings = false })
                     }
                 }
             }

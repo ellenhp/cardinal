@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -31,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
+import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.ui.map.LocationPuck
 import earth.maps.cardinal.viewmodel.MapViewModel
@@ -55,6 +54,7 @@ import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
 import org.maplibre.compose.style.rememberStyleState
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun MapView(
@@ -66,7 +66,8 @@ fun MapView(
     mapPins: List<Position>,
     fabInsets: PaddingValues,
     cameraState: CameraState,
-    selectedOfflineArea: OfflineArea? = null
+    appPreferences: AppPreferenceRepository,
+    selectedOfflineArea: OfflineArea? = null,
 ) {
     val context = LocalContext.current
     val styleState = rememberStyleState()
@@ -78,7 +79,7 @@ fun MapView(
     LaunchedEffect(Unit) {
         val savedViewport = mapViewModel.loadViewport()
         if (savedViewport != null) {
-            cameraState.animateTo(savedViewport)
+            cameraState.animateTo(savedViewport, duration = 1.milliseconds)
         }
     }
 
@@ -178,6 +179,7 @@ fun MapView(
             fabInsets = fabInsets,
             hasLocationPermission = hasLocationPermission,
             onRequestLocationPermission = onRequestLocationPermission,
+            appPreferences = appPreferences,
             context = context
         )
     }
@@ -190,6 +192,7 @@ private fun MapControls(
     fabInsets: PaddingValues,
     hasLocationPermission: Boolean,
     onRequestLocationPermission: () -> Unit,
+    appPreferences: AppPreferenceRepository,
     context: Context
 ) {
     val isLocating by mapViewModel.isLocating.collectAsState()
@@ -226,7 +229,10 @@ private fun MapControls(
                         coroutineScope.launch {
                             mapViewModel.fetchLocationAndCreateCameraPosition(context)
                                 ?.let { position ->
-                                    cameraState.animateTo(position)
+                                    cameraState.animateTo(
+                                        position,
+                                        duration = appPreferences.animationSpeedDurationValue
+                                    )
                                 }
                         }
                     }
