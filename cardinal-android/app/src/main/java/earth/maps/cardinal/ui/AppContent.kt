@@ -49,7 +49,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.gson.Gson
 import earth.maps.cardinal.R.dimen
-import earth.maps.cardinal.data.ContrastRepository
+import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.viewmodel.HomeViewModel
@@ -73,7 +73,7 @@ fun AppContent(
     port: Int?,
     onRequestLocationPermission: () -> Unit,
     hasLocationPermission: Boolean,
-    contrastRepository: ContrastRepository
+    appPreferenceRepository: AppPreferenceRepository
 ) {
     val mapPins = remember { mutableStateListOf<Position>() }
     val cameraState = rememberCameraState()
@@ -185,7 +185,8 @@ fun AppContent(
                                     cameraState.animateTo(
                                         CameraPosition(
                                             target = position, zoom = 15.0
-                                        )
+                                        ),
+                                        duration = appPreferenceRepository.animationSpeedDurationValue
                                     )
                                 }
                                 onDispose {
@@ -238,7 +239,8 @@ fun AppContent(
                                                 configuration.screenHeightDp.dp / 4,
                                                 configuration.screenWidthDp.dp / 4,
                                                 configuration.screenHeightDp.dp / 2
-                                            )
+                                            ),
+                                            duration = appPreferenceRepository.animationSpeedDurationValue
                                         )
                                     }
                                     selectedOfflineArea = area
@@ -251,6 +253,7 @@ fun AppContent(
                         LaunchedEffect(key1 = Unit) {
                             // Don't allow partial expansion while we're in this state.
                             allowPartialExpansion = false
+                            sheetSwipeEnabled = false
                             // The settings screen is always fully expanded.
                             coroutineScope.launch {
                                 bottomSheetState.expand()
@@ -260,11 +263,12 @@ fun AppContent(
                             onDispose {
                                 // Re-enable partial expansion when leaving this screen
                                 allowPartialExpansion = true
+                                sheetSwipeEnabled = true
                             }
                         }
                         SettingsScreen(
                             onDismiss = { navController.popBackStack() },
-                            contrastRepository = contrastRepository,
+                            appPreferenceRepository = appPreferenceRepository,
                             navController = navController
                         )
                     }
@@ -289,6 +293,7 @@ fun AppContent(
                         ),
                         cameraState = cameraState,
                         mapPins = mapPins,
+                        appPreferences = appPreferenceRepository,
                         selectedOfflineArea = selectedOfflineArea
                     )
                 }

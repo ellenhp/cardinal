@@ -3,14 +3,12 @@ package earth.maps.cardinal
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
-import android.content.res.Resources
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,7 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
-import earth.maps.cardinal.data.ContrastRepository
+import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.tileserver.TileserverService
 import earth.maps.cardinal.ui.AppContent
 import earth.maps.cardinal.ui.theme.AppTheme
@@ -29,7 +27,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject
-    lateinit var contrastRepository: ContrastRepository
+    lateinit var appPreferenceRepository: AppPreferenceRepository
     
     private var tileserverService: TileserverService? = null
     private var bound by mutableStateOf(false)
@@ -73,7 +71,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            val contrastLevel by contrastRepository.contrastLevel.collectAsState()
+            val contrastLevel by appPreferenceRepository.contrastLevel.collectAsState()
             AppTheme(contrastLevel = contrastLevel) {
                 val navController = rememberNavController()
                 val mapViewModel: MapViewModel = hiltViewModel()
@@ -84,7 +82,7 @@ class MainActivity : ComponentActivity() {
                     port = port,
                     onRequestLocationPermission = { requestLocationPermission() },
                     hasLocationPermission = hasLocationPermission,
-                    contrastRepository = contrastRepository
+                    appPreferenceRepository = appPreferenceRepository
                 )
             }
         }

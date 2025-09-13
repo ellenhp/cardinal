@@ -38,6 +38,14 @@
     <string name="contrast_standard">Standard</string>
     <string name="contrast_medium">Medium</string>
     <string name="contrast_high">High</string>
+    
+    <!-- Animation Speed Settings -->
+    <string name="animation_speed_title">Map Animation Speed</string>
+    <string name="animation_speed_help_text">Adjust the speed of map animations</string>
+    <string name="animation_speed_slow">Slow</string>
+    <string name="animation_speed_normal">Normal</string>
+    <string name="animation_speed_fast">Fast</string>
+    
     <string name="download_new_area">Download current viewport</string>
     <string name="downloading_area">Downloading %1$s</string>
     <string name="download_progress">%1$d / %2$d tiles</string>

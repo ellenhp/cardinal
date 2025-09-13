@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,15 +35,14 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.drawable
-import earth.maps.cardinal.data.ContrastPreferences
-import earth.maps.cardinal.data.ContrastRepository
-import earth.maps.cardinal.ui.Screen
+import earth.maps.cardinal.data.AppPreferenceRepository
+import earth.maps.cardinal.data.AppPreferences
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onDismiss: () -> Unit,
-    contrastRepository: ContrastRepository,
+    appPreferenceRepository: AppPreferenceRepository,
     navController: NavController
 ) {
     Column(
@@ -111,7 +111,7 @@ fun SettingsScreen(
             thickness = DividerDefaults.Thickness,
             color = MaterialTheme.colorScheme.outlineVariant
         )
-        
+
         // Contrast Settings Item
         Column(
             modifier = Modifier
@@ -127,27 +127,32 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
+
             // Contrast level selection
-            val currentContrastLevel by contrastRepository.contrastLevel.collectAsState()
+            val currentContrastLevel by appPreferenceRepository.contrastLevel.collectAsState()
             var selectedContrastLevel by remember { mutableStateOf(currentContrastLevel) }
-            
+
+            // Update selected state when preference changes from outside
+            LaunchedEffect(currentContrastLevel) {
+                selectedContrastLevel = currentContrastLevel
+            }
+
             Column {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { 
-                            selectedContrastLevel = ContrastPreferences.CONTRAST_LEVEL_STANDARD
-                            contrastRepository.setContrastLevel(ContrastPreferences.CONTRAST_LEVEL_STANDARD)
+                        .clickable {
+                            selectedContrastLevel = AppPreferences.CONTRAST_LEVEL_STANDARD
+                            appPreferenceRepository.setContrastLevel(AppPreferences.CONTRAST_LEVEL_STANDARD)
                         }
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
-                        selected = selectedContrastLevel == ContrastPreferences.CONTRAST_LEVEL_STANDARD,
-                        onClick = { 
-                            selectedContrastLevel = ContrastPreferences.CONTRAST_LEVEL_STANDARD
-                            contrastRepository.setContrastLevel(ContrastPreferences.CONTRAST_LEVEL_STANDARD)
+                        selected = selectedContrastLevel == AppPreferences.CONTRAST_LEVEL_STANDARD,
+                        onClick = {
+                            selectedContrastLevel = AppPreferences.CONTRAST_LEVEL_STANDARD
+                            appPreferenceRepository.setContrastLevel(AppPreferences.CONTRAST_LEVEL_STANDARD)
                         }
                     )
                     Text(
@@ -156,22 +161,22 @@ fun SettingsScreen(
                         modifier = Modifier.padding(start = 8.dp)
                     )
                 }
-                
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { 
-                            selectedContrastLevel = ContrastPreferences.CONTRAST_LEVEL_MEDIUM
-                            contrastRepository.setContrastLevel(ContrastPreferences.CONTRAST_LEVEL_MEDIUM)
+                        .clickable {
+                            selectedContrastLevel = AppPreferences.CONTRAST_LEVEL_MEDIUM
+                            appPreferenceRepository.setContrastLevel(AppPreferences.CONTRAST_LEVEL_MEDIUM)
                         }
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
-                        selected = selectedContrastLevel == ContrastPreferences.CONTRAST_LEVEL_MEDIUM,
-                        onClick = { 
-                            selectedContrastLevel = ContrastPreferences.CONTRAST_LEVEL_MEDIUM
-                            contrastRepository.setContrastLevel(ContrastPreferences.CONTRAST_LEVEL_MEDIUM)
+                        selected = selectedContrastLevel == AppPreferences.CONTRAST_LEVEL_MEDIUM,
+                        onClick = {
+                            selectedContrastLevel = AppPreferences.CONTRAST_LEVEL_MEDIUM
+                            appPreferenceRepository.setContrastLevel(AppPreferences.CONTRAST_LEVEL_MEDIUM)
                         }
                     )
                     Text(
@@ -180,22 +185,22 @@ fun SettingsScreen(
                         modifier = Modifier.padding(start = 8.dp)
                     )
                 }
-                
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { 
-                            selectedContrastLevel = ContrastPreferences.CONTRAST_LEVEL_HIGH
-                            contrastRepository.setContrastLevel(ContrastPreferences.CONTRAST_LEVEL_HIGH)
+                        .clickable {
+                            selectedContrastLevel = AppPreferences.CONTRAST_LEVEL_HIGH
+                            appPreferenceRepository.setContrastLevel(AppPreferences.CONTRAST_LEVEL_HIGH)
                         }
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
-                        selected = selectedContrastLevel == ContrastPreferences.CONTRAST_LEVEL_HIGH,
-                        onClick = { 
-                            selectedContrastLevel = ContrastPreferences.CONTRAST_LEVEL_HIGH
-                            contrastRepository.setContrastLevel(ContrastPreferences.CONTRAST_LEVEL_HIGH)
+                        selected = selectedContrastLevel == AppPreferences.CONTRAST_LEVEL_HIGH,
+                        onClick = {
+                            selectedContrastLevel = AppPreferences.CONTRAST_LEVEL_HIGH
+                            appPreferenceRepository.setContrastLevel(AppPreferences.CONTRAST_LEVEL_HIGH)
                         }
                     )
                     Text(
@@ -212,7 +217,113 @@ fun SettingsScreen(
             thickness = DividerDefaults.Thickness,
             color = MaterialTheme.colorScheme.outlineVariant
         )
-        
+
+        // Animation Speed Settings Item
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.animation_speed_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.animation_speed_help_text),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            // Animation speed selection
+            val currentAnimationSpeed by appPreferenceRepository.animationSpeed.collectAsState()
+            var selectedAnimationSpeed by remember { mutableStateOf(currentAnimationSpeed) }
+
+            // Update selected state when preference changes from outside
+            LaunchedEffect(currentAnimationSpeed) {
+                selectedAnimationSpeed = currentAnimationSpeed
+            }
+
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            selectedAnimationSpeed = AppPreferences.ANIMATION_SPEED_SLOW
+                            appPreferenceRepository.setAnimationSpeed(AppPreferences.ANIMATION_SPEED_SLOW)
+                        }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = selectedAnimationSpeed == AppPreferences.ANIMATION_SPEED_SLOW,
+                        onClick = {
+                            selectedAnimationSpeed = AppPreferences.ANIMATION_SPEED_SLOW
+                            appPreferenceRepository.setAnimationSpeed(AppPreferences.ANIMATION_SPEED_SLOW)
+                        }
+                    )
+                    Text(
+                        text = stringResource(R.string.animation_speed_slow),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            selectedAnimationSpeed = AppPreferences.ANIMATION_SPEED_NORMAL
+                            appPreferenceRepository.setAnimationSpeed(AppPreferences.ANIMATION_SPEED_NORMAL)
+                        }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = selectedAnimationSpeed == AppPreferences.ANIMATION_SPEED_NORMAL,
+                        onClick = {
+                            selectedAnimationSpeed = AppPreferences.ANIMATION_SPEED_NORMAL
+                            appPreferenceRepository.setAnimationSpeed(AppPreferences.ANIMATION_SPEED_NORMAL)
+                        }
+                    )
+                    Text(
+                        text = stringResource(R.string.animation_speed_normal),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            selectedAnimationSpeed = AppPreferences.ANIMATION_SPEED_FAST
+                            appPreferenceRepository.setAnimationSpeed(AppPreferences.ANIMATION_SPEED_FAST)
+                        }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = selectedAnimationSpeed == AppPreferences.ANIMATION_SPEED_FAST,
+                        onClick = {
+                            selectedAnimationSpeed = AppPreferences.ANIMATION_SPEED_FAST
+                            appPreferenceRepository.setAnimationSpeed(AppPreferences.ANIMATION_SPEED_FAST)
+                        }
+                    )
+                    Text(
+                        text = stringResource(R.string.animation_speed_fast),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            thickness = DividerDefaults.Thickness,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+
         // Add some bottom padding to ensure proper spacing
         Box(modifier = Modifier.padding(bottom = 8.dp))
     }
