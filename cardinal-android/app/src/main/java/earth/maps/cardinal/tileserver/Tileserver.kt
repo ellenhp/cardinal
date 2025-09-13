@@ -19,7 +19,6 @@ import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
-import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.pow
@@ -531,10 +530,7 @@ class Tileserver(private val context: Context) {
                 .replace("{y}", y.toString())
             Log.d(TAG, "Fetching tile from internet: $url")
 
-            // Use runBlocking to make the HTTP request synchronously
-            val response = runBlocking {
-                httpClient.get(url)
-            }
+            val response = httpClient.get(url)
 
             if (response.status == HttpStatusCode.OK) {
                 val bytes = response.bodyAsBytes()

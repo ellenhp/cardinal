@@ -55,7 +55,7 @@ class AppPreferences(context: Context) {
      * Returns CONTRAST_LEVEL_HIGH as default to maintain current behavior.
      */
     fun loadContrastLevel(): Int {
-        return prefs.getInt(KEY_CONTRAST_LEVEL, CONTRAST_LEVEL_HIGH)
+        return prefs.getInt(KEY_CONTRAST_LEVEL, CONTRAST_LEVEL_STANDARD)
     }
 
     /**
