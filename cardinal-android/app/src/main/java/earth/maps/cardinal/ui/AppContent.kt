@@ -93,6 +93,7 @@ fun AppContent(
 
     val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
 
+    var allowPartialExpansion by remember { mutableStateOf(true) }
     val bottomSheetState =
         rememberStandardBottomSheetState(
             initialValue = SheetValue.PartiallyExpanded,
@@ -100,7 +101,7 @@ fun AppContent(
                 when (newState) {
                     SheetValue.Hidden -> false // Always false!
                     SheetValue.Expanded -> true // Always true!
-                    SheetValue.PartiallyExpanded -> true // TODO: Allow composables in the NavHost to change this value.
+                    SheetValue.PartiallyExpanded -> allowPartialExpansion // Allow composables to control this
                 }
             })
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState)
@@ -247,11 +248,18 @@ fun AppContent(
                     }
 
                     composable(Screen.Settings.route) {
-                        // TODO: Don't allow partial expansion while we're in this state.
                         LaunchedEffect(key1 = Unit) {
+                            // Don't allow partial expansion while we're in this state.
+                            allowPartialExpansion = false
                             // The settings screen is always fully expanded.
                             coroutineScope.launch {
                                 bottomSheetState.expand()
+                            }
+                        }
+                        DisposableEffect(Unit) {
+                            onDispose {
+                                // Re-enable partial expansion when leaving this screen
+                                allowPartialExpansion = true
                             }
                         }
                         SettingsScreen(
