@@ -41,9 +41,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import earth.maps.cardinal.R
@@ -61,8 +59,7 @@ fun OfflineAreasScreen(
     currentViewport: VisibleRegion,
     viewModel: OfflineAreasViewModel = hiltViewModel(),
     onDismiss: () -> Unit,
-    onAreaSelected: (OfflineArea) -> Unit = {},
-    setAppContentState: AppContentStateSetter? = null
+    onAreaSelected: (OfflineArea) -> Unit = {}
 ) {
     val offlineAreas by viewModel.offlineAreas
     val isDownloading by viewModel.isDownloading
@@ -136,36 +133,36 @@ fun OfflineAreasScreen(
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-                LinearProgressIndicator(
-                    progress = { if (totalTiles > 0) downloadProgress.toFloat() / totalTiles.toFloat() else 0f },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = ProgressIndicatorDefaults.linearColor,
-                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
-                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-                )
-                Text(
-                    text = stringResource(
-                        R.string.download_progress,
-                        downloadProgress,
-                        totalTiles
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .align(Alignment.End)
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(
-                        onClick = { viewModel.cancelDownload() }
+                    LinearProgressIndicator(
+                        progress = { if (totalTiles > 0) downloadProgress.toFloat() / totalTiles.toFloat() else 0f },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = ProgressIndicatorDefaults.linearColor,
+                        trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                        strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.download_progress,
+                            downloadProgress,
+                            totalTiles
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .align(Alignment.End)
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.End
                     ) {
-                        Text(stringResource(R.string.cancel))
+                        TextButton(
+                            onClick = { viewModel.cancelDownload() }
+                        ) {
+                            Text(stringResource(R.string.cancel))
+                        }
                     }
-                }
                 }
             }
         }
@@ -196,7 +193,7 @@ fun OfflineAreasScreen(
                             areaToDelete = area
                             showDeleteDialog = true
                         },
-                        onSelected = { 
+                        onSelected = {
                             selectedArea = area
                             onAreaSelected(area)
                         },

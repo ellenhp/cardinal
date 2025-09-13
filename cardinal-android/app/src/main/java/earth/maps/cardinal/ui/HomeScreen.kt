@@ -65,8 +65,7 @@ fun HomeScreen(
     onPlaceSelected: (Place) -> Unit,
     onPeekHeightChange: (dp: Dp) -> Unit,
     isSearchFocused: Boolean,
-    onSearchFocusChange: (Boolean) -> Unit,
-    setAppContentState: AppContentStateSetter? = null
+    onSearchFocusChange: (Boolean) -> Unit
 ) {
     val savedPlaces = viewModel.savedPlaces.value
     val geocodeResults = viewModel.geocodeResults.value

@@ -31,17 +31,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.data.ContrastPreferences
 import earth.maps.cardinal.data.ContrastRepository
+import earth.maps.cardinal.ui.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onDismiss: () -> Unit,
     contrastRepository: ContrastRepository,
-    setAppContentState: AppContentStateSetter? = null
+    navController: NavController
 ) {
     Column(
         modifier = Modifier
@@ -80,7 +82,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { setAppContentState?.invoke(AppContentState.ShowingOfflineAreas) }
+                .clickable { navController.navigate(Screen.OfflineAreas.route) }
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             Row(
