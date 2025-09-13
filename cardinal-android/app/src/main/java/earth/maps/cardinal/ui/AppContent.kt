@@ -53,11 +53,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.gson.Gson
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import earth.maps.cardinal.viewmodel.MapViewModel
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
+import io.github.dellisd.spatialk.geojson.BoundingBox
 import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
@@ -87,6 +89,7 @@ fun AppContent(
     val density = LocalDensity.current
     var showOfflineAreas by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    var selectedOfflineArea by remember { mutableStateOf<OfflineArea?>(null) }
 
     LaunchedEffect(key1 = Unit) {
         offlineManager.setTileCountLimit(0)
@@ -200,7 +203,8 @@ fun AppContent(
                             bottom = configuration.screenHeightDp.dp - fabHeight
                         ),
                         cameraState = cameraState,
-                        mapPins = mapPins
+                        mapPins = mapPins,
+                        selectedOfflineArea = if (showOfflineAreas) selectedOfflineArea else null
                     )
                 }
 
@@ -274,11 +278,40 @@ fun AppContent(
                 if (showOfflineAreas) {
                     val sheetState = rememberModalBottomSheetState()
                     ModalBottomSheet(
-                        onDismissRequest = { showOfflineAreas = false }, sheetState = sheetState
+                        onDismissRequest = {
+                            showOfflineAreas = false
+                            selectedOfflineArea = null
+                        },
+                        sheetState = sheetState
                     ) {
                         cameraState.projection?.queryVisibleRegion()?.let {
                             OfflineAreasScreen(
-                                currentViewport = it, onDismiss = { showOfflineAreas = false })
+                                currentViewport = it,
+                                onDismiss = {
+                                    showOfflineAreas = false
+                                    selectedOfflineArea = null
+                                },
+                                onAreaSelected = { area ->
+                                    selectedOfflineArea = area
+                                    coroutineScope.launch {
+                                        sheetState.partialExpand()
+                                        cameraState.animateTo(
+                                            boundingBox = BoundingBox(
+                                                west = area.west,
+                                                east = area.east,
+                                                north = area.north,
+                                                south = area.south
+                                            ),
+                                            padding = PaddingValues(
+                                                start = configuration.screenWidthDp.dp / 4,
+                                                end = configuration.screenWidthDp.dp / 4,
+                                                top = configuration.screenWidthDp.dp / 4,
+                                                bottom = configuration.screenHeightDp.dp * 5 / 8
+                                            )
+                                        )
+                                    }
+                                }
+                            )
                         }
                     }
                 }

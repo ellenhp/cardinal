@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -30,15 +31,20 @@ import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
+import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.ui.map.LocationPuck
 import earth.maps.cardinal.viewmodel.MapViewModel
 import io.github.dellisd.spatialk.geojson.Feature
 import io.github.dellisd.spatialk.geojson.FeatureCollection
 import io.github.dellisd.spatialk.geojson.Point
+import io.github.dellisd.spatialk.geojson.Polygon
 import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraState
+import org.maplibre.compose.expressions.dsl.const
 import org.maplibre.compose.expressions.dsl.image
+import org.maplibre.compose.expressions.dsl.rgbColor
+import org.maplibre.compose.layers.LineLayer
 import org.maplibre.compose.layers.SymbolLayer
 import org.maplibre.compose.map.MapOptions
 import org.maplibre.compose.map.MaplibreMap
@@ -59,7 +65,8 @@ fun MapView(
     hasLocationPermission: Boolean,
     mapPins: List<Position>,
     fabInsets: PaddingValues,
-    cameraState: CameraState
+    cameraState: CameraState,
+    selectedOfflineArea: OfflineArea? = null
 ) {
     val context = LocalContext.current
     val styleState = rememberStyleState()
@@ -109,6 +116,37 @@ fun MapView(
             ) {
                 val location by mapViewModel.locationFlow.collectAsState()
                 location?.let { LocationPuck(it) }
+
+                // Show offline download bounds if an area is selected
+                selectedOfflineArea?.let { area ->
+                    val boundsPolygon = Polygon(
+                        listOf(
+                            listOf(
+                                Position(area.west, area.north),  // Northwest
+                                Position(area.east, area.north),  // Northeast
+                                Position(area.east, area.south),  // Southeast
+                                Position(area.west, area.south),  // Southwest
+                                Position(area.west, area.north)   // Close the polygon
+                            )
+                        )
+                    )
+                    val boundsFeature = Feature(geometry = boundsPolygon)
+                    val offlineDownloadBoundsSource = rememberGeoJsonSource(
+                        GeoJsonData.Features(FeatureCollection(features = listOf(boundsFeature)))
+                    )
+
+                    val color = MaterialTheme.colorScheme.onSurface
+                    LineLayer(
+                        id = "offline_download_bounds",
+                        source = offlineDownloadBoundsSource,
+                        color = rgbColor(
+                            const((color.red * 255).toInt()),
+                            const((color.green * 255).toInt()),
+                            const((color.blue * 255).toInt())
+                        ),
+                        width = const(3.dp)
+                    )
+                }
 
                 SymbolLayer(
                     id = "map-pins",

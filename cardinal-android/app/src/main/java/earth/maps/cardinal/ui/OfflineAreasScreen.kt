@@ -1,5 +1,6 @@
 package earth.maps.cardinal.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -59,7 +60,8 @@ import java.util.Locale
 fun OfflineAreasScreen(
     currentViewport: VisibleRegion,
     viewModel: OfflineAreasViewModel = hiltViewModel(),
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onAreaSelected: (OfflineArea) -> Unit = {}
 ) {
     val offlineAreas by viewModel.offlineAreas
     val isDownloading by viewModel.isDownloading
@@ -70,6 +72,7 @@ fun OfflineAreasScreen(
     var showDownloadDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var areaToDelete by remember { mutableStateOf<OfflineArea?>(null) }
+    var selectedArea by remember { mutableStateOf<OfflineArea?>(null) }
 
     // Format for displaying dates
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
@@ -191,7 +194,12 @@ fun OfflineAreasScreen(
                         onDeleteClick = {
                             areaToDelete = area
                             showDeleteDialog = true
-                        }
+                        },
+                        onSelected = { 
+                            selectedArea = area
+                            onAreaSelected(area)
+                        },
+                        isSelected = selectedArea?.id == area.id
                     )
                 }
             }
@@ -252,13 +260,23 @@ fun OfflineAreasScreen(
 fun OfflineAreaItem(
     area: OfflineArea,
     dateFormat: SimpleDateFormat,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onSelected: () -> Unit,
+    isSelected: Boolean = false
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .padding(bottom = 8.dp)
+            .clickable { onSelected() },
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
