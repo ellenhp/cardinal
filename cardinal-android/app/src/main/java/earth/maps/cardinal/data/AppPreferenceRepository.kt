@@ -1,23 +1,21 @@
 package earth.maps.cardinal.data
 
 import android.content.Context
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-@HiltViewModel
 class AppPreferenceRepository @Inject constructor(
     context: Context
-) : ViewModel() {
+) {
+    private val viewModelScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private val _contrastLevel = MutableStateFlow(AppPreferences.CONTRAST_LEVEL_HIGH)
     val contrastLevel: StateFlow<Int> = _contrastLevel.asStateFlow()

@@ -38,6 +38,39 @@ import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.AppPreferences
 
+@Composable
+private fun <T> PreferenceOption(
+    selectedValue: T,
+    options: List<Pair<T, Int>>,
+    onOptionSelected: (T) -> Unit
+) {
+    Column {
+        options.forEach { (value, labelResId) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        onOptionSelected(value)
+                    }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = selectedValue == value,
+                    onClick = {
+                        onOptionSelected(value)
+                    }
+                )
+                Text(
+                    text = stringResource(labelResId),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -137,78 +170,16 @@ fun SettingsScreen(
                 selectedContrastLevel = currentContrastLevel
             }
 
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            selectedContrastLevel = AppPreferences.CONTRAST_LEVEL_STANDARD
-                            appPreferenceRepository.setContrastLevel(AppPreferences.CONTRAST_LEVEL_STANDARD)
-                        }
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = selectedContrastLevel == AppPreferences.CONTRAST_LEVEL_STANDARD,
-                        onClick = {
-                            selectedContrastLevel = AppPreferences.CONTRAST_LEVEL_STANDARD
-                            appPreferenceRepository.setContrastLevel(AppPreferences.CONTRAST_LEVEL_STANDARD)
-                        }
-                    )
-                    Text(
-                        text = stringResource(R.string.contrast_standard),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            selectedContrastLevel = AppPreferences.CONTRAST_LEVEL_MEDIUM
-                            appPreferenceRepository.setContrastLevel(AppPreferences.CONTRAST_LEVEL_MEDIUM)
-                        }
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = selectedContrastLevel == AppPreferences.CONTRAST_LEVEL_MEDIUM,
-                        onClick = {
-                            selectedContrastLevel = AppPreferences.CONTRAST_LEVEL_MEDIUM
-                            appPreferenceRepository.setContrastLevel(AppPreferences.CONTRAST_LEVEL_MEDIUM)
-                        }
-                    )
-                    Text(
-                        text = stringResource(R.string.contrast_medium),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            selectedContrastLevel = AppPreferences.CONTRAST_LEVEL_HIGH
-                            appPreferenceRepository.setContrastLevel(AppPreferences.CONTRAST_LEVEL_HIGH)
-                        }
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = selectedContrastLevel == AppPreferences.CONTRAST_LEVEL_HIGH,
-                        onClick = {
-                            selectedContrastLevel = AppPreferences.CONTRAST_LEVEL_HIGH
-                            appPreferenceRepository.setContrastLevel(AppPreferences.CONTRAST_LEVEL_HIGH)
-                        }
-                    )
-                    Text(
-                        text = stringResource(R.string.contrast_high),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
+            PreferenceOption(
+                selectedValue = selectedContrastLevel,
+                options = listOf(
+                    AppPreferences.CONTRAST_LEVEL_STANDARD to R.string.contrast_standard,
+                    AppPreferences.CONTRAST_LEVEL_MEDIUM to R.string.contrast_medium,
+                    AppPreferences.CONTRAST_LEVEL_HIGH to R.string.contrast_high
+                )
+            ) { newValue ->
+                selectedContrastLevel = newValue
+                appPreferenceRepository.setContrastLevel(newValue)
             }
         }
 
@@ -243,78 +214,16 @@ fun SettingsScreen(
                 selectedAnimationSpeed = currentAnimationSpeed
             }
 
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            selectedAnimationSpeed = AppPreferences.ANIMATION_SPEED_SLOW
-                            appPreferenceRepository.setAnimationSpeed(AppPreferences.ANIMATION_SPEED_SLOW)
-                        }
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = selectedAnimationSpeed == AppPreferences.ANIMATION_SPEED_SLOW,
-                        onClick = {
-                            selectedAnimationSpeed = AppPreferences.ANIMATION_SPEED_SLOW
-                            appPreferenceRepository.setAnimationSpeed(AppPreferences.ANIMATION_SPEED_SLOW)
-                        }
-                    )
-                    Text(
-                        text = stringResource(R.string.animation_speed_slow),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            selectedAnimationSpeed = AppPreferences.ANIMATION_SPEED_NORMAL
-                            appPreferenceRepository.setAnimationSpeed(AppPreferences.ANIMATION_SPEED_NORMAL)
-                        }
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = selectedAnimationSpeed == AppPreferences.ANIMATION_SPEED_NORMAL,
-                        onClick = {
-                            selectedAnimationSpeed = AppPreferences.ANIMATION_SPEED_NORMAL
-                            appPreferenceRepository.setAnimationSpeed(AppPreferences.ANIMATION_SPEED_NORMAL)
-                        }
-                    )
-                    Text(
-                        text = stringResource(R.string.animation_speed_normal),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            selectedAnimationSpeed = AppPreferences.ANIMATION_SPEED_FAST
-                            appPreferenceRepository.setAnimationSpeed(AppPreferences.ANIMATION_SPEED_FAST)
-                        }
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = selectedAnimationSpeed == AppPreferences.ANIMATION_SPEED_FAST,
-                        onClick = {
-                            selectedAnimationSpeed = AppPreferences.ANIMATION_SPEED_FAST
-                            appPreferenceRepository.setAnimationSpeed(AppPreferences.ANIMATION_SPEED_FAST)
-                        }
-                    )
-                    Text(
-                        text = stringResource(R.string.animation_speed_fast),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
+            PreferenceOption(
+                selectedValue = selectedAnimationSpeed,
+                options = listOf(
+                    AppPreferences.ANIMATION_SPEED_SLOW to R.string.animation_speed_slow,
+                    AppPreferences.ANIMATION_SPEED_NORMAL to R.string.animation_speed_normal,
+                    AppPreferences.ANIMATION_SPEED_FAST to R.string.animation_speed_fast
+                )
+            ) { newValue ->
+                selectedAnimationSpeed = newValue
+                appPreferenceRepository.setAnimationSpeed(newValue)
             }
         }
 
