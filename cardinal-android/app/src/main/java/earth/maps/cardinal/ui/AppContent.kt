@@ -20,8 +20,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -76,8 +78,6 @@ fun AppContent(
     val mapPins = remember { mutableStateListOf<Position>() }
     val cameraState = rememberCameraState()
     val offlineManager = rememberOfflineManager()
-
-    val scaffoldState = rememberBottomSheetScaffoldState()
     var peekHeight by remember { mutableStateOf(0.dp) }
     var fabHeight by remember { mutableStateOf(0.dp) }
     var sheetSwipeEnabled by remember { mutableStateOf(true) }
@@ -93,6 +93,18 @@ fun AppContent(
 
     val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
 
+    val bottomSheetState =
+        rememberStandardBottomSheetState(
+            initialValue = SheetValue.PartiallyExpanded,
+            confirmValueChange = { newState ->
+                when (newState) {
+                    SheetValue.Hidden -> false // Always false!
+                    SheetValue.Expanded -> true // Always true!
+                    SheetValue.PartiallyExpanded -> true // TODO: Allow composables in the NavHost to change this value.
+                }
+            })
+    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState)
+
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetSwipeEnabled = sheetSwipeEnabled,
@@ -106,6 +118,12 @@ fun AppContent(
                     navController = navController, startDestination = "home"
                 ) {
                     composable("home") {
+                        LaunchedEffect(key1 = Unit) {
+                            // The home screen starts partially expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.partialExpand()
+                            }
+                        }
                         val viewModel: HomeViewModel = hiltViewModel()
                         val managePlacesViewModel: ManagePlacesViewModel = hiltViewModel()
                         var isSearchFocused by remember { mutableStateOf(false) }
@@ -144,6 +162,12 @@ fun AppContent(
                     }
 
                     composable("place_card?place={place}") { backStackEntry ->
+                        LaunchedEffect(key1 = Unit) {
+                            // The place card starts partially expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.partialExpand()
+                            }
+                        }
                         val viewModel: PlaceCardViewModel = hiltViewModel()
                         val placeJson = backStackEntry.arguments?.getString("place")
                         val place = placeJson?.let { Gson().fromJson(it, Place::class.java) }
@@ -180,6 +204,13 @@ fun AppContent(
                     }
 
                     composable(Screen.OfflineAreas.route) {
+                        LaunchedEffect(key1 = Unit) {
+                            peekHeight = configuration.screenHeightDp.dp / 3
+                            // The offline areas screen starts partially expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.partialExpand()
+                            }
+                        }
                         DisposableEffect(key1 = Unit) {
                             onDispose {
                                 selectedOfflineArea = null
@@ -203,9 +234,9 @@ fun AppContent(
                                             ),
                                             padding = PaddingValues(
                                                 configuration.screenWidthDp.dp / 4,
+                                                configuration.screenHeightDp.dp / 4,
                                                 configuration.screenWidthDp.dp / 4,
-                                                configuration.screenWidthDp.dp / 4,
-                                                configuration.screenWidthDp.dp * 5 / 8
+                                                configuration.screenHeightDp.dp / 2
                                             )
                                         )
                                     }
@@ -216,6 +247,13 @@ fun AppContent(
                     }
 
                     composable(Screen.Settings.route) {
+                        // TODO: Don't allow partial expansion while we're in this state.
+                        LaunchedEffect(key1 = Unit) {
+                            // The settings screen is always fully expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.expand()
+                            }
+                        }
                         SettingsScreen(
                             onDismiss = { navController.popBackStack() },
                             contrastRepository = contrastRepository,
