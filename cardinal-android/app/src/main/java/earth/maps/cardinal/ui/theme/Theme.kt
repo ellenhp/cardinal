@@ -237,7 +237,7 @@ private val highContrastDarkColorScheme = darkColorScheme(
 @Composable
 fun AppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    contrastLevel: Int = 2, // 0 = standard, 1 = medium, 2 = high
+    contrastLevel: Int = 0, // 0 = standard, 1 = medium, 2 = high
     content: @Composable() () -> Unit
 ) {
     val colorScheme = when (darkTheme) {
