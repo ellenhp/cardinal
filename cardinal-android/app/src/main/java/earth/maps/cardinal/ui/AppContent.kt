@@ -181,13 +181,21 @@ fun AppContent(
                                 // Clear any existing pins and add the new one to ensure only one pin is shown at a time
                                 mapPins.clear()
                                 mapPins.add(position)
-                                coroutineScope.launch {
-                                    cameraState.animateTo(
-                                        CameraPosition(
-                                            target = position, zoom = 15.0
-                                        ),
-                                        duration = appPreferenceRepository.animationSpeedDurationValue
-                                    )
+                                
+                                val previousBackStackEntry = navController.previousBackStackEntry
+                                val shouldFlyToPoi = previousBackStackEntry?.destination?.route == Screen.Home.route
+                                
+                                // Only animate if we're entering from the home screen, as opposed to e.g. popping from the
+                                // settings screen. This is brittle and may break if we end up with more entry points.
+                                if (shouldFlyToPoi) {
+                                    coroutineScope.launch {
+                                        cameraState.animateTo(
+                                            CameraPosition(
+                                                target = position, zoom = 15.0
+                                            ),
+                                            duration = appPreferenceRepository.animationSpeedDurationValue
+                                        )
+                                    }
                                 }
                                 onDispose {
                                     mapPins.clear()
