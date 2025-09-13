@@ -3,6 +3,7 @@ package earth.maps.cardinal.geocoding
 import android.util.Log
 import earth.maps.cardinal.data.Address
 import earth.maps.cardinal.data.GeocodeResult
+import earth.maps.cardinal.data.AppPreferenceRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.android.Android
@@ -24,7 +25,7 @@ import kotlinx.serialization.json.jsonPrimitive
 
 private const val TAG = "PeliasGeocoding"
 
-class PeliasGeocodingService : GeocodingService {
+class PeliasGeocodingService(private val appPreferenceRepository: AppPreferenceRepository) : GeocodingService {
     private val client = HttpClient(Android) {
         install(ContentNegotiation) {
             json(Json {
@@ -35,14 +36,14 @@ class PeliasGeocodingService : GeocodingService {
         install(Logging)
     }
 
-    private val baseUrl = "https://maps.earth/pelias/v1"
-
     override suspend fun geocode(query: String): Flow<List<GeocodeResult>> = flow {
         try {
             Log.d(TAG, "Geocoding query: $query")
-            val response = client.get("$baseUrl/autocomplete") {
+            val config = appPreferenceRepository.peliasApiConfig.value
+            val response = client.get("${config.baseUrl}/autocomplete") {
                 parameter("text", query)
                 parameter("size", "10")
+                config.apiKey?.let { parameter("api_key", it) }
             }
 
             val result = response.body<JsonObject>()
@@ -68,10 +69,12 @@ class PeliasGeocodingService : GeocodingService {
     ): Flow<List<GeocodeResult>> = flow {
         try {
             Log.d(TAG, "Reverse geocoding: $latitude, $longitude")
-            val response = client.get("$baseUrl/reverse") {
+            val config = appPreferenceRepository.peliasApiConfig.value
+            val response = client.get("${config.baseUrl}/reverse") {
                 parameter("point.lat", latitude.toString())
                 parameter("point.lon", longitude.toString())
                 parameter("size", "10")
+                config.apiKey?.let { parameter("api_key", it) }
             }
 
             val result = response.body<JsonObject>()

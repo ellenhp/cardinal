@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Cardinal Maps</string>
 
@@ -73,4 +74,26 @@
     <string name="delete">Delete</string>
     <string name="name_required">Name is required</string>
     <string name="cardinal_maps_settings_heading">Cardinal Maps</string>
+    
+    <!-- Offline Mode Settings -->
+    <string name="offline_mode_title">Offline Mode</string>
+    <string name="offline_mode_help_text">Enable offline mode to use downloaded map areas without an internet connection</string>
+    <string name="enabled">Enabled</string>
+    <string name="disabled">Disabled</string>
+    
+    <!-- Tile Server URL -->
+    <string name="tile_url_template">https://pmtiles.ellenhp.workers.dev/planet-250825.pmtiles/planet-250825/{z}/{x}/{y}.mvt</string>
+    
+    <!-- Privacy and Accessibility Settings -->
+    <string name="privacy_settings_title">Privacy</string>
+    <string name="accessibility_settings_title">Accessibility</string>
+    
+    <!-- Advanced Settings -->
+    <string name="advanced_settings_title">Advanced</string>
+    <string name="pelias_base_url_title">Pelias Base URL</string>
+    <string name="pelias_api_key_title">Pelias API Key</string>
+    <string name="valhalla_base_url_title">Valhalla Base URL</string>
+    <string name="valhalla_api_key_title">Valhalla API Key</string>
+    <string name="content_description_collapse">Collapse</string>
+    <string name="content_description_expand">Expand</string>
 </resources>

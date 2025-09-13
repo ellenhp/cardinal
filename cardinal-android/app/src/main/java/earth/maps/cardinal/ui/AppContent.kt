@@ -62,7 +62,6 @@ import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
-import org.maplibre.compose.offline.rememberOfflineManager
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,7 +76,6 @@ fun AppContent(
 ) {
     val mapPins = remember { mutableStateListOf<Position>() }
     val cameraState = rememberCameraState()
-    val offlineManager = rememberOfflineManager()
     var peekHeight by remember { mutableStateOf(0.dp) }
     var fabHeight by remember { mutableStateOf(0.dp) }
     var sheetSwipeEnabled by remember { mutableStateOf(true) }
@@ -85,11 +83,6 @@ fun AppContent(
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     var selectedOfflineArea by remember { mutableStateOf<OfflineArea?>(null) }
-
-    LaunchedEffect(key1 = Unit) {
-        offlineManager.setTileCountLimit(0)
-        offlineManager.clearAmbientCache()
-    }
 
     val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
 
@@ -181,10 +174,11 @@ fun AppContent(
                                 // Clear any existing pins and add the new one to ensure only one pin is shown at a time
                                 mapPins.clear()
                                 mapPins.add(position)
-                                
+
                                 val previousBackStackEntry = navController.previousBackStackEntry
-                                val shouldFlyToPoi = previousBackStackEntry?.destination?.route == Screen.Home.route
-                                
+                                val shouldFlyToPoi =
+                                    previousBackStackEntry?.destination?.route == Screen.Home.route
+
                                 // Only animate if we're entering from the home screen, as opposed to e.g. popping from the
                                 // settings screen. This is brittle and may break if we end up with more entry points.
                                 if (shouldFlyToPoi) {
