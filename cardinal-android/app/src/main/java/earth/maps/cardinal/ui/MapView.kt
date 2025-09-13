@@ -239,7 +239,7 @@ private fun MapControls(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Default.LocationOn,
+                        painter = painterResource(drawable.my_location),
                         contentDescription = stringResource(string.locate_me_content_description)
                     )
                 }

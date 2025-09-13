@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -284,7 +285,7 @@ private fun PlaceItem(place: Place, onClick: () -> Unit) {
                     imageVector = when (place.icon) {
                         "home" -> Icons.Default.Home
                         "work" -> Icons.Default.AccountCircle
-                        else -> Icons.Default.Search
+                        else -> Icons.Default.LocationOn
                     },
                     contentDescription = place.name,
                     modifier = Modifier.size(dimensionResource(dimen.icon_size))
