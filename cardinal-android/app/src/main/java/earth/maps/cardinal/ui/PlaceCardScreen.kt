@@ -52,7 +52,8 @@ fun PlaceCardScreen(
     onBack: () -> Unit,
     onGetDirections: (Place) -> Unit,
     viewModel: PlaceCardViewModel,
-    onPeekHeightChange: (dp: Dp) -> Unit
+    onPeekHeightChange: (dp: Dp) -> Unit,
+    setAppContentState: AppContentStateSetter? = null
 ) {
     val density = LocalDensity.current
 

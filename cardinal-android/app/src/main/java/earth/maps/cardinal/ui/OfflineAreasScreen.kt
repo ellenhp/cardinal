@@ -61,7 +61,8 @@ fun OfflineAreasScreen(
     currentViewport: VisibleRegion,
     viewModel: OfflineAreasViewModel = hiltViewModel(),
     onDismiss: () -> Unit,
-    onAreaSelected: (OfflineArea) -> Unit = {}
+    onAreaSelected: (OfflineArea) -> Unit = {},
+    setAppContentState: AppContentStateSetter? = null
 ) {
     val offlineAreas by viewModel.offlineAreas
     val isDownloading by viewModel.isDownloading

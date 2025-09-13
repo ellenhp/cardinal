@@ -32,6 +32,12 @@
     
     <!-- Offline Areas -->
     <string name="offline_areas_title">Offline Areas</string>
+    <string name="offline_areas_help_text">Download and manage map areas for offline use. Perfect for traveling without internet connectivity.</string>
+    <string name="contrast_settings_title">Contrast</string>
+    <string name="contrast_settings_help_text">Adjust the contrast level for better visibility</string>
+    <string name="contrast_standard">Standard</string>
+    <string name="contrast_medium">Medium</string>
+    <string name="contrast_high">High</string>
     <string name="download_new_area">Download current viewport</string>
     <string name="downloading_area">Downloading %1$s</string>
     <string name="download_progress">%1$d / %2$d tiles</string>

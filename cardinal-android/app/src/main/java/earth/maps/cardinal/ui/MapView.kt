@@ -66,7 +66,8 @@ fun MapView(
     mapPins: List<Position>,
     fabInsets: PaddingValues,
     cameraState: CameraState,
-    selectedOfflineArea: OfflineArea? = null
+    selectedOfflineArea: OfflineArea? = null,
+    setAppContentState: AppContentStateSetter? = null
 ) {
     val context = LocalContext.current
     val styleState = rememberStyleState()

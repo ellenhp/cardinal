@@ -53,11 +53,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.gson.Gson
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.data.ContrastPreferences
+import earth.maps.cardinal.data.ContrastRepository
 import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import earth.maps.cardinal.viewmodel.MapViewModel
+import javax.inject.Inject
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
 import io.github.dellisd.spatialk.geojson.BoundingBox
 import io.github.dellisd.spatialk.geojson.Position
@@ -65,6 +68,14 @@ import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.offline.rememberOfflineManager
+
+enum class AppContentState {
+    None,
+    ShowingOfflineAreas,
+    ShowingSettings
+}
+
+typealias AppContentStateSetter = (AppContentState) -> Unit
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,7 +85,8 @@ fun AppContent(
     mapViewModel: MapViewModel,
     port: Int?,
     onRequestLocationPermission: () -> Unit,
-    hasLocationPermission: Boolean
+    hasLocationPermission: Boolean,
+    contrastRepository: ContrastRepository
 ) {
     val mapPins = remember { mutableStateListOf<Position>() }
     val cameraState = rememberCameraState()
@@ -87,9 +99,11 @@ fun AppContent(
     val configuration = LocalConfiguration.current
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
-    var showOfflineAreas by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
+    var appContentState by remember { mutableStateOf(AppContentState.None) }
     var selectedOfflineArea by remember { mutableStateOf<OfflineArea?>(null) }
+    val setAppContentState: AppContentStateSetter = { state ->
+        appContentState = state
+    }
 
     LaunchedEffect(key1 = Unit) {
         offlineManager.setTileCountLimit(0)
@@ -145,7 +159,8 @@ fun AppContent(
                             },
                             onPeekHeightChange = { peekHeight = it },
                             isSearchFocused = isSearchFocused,
-                            onSearchFocusChange = { isSearchFocused = it })
+                            onSearchFocusChange = { isSearchFocused = it },
+                            setAppContentState = setAppContentState)
                     }
 
                     composable("place_card?place={place}") { backStackEntry ->
@@ -180,7 +195,8 @@ fun AppContent(
                                     navController.popBackStack()
                                 },
                                 onGetDirections = { /* TODO: Implement directions functionality */ },
-                                onPeekHeightChange = { peekHeight = it })
+                                onPeekHeightChange = { peekHeight = it },
+                                setAppContentState = setAppContentState)
                         }
                     }
                 }
@@ -204,7 +220,8 @@ fun AppContent(
                         ),
                         cameraState = cameraState,
                         mapPins = mapPins,
-                        selectedOfflineArea = if (showOfflineAreas) selectedOfflineArea else null
+                        selectedOfflineArea = if (appContentState == AppContentState.ShowingOfflineAreas) selectedOfflineArea else null,
+                        setAppContentState = setAppContentState
                     )
                 }
 
@@ -213,7 +230,7 @@ fun AppContent(
                 ) {
                     // Avatar icon button in top left
                     FloatingActionButton(
-                        onClick = { showSettings = true },
+                        onClick = { setAppContentState(AppContentState.ShowingSettings) },
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(16.dp)
@@ -252,34 +269,12 @@ fun AppContent(
                     }
                 }
 
-                // Download FAB that displays when zoom level is >= 10 with slide animation
-                AnimatedVisibility(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(bottom = configuration.screenHeightDp.dp - fabHeight),
-                    visible = cameraState.position.zoom >= 7.0,
-                    enter = slideInHorizontally(initialOffsetX = { -it }),
-                    exit = slideOutHorizontally(targetOffsetX = { -it })
-                ) {
-                    FloatingActionButton(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 16.dp, bottom = 12.dp), onClick = {
-                            showOfflineAreas = true
-                        }) {
-                        Icon(
-                            painter = painterResource(earth.maps.cardinal.R.drawable.cloud_download_24dp),
-                            contentDescription = "Download"
-                        )
-                    }
-                }
-
                 // Offline Areas Bottom Sheet
-                if (showOfflineAreas) {
+                if (appContentState == AppContentState.ShowingOfflineAreas) {
                     val sheetState = rememberModalBottomSheetState()
                     ModalBottomSheet(
                         onDismissRequest = {
-                            showOfflineAreas = false
+                            appContentState = AppContentState.None
                             selectedOfflineArea = null
                         },
                         sheetState = sheetState
@@ -288,7 +283,7 @@ fun AppContent(
                             OfflineAreasScreen(
                                 currentViewport = it,
                                 onDismiss = {
-                                    showOfflineAreas = false
+                                    appContentState = AppContentState.None
                                     selectedOfflineArea = null
                                 },
                                 onAreaSelected = { area ->
@@ -310,20 +305,23 @@ fun AppContent(
                                             )
                                         )
                                     }
-                                }
+                                },
+                                setAppContentState = setAppContentState
                             )
                         }
                     }
                 }
 
                 // Settings Bottom Sheet
-                if (showSettings) {
+                if (appContentState == AppContentState.ShowingSettings) {
                     val sheetState = rememberModalBottomSheetState()
                     ModalBottomSheet(
-                        onDismissRequest = { showSettings = false }, sheetState = sheetState
+                        onDismissRequest = { appContentState = AppContentState.None }, sheetState = sheetState
                     ) {
                         SettingsScreen(
-                            onDismiss = { showSettings = false })
+                            onDismiss = { appContentState = AppContentState.None },
+                            contrastRepository = contrastRepository,
+                            setAppContentState = setAppContentState)
                     }
                 }
             }
