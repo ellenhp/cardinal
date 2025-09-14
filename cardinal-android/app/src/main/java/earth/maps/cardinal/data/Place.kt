@@ -1,5 +1,7 @@
 package earth.maps.cardinal.data
 
+import android.content.Context
+
 data class Place(
     val id: Int,
     val name: String,
@@ -7,5 +9,6 @@ data class Place(
     val icon: String,
     val latitude: Double,
     val longitude: Double,
-    val address: Address? = null
+    val address: Address? = null,
+    val isMyLocation: Boolean = false,
 )
