@@ -1,6 +1,7 @@
 package earth.maps.cardinal.routing
 
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.RoutingMode
 import kotlinx.coroutines.flow.Flow
 
 interface RoutingService {
@@ -15,7 +16,7 @@ interface RoutingService {
     suspend fun getRoute(
         origin: Place,
         destination: Place,
-        profile: String = "auto",
+        mode: RoutingMode,
         options: Map<String, Any> = emptyMap()
     ): Flow<RouteResult>
 }

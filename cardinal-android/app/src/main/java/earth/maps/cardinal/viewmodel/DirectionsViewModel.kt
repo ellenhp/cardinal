@@ -114,17 +114,10 @@ class DirectionsViewModel @Inject constructor(
             isRouteLoading = true
             routeError = null
             try {
-                // Convert RoutingMode to the string format expected by the routing service
-                val profile = when (selectedRoutingMode) {
-                    RoutingMode.AUTO -> "auto"
-                    RoutingMode.PEDESTRIAN -> "pedestrian"
-                    RoutingMode.BICYCLE -> "bicycle"
-                }
-
                 routingService.getRoute(
                     origin = origin,
                     destination = destination,
-                    profile = profile
+                    mode = selectedRoutingMode
                 ).collect { result ->
                     routeResult = result
                     isRouteLoading = false

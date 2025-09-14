@@ -18,14 +18,8 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.concurrent.atomics.AtomicInt
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
-import kotlin.math.cos
-import kotlin.math.ln
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.pow
-import kotlin.math.tan
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.*
 
 class TileDownloadService(
     private val context: Context,
@@ -41,20 +35,12 @@ class TileDownloadService(
     companion object {
         private const val MAX_BASEMAP_ZOOM = 14
         private const val OFFLINE_DATABASE_NAME = "offline_areas.mbtiles"
+        private const val MAX_CONCURRENT_DOWNLOADS = 10
     }
 
     /**
      * Download tiles for a bounding box and zoom range
-     * @param north Northern latitude boundary
-     * @param south Southern latitude boundary
-     * @param east Eastern longitude boundary
-     * @param west Western longitude boundary
-     * @param minZoom Minimum zoom level
-     * @param maxZoom Maximum zoom level
-     * @param areaId Unique identifier for the offline area
-     * @param progressCallback Callback to report download progress
      */
-    @OptIn(ExperimentalAtomicApi::class)
     fun downloadTiles(
         north: Double,
         south: Double,
@@ -68,173 +54,201 @@ class TileDownloadService(
         completionCallback: (success: Boolean, fileSize: Long) -> Unit
     ) {
         downloadJob = coroutineScope.launch {
-            var db: SQLiteDatabase? = null
+            downloadTilesInternal(
+                north, south, east, west,
+                minZoom, maxZoom,
+                areaId, name,
+                progressCallback, completionCallback
+            )
+        }
+    }
+
+    private suspend fun downloadTilesInternal(
+        north: Double,
+        south: Double,
+        east: Double,
+        west: Double,
+        minZoom: Int,
+        maxZoom: Int,
+        areaId: String,
+        name: String,
+        progressCallback: (progress: Int, total: Int) -> Unit,
+        completionCallback: (success: Boolean, fileSize: Long) -> Unit
+    ) {
+        var db: SQLiteDatabase? = null
+        try {
+            Log.d(TAG, "Starting tile download for area: $name (ID: $areaId)")
+            Log.d(TAG, "Bounds: N=$north, S=$south, E=$east, W=$west, Zoom: $minZoom-$maxZoom")
+
+            // Use offline database for all downloads
+            val outputFile = File(context.filesDir, OFFLINE_DATABASE_NAME)
+            val dbExists = outputFile.exists()
+            Log.d(TAG, "Using database file: ${outputFile.absolutePath}, exists: $dbExists")
+
+            db = SQLiteDatabase.openOrCreateDatabase(outputFile, null)
+
+            // Initialize MBTiles schema only if database is new
+            if (!dbExists) {
+                Log.d(TAG, "Initializing new MBTiles schema")
+                initializeMbtilesSchema(db)
+            }
+
+            // Calculate total tiles to download
+            val totalTiles = calculateTotalTiles(north, south, east, west, minZoom, min(maxZoom, MAX_BASEMAP_ZOOM))
+            Log.d(TAG, "Total tiles to download: $totalTiles")
+
+            // Log the number of tiles already in the database
+            val existingTileCount = getTileCount(db)
+            Log.d(TAG, "Existing tiles in database: $existingTileCount")
+
+            tileProcessor?.beginTileProcessing()
+            Log.d(TAG, "Tile processor initialized")
+
+            // Process tiles in chunks to maintain bounded memory usage
+            val downloadedTilesData = mutableListOf<Triple<Int, Pair<Int, Int>, ByteArray>>()
+
+            // Initialize downloaded count for progress tracking
+            val downloadedCount = AtomicInteger(0)
+            val failedCount = AtomicInteger(0)
+
             try {
-                Log.d(TAG, "Starting tile download for area: $name (ID: $areaId)")
-                Log.d(TAG, "Bounds: N=$north, S=$south, E=$east, W=$west, Zoom: $minZoom-$maxZoom")
+                // Materialize all tile coordinates first to simplify processing
+                val tileCoordinates = generateTileCoordinates(north, south, east, west, minZoom, min(maxZoom, MAX_BASEMAP_ZOOM))
 
-                // Use offline database for all downloads
-                val outputFile = File(context.filesDir, OFFLINE_DATABASE_NAME)
-                val dbExists = outputFile.exists()
-                Log.d(TAG, "Using database file: ${outputFile.absolutePath}, exists: $dbExists")
+                Log.d(TAG, "Total tiles to process: ${tileCoordinates.size}")
 
-                db = SQLiteDatabase.openOrCreateDatabase(outputFile, null)
-
-                // Initialize MBTiles schema only if database is new
-                if (!dbExists) {
-                    Log.d(TAG, "Initializing new MBTiles schema")
-                    initializeMbtilesSchema(db)
+                for (chunk in tileCoordinates.chunked(MAX_CONCURRENT_DOWNLOADS)) {
+                    // Process this batch with parallel downloads
+                    val results = processBatch(chunk, areaId, progressCallback, totalTiles, downloadedCount, failedCount)
+                    // Filter out null results and add to our list
+                    downloadedTilesData.addAll(results.filterNotNull())
                 }
 
-                // Calculate tile ranges for each zoom level
-                var totalTiles = 0
-                val totalTilesByZoom = mutableMapOf<Int, Int>()
+                // Batch insert all downloaded tiles in a transaction
+                batchInsertTiles(db, downloadedTilesData, areaId)
 
-                for (zoom in minZoom..min(maxZoom, MAX_BASEMAP_ZOOM)) {
-                    val (minX, maxX, minY, maxY) = calculateTileRange(
-                        north,
-                        south,
-                        east,
-                        west,
-                        zoom
-                    )
-                    val zoomTileCount = (maxX - minX + 1) * (maxY - minY + 1)
-                    totalTiles += zoomTileCount
-                    totalTilesByZoom[zoom] = zoomTileCount
-                    Log.d(
-                        TAG,
-                        "Zoom $zoom: tiles from ($minX,$minY) to ($maxX,$maxY), count: $zoomTileCount"
-                    )
-                }
-
-                Log.d(TAG, "Total tiles to download: $totalTiles")
-                for ((zoom, count) in totalTilesByZoom) {
-                    Log.d(TAG, "  Zoom $zoom: $count tiles")
-                }
-
-                val downloadedTiles = AtomicInt(0)
-                val failedTiles = AtomicInt(0)
-                try {
-                    // Log the number of tiles already in the database
-                    val existingTileCount = getTileCount(db)
-                    Log.d(TAG, "Existing tiles in database: $existingTileCount")
-
-                    tileProcessor?.beginTileProcessing()
-                    Log.d(TAG, "Tile processor initialized")
-
-                    try {
-                        // Materialize all tile coordinates first to simplify processing
-                        val tileCoordinates = mutableListOf<Triple<Int, Int, Int>>()
-
-                        for (zoom in minZoom..min(maxZoom, MAX_BASEMAP_ZOOM)) {
-                            val (minX, maxX, minY, maxY) = calculateTileRange(
-                                north,
-                                south,
-                                east,
-                                west,
-                                zoom
-                            )
-
-                            // Collect all tile coordinates for this zoom level
-                            for (x in minX..maxX) {
-                                for (y in minY..maxY) {
-                                    tileCoordinates.add(Triple(zoom, x, y))
-                                }
-                            }
-                        }
-
-                        Log.d(TAG, "Total tiles to process: ${tileCoordinates.size}")
-
-                        // Process tiles in chunks to maintain bounded memory usage
-                        val maxConcurrentDownloads = 10
-                        val downloadedTilesData =
-                            mutableListOf<Triple<Int, Pair<Int, Int>, ByteArray>>()
-
-                        for (chunk in tileCoordinates.chunked(maxConcurrentDownloads)) {
-                            // Create a coroutine scope for this batch of downloads
-                            val batchScope = CoroutineScope(Dispatchers.IO + Job())
-
-                            // Process this batch with parallel downloads
-                            val downloadTasks = chunk.map { (z, xCoord, yCoord) ->
-                                batchScope.async {
-                                    val (success, data) = downloadTile(
-                                        z,
-                                        xCoord,
-                                        yCoord,
-                                        areaId
-                                    )
-                                    if (success && data != null) {
-                                        progressCallback(downloadedTiles.addAndFetch(1), totalTiles)
-                                        // Convert XYZ to TMS coordinate system for MBTiles
-                                        // MBTiles uses TMS (Tile Map Service) coordinate system where Y=0 is at the bottom
-                                        // Most map libraries use XYZ coordinate system where Y=0 is at the top
-                                        // Conversion formula: TMS_Y = 2^zoom - 1 - XYZ_Y
-                                        val tmsY = (2.0.pow(z.toDouble()) - 1 - yCoord).toInt()
-                                        Triple(z, Pair(xCoord, tmsY), data)
-                                    } else {
-                                        failedTiles.addAndFetch(1)
-                                        null
-                                    }
-                                }
-                            }
-
-                            // Wait for all downloads in this batch to complete
-                            val results = downloadTasks.awaitAll()
-                            // Filter out null results and add to our list
-                            downloadedTilesData.addAll(results.filterNotNull())
-
-                            Log.d(
-                                TAG,
-                                "Completed batch: ${downloadedTiles.load()} downloaded, ${failedTiles.load()} failed so far"
-                            )
-                        }
-
-                        // Batch insert all downloaded tiles in a transaction
-                        batchInsertTiles(db, downloadedTilesData, areaId)
-
-                        Log.d(
-                            TAG,
-                            "Download complete: ${downloadedTiles.load()} downloaded, ${failedTiles.load()} failed out of $totalTiles total tiles"
-                        )
-                    } finally {
-                        // Nothing to close here anymore
-                    }
-                } finally {
-                    tileProcessor?.endTileProcessing()
-                    Log.d(TAG, "Tile processing completed")
-                }
-
-                // Log the number of tiles in the database after download
-                val finalTileCount = getTileCount(db)
-                Log.d(TAG, "Final tiles in database after download: $finalTileCount")
-
-                // Store area metadata
-                Log.d(TAG, "Storing area metadata for $areaId")
-                storeAreaMetadata(db, areaId, north, south, east, west, minZoom, maxZoom, name)
-
-                db.close()
-                db = null
-
-                // Get the actual file size
-                val fileSize = outputFile.length()
-
-                Log.d(
-                    TAG,
-                    "Tile download completed. ${downloadedTiles.load()} tiles downloaded, ${failedTiles.load()}.load()} failed. File size: $fileSize bytes"
-                )
-                completionCallback(true, fileSize)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error downloading tiles for area $name (ID: $areaId)", e)
-                completionCallback(false, 0L)
+                Log.d(TAG, "Download complete: ${downloadedTilesData.size} tiles downloaded, ${failedCount.get()} failed")
             } finally {
-                // Close database if it's open
-                try {
-                    db?.close()
-                } catch (closeException: Exception) {
-                    Log.e(TAG, "Error closing database", closeException)
+                tileProcessor?.endTileProcessing()
+                Log.d(TAG, "Tile processing completed")
+            }
+
+            // Log the number of tiles in the database after download
+            val finalTileCount = getTileCount(db)
+            Log.d(TAG, "Final tiles in database after download: $finalTileCount")
+
+            // Store area metadata
+            Log.d(TAG, "Storing area metadata for $areaId")
+            storeAreaMetadata(db, areaId, north, south, east, west, minZoom, maxZoom, name)
+
+            db.close()
+            db = null
+
+            // Get the actual file size
+            val fileSize = outputFile.length()
+
+            Log.d(TAG, "Tile download completed. ${downloadedTilesData.size} tiles downloaded, ${failedCount.get()} failed. File size: $fileSize bytes")
+            completionCallback(true, fileSize)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error downloading tiles for area $name (ID: $areaId)", e)
+            completionCallback(false, 0L)
+        } finally {
+            // Close database if it's open
+            try {
+                db?.close()
+            } catch (closeException: Exception) {
+                Log.e(TAG, "Error closing database", closeException)
+            }
+        }
+    }
+
+    /**
+     * Calculate total number of tiles for all zoom levels
+     */
+    private fun calculateTotalTiles(
+        north: Double,
+        south: Double,
+        east: Double,
+        west: Double,
+        minZoom: Int,
+        maxZoom: Int
+    ): Int {
+        var totalTiles = 0
+        for (zoom in minZoom..maxZoom) {
+            val (minX, maxX, minY, maxY) = calculateTileRange(north, south, east, west, zoom)
+            val zoomTileCount = (maxX - minX + 1) * (maxY - minY + 1)
+            totalTiles += zoomTileCount
+            Log.d(TAG, "Zoom $zoom: tiles from ($minX,$minY) to ($maxX,$maxY), count: $zoomTileCount")
+        }
+        return totalTiles
+    }
+
+    /**
+     * Generate all tile coordinates for the given bounds and zoom levels
+     */
+    private fun generateTileCoordinates(
+        north: Double,
+        south: Double,
+        east: Double,
+        west: Double,
+        minZoom: Int,
+        maxZoom: Int
+    ): List<Triple<Int, Int, Int>> {
+        val tileCoordinates = mutableListOf<Triple<Int, Int, Int>>()
+
+        for (zoom in minZoom..maxZoom) {
+            val (minX, maxX, minY, maxY) = calculateTileRange(north, south, east, west, zoom)
+
+            // Collect all tile coordinates for this zoom level
+            for (x in minX..maxX) {
+                for (y in minY..maxY) {
+                    tileCoordinates.add(Triple(zoom, x, y))
                 }
             }
         }
+
+        return tileCoordinates
+    }
+
+    /**
+     * Process a batch of tiles
+     */
+    private suspend fun processBatch(
+        chunk: List<Triple<Int, Int, Int>>,
+        areaId: String,
+        progressCallback: (progress: Int, total: Int) -> Unit,
+        totalTiles: Int,
+        downloadedCount: AtomicInteger,
+        failedCount: AtomicInteger
+    ): List<Triple<Int, Pair<Int, Int>, ByteArray>?> {
+        // Create a coroutine scope for this batch of downloads
+        val batchScope = CoroutineScope(Dispatchers.IO + Job())
+
+        // Process this batch with parallel downloads
+        val downloadTasks = chunk.map { (z, xCoord, yCoord) ->
+            batchScope.async {
+                val (success, data) = downloadTile(z, xCoord, yCoord, areaId)
+                if (success && data != null) {
+                    // Update progress
+                    val currentProgress = downloadedCount.incrementAndGet()
+                    progressCallback(currentProgress, totalTiles)
+                    
+                    // Convert XYZ to TMS coordinate system for MBTiles
+                    // MBTiles uses TMS (Tile Map Service) coordinate system where Y=0 is at the bottom
+                    // Most map libraries use XYZ coordinate system where Y=0 is at the top
+                    // Conversion formula: TMS_Y = 2^zoom - 1 - XYZ_Y
+                    val tmsY = (2.0.pow(z.toDouble()) - 1 - yCoord).toInt()
+                    Triple(z, Pair(xCoord, tmsY), data)
+                } else {
+                    // Track failed tiles
+                    failedCount.incrementAndGet()
+                    null
+                }
+            }
+        }
+
+        // Wait for all downloads in this batch to complete
+        return downloadTasks.awaitAll()
     }
 
     /**
@@ -508,23 +522,7 @@ class TileDownloadService(
             )
 
             // First, get all tiles for this area
-            val tilesToDelete = mutableListOf<TileCoordinates>()
-            var cursor: android.database.Cursor? = null
-            try {
-                cursor = db.rawQuery(
-                    "SELECT zoom_level, tile_column, tile_row FROM tiles WHERE area_id = ?",
-                    arrayOf(areaId)
-                )
-                while (cursor.moveToNext()) {
-                    val zoomLevel = cursor.getInt(0)
-                    val tileColumn = cursor.getInt(1)
-                    val tileRow = cursor.getInt(2)
-                    tilesToDelete.add(TileCoordinates(zoomLevel, tileColumn, tileRow))
-                }
-            } finally {
-                cursor?.close()
-            }
-
+            val tilesToDelete = getTilesForArea(db, areaId)
             Log.d(TAG, "Found ${tilesToDelete.size} tiles for area ID: $areaId")
 
             // For each tile, check if it's shared with other areas
@@ -532,44 +530,21 @@ class TileDownloadService(
             var sharedTiles = 0
             for (tile in tilesToDelete) {
                 // Check if this tile is used by other areas
-                cursor = null
-                try {
-                    cursor = db.rawQuery(
-                        "SELECT COUNT(*) FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ? AND area_id != ?",
-                        arrayOf(
-                            tile.zoomLevel.toString(),
-                            tile.tileColumn.toString(),
-                            tile.tileRow.toString(),
-                            areaId
-                        )
+                val isShared = isTileSharedWithOtherAreas(db, tile, areaId)
+                if (!isShared) {
+                    // Tile is not shared with other areas, we can delete it
+                    val deleted = deleteTile(db, tile, areaId)
+                    actuallyDeletedTiles += deleted
+                    Log.v(
+                        TAG,
+                        "Deleted tile ${tile.zoomLevel}/${tile.tileColumn}/${tile.tileRow} for area ID: $areaId"
                     )
-                    if (cursor.moveToFirst() && cursor.getInt(0) == 0) {
-                        // Tile is not shared with other areas, we can delete it
-                        val deleted = db.delete(
-                            "tiles",
-                            "zoom_level = ? AND tile_column = ? AND tile_row = ? AND area_id = ?",
-                            arrayOf(
-                                tile.zoomLevel.toString(),
-                                tile.tileColumn.toString(),
-                                tile.tileRow.toString(),
-                                areaId
-                            )
-                        )
-                        actuallyDeletedTiles += deleted
-                        Log.v(
-                            TAG,
-                            "Deleted tile ${tile.zoomLevel}/${tile.tileColumn}/${tile.tileRow} for area ID: $areaId"
-                        )
-                    } else {
-                        sharedTiles++
-                        Log.v(
-                            TAG,
-                            "Skipping shared tile ${tile.zoomLevel}/${tile.tileColumn}/${tile.tileRow} for area ID: $areaId"
-                        )
-                    }
-                    // If tile is shared, we don't delete it
-                } finally {
-                    cursor?.close()
+                } else {
+                    sharedTiles++
+                    Log.v(
+                        TAG,
+                        "Skipping shared tile ${tile.zoomLevel}/${tile.tileColumn}/${tile.tileRow} for area ID: $areaId"
+                    )
                 }
             }
 
@@ -594,6 +569,66 @@ class TileDownloadService(
                 Log.e(TAG, "Error closing database", closeException)
             }
         }
+    }
+
+    /**
+     * Get all tiles for a specific area
+     */
+    private fun getTilesForArea(db: SQLiteDatabase, areaId: String): List<TileCoordinates> {
+        val tiles = mutableListOf<TileCoordinates>()
+        var cursor: android.database.Cursor? = null
+        try {
+            cursor = db.rawQuery(
+                "SELECT zoom_level, tile_column, tile_row FROM tiles WHERE area_id = ?",
+                arrayOf(areaId)
+            )
+            while (cursor.moveToNext()) {
+                val zoomLevel = cursor.getInt(0)
+                val tileColumn = cursor.getInt(1)
+                val tileRow = cursor.getInt(2)
+                tiles.add(TileCoordinates(zoomLevel, tileColumn, tileRow))
+            }
+        } finally {
+            cursor?.close()
+        }
+        return tiles
+    }
+
+    /**
+     * Check if a tile is shared with other areas
+     */
+    private fun isTileSharedWithOtherAreas(db: SQLiteDatabase, tile: TileCoordinates, areaId: String): Boolean {
+        var cursor: android.database.Cursor? = null
+        return try {
+            cursor = db.rawQuery(
+                "SELECT COUNT(*) FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ? AND area_id != ?",
+                arrayOf(
+                    tile.zoomLevel.toString(),
+                    tile.tileColumn.toString(),
+                    tile.tileRow.toString(),
+                    areaId
+                )
+            )
+            cursor.moveToFirst() && cursor.getInt(0) > 0
+        } finally {
+            cursor?.close()
+        }
+    }
+
+    /**
+     * Delete a specific tile for an area
+     */
+    private fun deleteTile(db: SQLiteDatabase, tile: TileCoordinates, areaId: String): Int {
+        return db.delete(
+            "tiles",
+            "zoom_level = ? AND tile_column = ? AND tile_row = ? AND area_id = ?",
+            arrayOf(
+                tile.zoomLevel.toString(),
+                tile.tileColumn.toString(),
+                tile.tileRow.toString(),
+                areaId
+            )
+        )
     }
 
     /**
