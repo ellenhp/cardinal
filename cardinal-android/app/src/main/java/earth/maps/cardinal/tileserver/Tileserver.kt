@@ -6,6 +6,7 @@ import android.util.Log
 import earth.maps.cardinal.R
 import earth.maps.cardinal.data.AppPreferenceRepository
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.flow.first
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.ContentType
@@ -517,8 +518,8 @@ class Tileserver(
     /**
      * Check if the app is in offline mode
      */
-    private fun isOfflineMode(): Boolean {
-        return appPreferenceRepository.offlineMode.value
+    private suspend fun isOfflineMode(): Boolean {
+        return appPreferenceRepository.offlineMode.first()
     }
 
     /**
