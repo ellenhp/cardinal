@@ -15,6 +15,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -92,7 +93,7 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
 
             Log.d(TAG, "Request body: $requestBody")
 
-            val config = appPreferenceRepository.valhallaApiConfig.value
+            val config = appPreferenceRepository.valhallaApiConfig.first()
             val url = if (config.apiKey != null) {
                 "${config.baseUrl}?api_key=${config.apiKey}"
             } else {
