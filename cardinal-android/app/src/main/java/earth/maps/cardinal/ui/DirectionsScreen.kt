@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
@@ -65,15 +65,10 @@ fun DirectionsScreen(
     var fieldFocusState by remember { mutableStateOf(FieldFocusState.NONE) }
     val isAnyFieldFocused = fieldFocusState != FieldFocusState.NONE
 
-    // Dummy route result for UI demonstration
-    val dummyRouteResult = remember {
-        RouteResult(
-            distance = 12345.6,
-            duration = 1800.0,
-            legs = emptyList(),
-            units = "kilometers"
-        )
-    }
+    // Get route result from ViewModel
+    val routeResult = viewModel.routeResult
+    val isRouteLoading = viewModel.isRouteLoading
+    val routeError = viewModel.routeError
 
     Column(
         modifier = Modifier
@@ -103,7 +98,7 @@ fun DirectionsScreen(
                 ) {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
@@ -167,10 +162,43 @@ fun DirectionsScreen(
             }
 
             // Route results
-            RouteResults(
-                routeResult = dummyRouteResult,
-                modifier = Modifier.fillMaxWidth()
-            )
+            when {
+                isRouteLoading -> {
+                    Text(
+                        text = "Calculating route...",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
+                }
+
+                routeError != null -> {
+                    Text(
+                        text = "Error: $routeError",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
+                }
+
+                routeResult != null -> {
+                    RouteResults(
+                        routeResult = routeResult,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                else -> {
+                    // No route calculated yet
+                    Text(
+                        text = "Enter start and end locations to get directions",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
+                }
+            }
         } else {
             // Show only the focused field and search results when a field is focused
             val currentFocusState = fieldFocusState
@@ -187,7 +215,7 @@ fun DirectionsScreen(
                         FieldFocusState.NONE
                     }
                 },
-                isFocused = isAnyFieldFocused,
+                isFocused = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp)
@@ -230,7 +258,7 @@ private fun PlaceField(
     onTextFieldFocusChange: (Boolean) -> Unit = {},
     isFocused: Boolean = false
 ) {
-    var textFieldValue by remember { mutableStateOf(place?.name ?: "") }
+    var textFieldValue by remember(place) { mutableStateOf(place?.name ?: "") }
     val focusRequester = remember { FocusRequester() }
 
     OutlinedTextField(
@@ -282,6 +310,11 @@ private fun PlaceField(
         if (isFocused) {
             focusRequester.requestFocus()
         }
+    }
+
+    // Update textFieldValue when place changes
+    LaunchedEffect(place) {
+        textFieldValue = place?.name ?: ""
     }
 }
 
@@ -461,48 +494,51 @@ private fun RouteResults(
             }
         }
 
-        // Dummy route steps
-        items(5) { index ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Row(
+        // Actual route steps
+        routeResult.legs.forEach { leg ->
+            items(leg.steps.size) { index ->
+                val step = leg.steps[index]
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(bottom = 8.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
-                    // Step number
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(32.dp)
-                            .padding(4.dp),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Step number
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .padding(4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "${index + 1}",
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+
+                        // Step instruction
                         Text(
-                            text = "${index + 1}",
-                            style = MaterialTheme.typography.labelLarge
+                            text = step.instruction,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 16.dp)
+                        )
+
+                        // Step distance
+                        Text(
+                            text = "${String.format("%.0f", step.distance * 1000)} m",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-
-                    // Step instruction
-                    Text(
-                        text = "Continue on Main Street for 200 meters",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 16.dp)
-                    )
-
-                    // Step distance
-                    Text(
-                        text = "${(index + 1) * 100} m",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
         }

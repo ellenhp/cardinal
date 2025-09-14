@@ -10,6 +10,8 @@ import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.geocoding.GeocodingService
+import earth.maps.cardinal.routing.RouteResult
+import earth.maps.cardinal.routing.RoutingService
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +26,8 @@ import javax.inject.Inject
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class DirectionsViewModel @Inject constructor(
-    private val geocodingService: GeocodingService
+    private val geocodingService: GeocodingService,
+    private val routingService: RoutingService
 ) : ViewModel() {
     
     // Search query flow for debouncing
@@ -52,6 +55,16 @@ class DirectionsViewModel @Inject constructor(
     var selectedRoutingMode by mutableStateOf(RoutingMode.AUTO)
         private set
 
+    // Route result state
+    var routeResult by mutableStateOf<RouteResult?>(null)
+        private set
+    
+    var isRouteLoading by mutableStateOf(false)
+        private set
+    
+    var routeError by mutableStateOf<String?>(null)
+        private set
+
     init {
         // Set up debounced search
         searchQueryFlow
@@ -76,14 +89,53 @@ class DirectionsViewModel @Inject constructor(
 
     fun updateFromPlace(place: Place?) {
         fromPlace = place
+        fetchRouteIfNeeded()
     }
 
     fun updateToPlace(place: Place?) {
         toPlace = place
+        fetchRouteIfNeeded()
+    }
+    
+    private fun fetchRouteIfNeeded() {
+        val origin = fromPlace
+        val destination = toPlace
+        if (origin != null && destination != null) {
+            fetchRoute(origin, destination)
+        }
+    }
+    
+    private fun fetchRoute(origin: Place, destination: Place) {
+        viewModelScope.launch {
+            isRouteLoading = true
+            routeError = null
+            try {
+                // Convert RoutingMode to the string format expected by the routing service
+                val profile = when (selectedRoutingMode) {
+                    RoutingMode.AUTO -> "auto"
+                    RoutingMode.PEDESTRIAN -> "pedestrian"
+                    RoutingMode.BICYCLE -> "bicycle"
+                }
+                
+                routingService.getRoute(
+                    origin = origin,
+                    destination = destination,
+                    profile = profile
+                ).collect { result ->
+                    routeResult = result
+                    isRouteLoading = false
+                }
+            } catch (e: Exception) {
+                routeError = e.message ?: "An error occurred while fetching the route"
+                routeResult = null
+                isRouteLoading = false
+            }
+        }
     }
 
     fun updateRoutingMode(mode: RoutingMode) {
         selectedRoutingMode = mode
+        fetchRouteIfNeeded()
     }
 
     private fun performSearch(query: String) {

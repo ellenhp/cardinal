@@ -301,34 +301,35 @@ fun AppContent(
                             }
                         }
 
-                        val fromPlaceJson = backStackEntry.arguments?.getString("fromPlace")
-                        val fromPlace =
-                            fromPlaceJson?.let { Gson().fromJson(it, Place::class.java) }
-                        val toPlaceJson = backStackEntry.arguments?.getString("toPlace")
-                        val toPlace = toPlaceJson?.let { Gson().fromJson(it, Place::class.java) }
                         val viewModel: DirectionsViewModel = hiltViewModel()
-
-                        // Get current location from MapViewModel
                         val currentLocation = mapViewModel.locationFlow.collectAsState().value
+                        val myLocationString = stringResource(R.string.my_location)
+                        LaunchedEffect(key1 = Unit) {
+                            val fromPlaceJson = backStackEntry.arguments?.getString("fromPlace")
+                            val fromPlace =
+                                fromPlaceJson?.let { Gson().fromJson(it, Place::class.java) }
+                            val toPlaceJson = backStackEntry.arguments?.getString("toPlace")
+                            val toPlace = toPlaceJson?.let { Gson().fromJson(it, Place::class.java) }
 
-                        if (fromPlace != null) {
-                            viewModel.updateFromPlace(
-                                fromPlace
-                            )
-                        } else if (currentLocation != null) {
-                            viewModel.updateFromPlace(
-                                Place(
-                                    name = stringResource(R.string.my_location),
-                                    id = Int.MAX_VALUE,
-                                    type = "",
-                                    icon = "",
-                                    latitude = currentLocation.latitude,
-                                    longitude = currentLocation.longitude,
-                                    isMyLocation = true
+                            if (fromPlace != null) {
+                                viewModel.updateFromPlace(
+                                    fromPlace
                                 )
-                            )
+                            } else if (currentLocation != null) {
+                                viewModel.updateFromPlace(
+                                    Place(
+                                        name = myLocationString,
+                                        id = Int.MAX_VALUE,
+                                        type = "",
+                                        icon = "",
+                                        latitude = currentLocation.latitude,
+                                        longitude = currentLocation.longitude,
+                                        isMyLocation = true
+                                    )
+                                )
+                            }
+                            viewModel.updateToPlace(toPlace)
                         }
-                        viewModel.updateToPlace(toPlace)
 
                         DirectionsScreen(
                             viewModel = viewModel,
