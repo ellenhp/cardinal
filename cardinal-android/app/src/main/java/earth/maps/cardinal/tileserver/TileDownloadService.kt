@@ -3,6 +3,7 @@ package earth.maps.cardinal.tileserver
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
+import earth.maps.cardinal.R
 import earth.maps.cardinal.geocoding.TileProcessor
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -40,8 +41,6 @@ class TileDownloadService(
     companion object {
         private const val MAX_BASEMAP_ZOOM = 14
         private const val OFFLINE_DATABASE_NAME = "offline_areas.mbtiles"
-        private const val TILE_URL_TEMPLATE =
-            "https://pmtiles.ellenhp.workers.dev/planet-250825.pmtiles/planet-250825/{z}/{x}/{y}.mvt"
     }
 
     /**
@@ -337,7 +336,8 @@ class TileDownloadService(
     ): Pair<Boolean, ByteArray?> = withContext(Dispatchers.IO) {
         try {
             // Build the URL for the tile
-            val url = TILE_URL_TEMPLATE
+            val urlTemplate = context.getString(R.string.tile_url_template)
+            val url = urlTemplate
                 .replace("{z}", zoom.toString())
                 .replace("{x}", x.toString())
                 .replace("{y}", y.toString())

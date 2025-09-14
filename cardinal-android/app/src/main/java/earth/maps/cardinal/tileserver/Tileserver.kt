@@ -3,8 +3,15 @@ package earth.maps.cardinal.tileserver
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
+import earth.maps.cardinal.R
+import earth.maps.cardinal.data.AppPreferenceRepository
+import io.ktor.client.HttpClient
+import kotlinx.coroutines.flow.first
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
@@ -19,7 +26,10 @@ import java.io.FileOutputStream
 import kotlin.math.pow
 
 
-class Tileserver(private val context: Context) {
+class Tileserver(
+    private val context: Context,
+    private val appPreferenceRepository: AppPreferenceRepository
+) {
     private val TAG = "Tileserver"
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? =
         null
@@ -29,6 +39,21 @@ class Tileserver(private val context: Context) {
     private var basemapDatabase: SQLiteDatabase? = null
     private var offlineAreasDatabase: SQLiteDatabase? = null
     private val SINGLE_DATABASE_NAME = "offline_areas.mbtiles"
+
+    // HTTP client for fetching tiles from the internet
+    private val httpClient = HttpClient(io.ktor.client.engine.android.Android) {
+        install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
+            json()
+        }
+        install(io.ktor.client.plugins.logging.Logging) {
+            level = io.ktor.client.plugins.logging.LogLevel.NONE
+        }
+        // Configure timeouts
+        engine {
+            connectTimeout = 10_000
+            socketTimeout = 10_000
+        }
+    }
 
     fun start() {
         // Initialize the mbtiles databases
@@ -176,7 +201,7 @@ class Tileserver(private val context: Context) {
                         Log.w(TAG, "Basemap database is null")
                         null
                     }
-                    
+
                     // If not found, try offline databases
                     if (tileData == null) {
                         Log.d(TAG, "Tile not found in basemap database, checking offline databases")
@@ -185,15 +210,39 @@ class Tileserver(private val context: Context) {
                     } else {
                         Log.d(TAG, "Tile found in basemap database")
                     }
-                    
+
                     if (tileData != null) {
-                        Log.d(TAG, "Serving tile /openmaptiles/$z/$x/$y.pbf, size: ${tileData.size} bytes, gzipped: $isGzipped")
+                        Log.d(
+                            TAG,
+                            "Serving tile /openmaptiles/$z/$x/$y.pbf, size: ${tileData.size} bytes, gzipped: $isGzipped"
+                        )
                         // Only set gzip header for built-in database tiles
                         if (isGzipped) {
                             call.response.header("content-encoding", "gzip")
                         }
                         call.respondBytes(tileData, contentType = ContentType.Application.ProtoBuf)
                     } else {
+                        // Check if we should fetch from the internet (not in offline mode)
+                        val isOfflineMode = isOfflineMode()
+                        if (!isOfflineMode) {
+                            Log.d(
+                                TAG,
+                                "Tile not found in local caches, attempting to fetch from internet"
+                            )
+                            tileData = fetchTileFromInternet(z, x, y)
+                            if (tileData != null) {
+                                Log.d(
+                                    TAG,
+                                    "Successfully fetched tile from internet: /openmaptiles/$z/$x/$y.pbf, size: ${tileData.size} bytes"
+                                )
+                                call.respondBytes(
+                                    tileData,
+                                    contentType = ContentType.Application.ProtoBuf
+                                )
+                                return@get
+                            }
+                        }
+
                         Log.d(TAG, "Tile not found: /openmaptiles/$z/$x/$y.pbf")
                         // If we respond with NotFound here (as would make sense) it will cause maplibre to cache the
                         // fact that this tile doesn't exist in this source, which we don't want because it will never
@@ -311,7 +360,7 @@ class Tileserver(private val context: Context) {
                     null,
                     SQLiteDatabase.OPEN_READONLY
                 )
-            
+
             // Open or create the offline areas database
             val offlineAreasFile = File(context.filesDir, SINGLE_DATABASE_NAME)
             offlineAreasDatabase =
@@ -319,12 +368,12 @@ class Tileserver(private val context: Context) {
                     offlineAreasFile.absolutePath,
                     null
                 )
-            
+
             // Initialize the schema if needed
             initializeOfflineAreasSchema(offlineAreasDatabase!!)
-            
+
             Log.d(TAG, "Offline areas database opened/created successfully")
-            
+
             Log.d(TAG, "MBTiles database initialized successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing MBTiles database", e)
@@ -344,7 +393,7 @@ class Tileserver(private val context: Context) {
                 )
                 """.trimIndent()
             )
-            
+
             db.execSQL(
                 """
                 CREATE TABLE IF NOT EXISTS areas (
@@ -360,7 +409,7 @@ class Tileserver(private val context: Context) {
                 )
                 """.trimIndent()
             )
-            
+
             db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS tile_index ON tiles (zoom_level, tile_column, tile_row, area_id)")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing offline areas schema", e)
@@ -386,7 +435,10 @@ class Tileserver(private val context: Context) {
                 val blobIndex = cursor.getColumnIndex("tile_data")
                 if (blobIndex != -1) {
                     val blob = cursor.getBlob(blobIndex)
-                    Log.v(TAG, "Found tile $zoomLevel/$tileColumn/$tileRow, size: ${blob.size} bytes")
+                    Log.v(
+                        TAG,
+                        "Found tile $zoomLevel/$tileColumn/$tileRow, size: ${blob.size} bytes"
+                    )
                     blob
                 } else {
                     Log.w(TAG, "Blob index -1 for tile $zoomLevel/$tileColumn/$tileRow")
@@ -416,7 +468,7 @@ class Tileserver(private val context: Context) {
         if (offlineAreasDatabase != null) {
             // Convert XYZ to TMS coordinate system for MBTiles
             val tmsTileRow = (2.0.pow(zoomLevel.toDouble()) - 1 - tileRow).toLong()
-            
+
             var cursor: android.database.Cursor? = null
             return try {
                 // Query the database for tiles from any area
@@ -431,25 +483,70 @@ class Tileserver(private val context: Context) {
                     val blobIndex = cursor.getColumnIndex("tile_data")
                     if (blobIndex != -1) {
                         val blob = cursor.getBlob(blobIndex)
-                        Log.d(TAG, "Tile found in offline database: $zoomLevel/$tileColumn/$tileRow (TMS: $tmsTileRow)")
+                        Log.d(
+                            TAG,
+                            "Tile found in offline database: $zoomLevel/$tileColumn/$tileRow (TMS: $tmsTileRow)"
+                        )
                         blob
                     } else {
                         Log.w(TAG, "Blob index -1 in offline database")
                         null
                     }
                 } else {
-                    Log.d(TAG, "Tile not found in offline database: $zoomLevel/$tileColumn/$tileRow (TMS: $tmsTileRow)")
+                    Log.d(
+                        TAG,
+                        "Tile not found in offline database: $zoomLevel/$tileColumn/$tileRow (TMS: $tmsTileRow)"
+                    )
                     null
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error retrieving tile data from offline database for $zoomLevel/$tileColumn/$tileRow", e)
+                Log.e(
+                    TAG,
+                    "Error retrieving tile data from offline database for $zoomLevel/$tileColumn/$tileRow",
+                    e
+                )
                 null
             } finally {
                 cursor?.close()
             }
         }
-        
+
         Log.d(TAG, "Tile not found in offline database")
         return null
+    }
+
+    /**
+     * Check if the app is in offline mode
+     */
+    private suspend fun isOfflineMode(): Boolean {
+        return appPreferenceRepository.offlineMode.first()
+    }
+
+    /**
+     * Fetch tile data from the internet
+     */
+    private suspend fun fetchTileFromInternet(z: Int, x: Long, y: Long): ByteArray? {
+        return try {
+            val urlTemplate = context.getString(R.string.tile_url_template)
+            val url = urlTemplate
+                .replace("{z}", z.toString())
+                .replace("{x}", x.toString())
+                .replace("{y}", y.toString())
+            Log.d(TAG, "Fetching tile from internet: $url")
+
+            val response = httpClient.get(url)
+
+            if (response.status == HttpStatusCode.OK) {
+                val bytes = response.bodyAsBytes()
+                Log.d(TAG, "Successfully fetched tile from internet, size: ${bytes.size} bytes")
+                bytes
+            } else {
+                Log.w(TAG, "Failed to fetch tile from internet, status: ${response.status}")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching tile from internet", e)
+            null
+        }
     }
 }
