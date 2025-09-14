@@ -7,5 +7,6 @@ data class Place(
     val icon: String,
     val latitude: Double,
     val longitude: Double,
-    val address: Address? = null
+    val address: Address? = null,
+    val isMyLocation: Boolean = false,
 )

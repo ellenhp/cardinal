@@ -27,6 +27,7 @@ import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -42,16 +43,19 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.gson.Gson
+import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.viewmodel.DirectionsViewModel
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import earth.maps.cardinal.viewmodel.MapViewModel
@@ -202,7 +206,10 @@ fun AppContent(
                                 onBack = {
                                     navController.popBackStack()
                                 },
-                                onGetDirections = { /* TODO: Implement directions functionality */ },
+                                onGetDirections = { place ->
+                                    val placeJson = Gson().toJson(place)
+                                    navController.navigate("directions?toPlace=$placeJson")
+                                },
                                 onPeekHeightChange = { peekHeight = it })
                         }
                     }
@@ -272,6 +279,67 @@ fun AppContent(
                             onDismiss = { navController.popBackStack() },
                             appPreferenceRepository = appPreferenceRepository,
                             navController = navController
+                        )
+                    }
+
+                    composable(Screen.Directions.route) { backStackEntry ->
+                        LaunchedEffect(key1 = Unit) {
+                            // The directions screen starts partially expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.partialExpand()
+                            }
+                        }
+                        var isTextFieldFocused by remember { mutableStateOf(false) }
+
+                        // Automatically expand the bottom sheet and disable swiping when text field is focused
+                        LaunchedEffect(isTextFieldFocused) {
+                            sheetSwipeEnabled = !isTextFieldFocused
+                            if (isTextFieldFocused) {
+                                coroutineScope.launch {
+                                    scaffoldState.bottomSheetState.expand()
+                                }
+                            }
+                        }
+
+                        val viewModel: DirectionsViewModel = hiltViewModel()
+                        val currentLocation = mapViewModel.locationFlow.collectAsState().value
+                        val myLocationString = stringResource(R.string.my_location)
+                        LaunchedEffect(key1 = Unit) {
+                            val fromPlaceJson = backStackEntry.arguments?.getString("fromPlace")
+                            val fromPlace =
+                                fromPlaceJson?.let { Gson().fromJson(it, Place::class.java) }
+                            val toPlaceJson = backStackEntry.arguments?.getString("toPlace")
+                            val toPlace = toPlaceJson?.let { Gson().fromJson(it, Place::class.java) }
+
+                            if (fromPlace != null) {
+                                viewModel.updateFromPlace(
+                                    fromPlace
+                                )
+                            } else if (currentLocation != null) {
+                                viewModel.updateFromPlace(
+                                    Place(
+                                        name = myLocationString,
+                                        id = Int.MAX_VALUE,
+                                        type = "",
+                                        icon = "",
+                                        latitude = currentLocation.latitude,
+                                        longitude = currentLocation.longitude,
+                                        isMyLocation = true
+                                    )
+                                )
+                            }
+                            viewModel.updateToPlace(toPlace)
+                        }
+
+                        DirectionsScreen(
+                            viewModel = viewModel,
+                            onPeekHeightChange = { peekHeight = it },
+                            onBack = { navController.popBackStack() },
+                            onFullExpansionRequired = {
+                                coroutineScope.launch {
+                                    bottomSheetState.expand()
+                                }
+                            },
                         )
                     }
                 }

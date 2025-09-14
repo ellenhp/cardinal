@@ -7,7 +7,8 @@ sealed class Screen(val route: String) {
     object PlaceCard : Screen("place_card?place={place}")
     object OfflineAreas : Screen("offline_areas")
     object Settings : Screen("settings")
-    
+    object Directions : Screen("directions?fromPlace={fromPlace}&toPlace={toPlace}")
+
     // Helper function to create route with arguments
     fun createRouteWithArea(area: OfflineArea): String {
         return "offline_areas?area=${area.id}"
