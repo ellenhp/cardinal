@@ -29,7 +29,7 @@ class DirectionsViewModel @Inject constructor(
     private val geocodingService: GeocodingService,
     private val routingService: RoutingService
 ) : ViewModel() {
-    
+
     // Search query flow for debouncing
     private val _searchQueryFlow = MutableStateFlow("")
     private val searchQueryFlow: StateFlow<String> = _searchQueryFlow.asStateFlow()
@@ -38,10 +38,10 @@ class DirectionsViewModel @Inject constructor(
         private set
 
     val geocodeResults = mutableStateOf<List<GeocodeResult>>(emptyList())
-    
+
     var isSearching by mutableStateOf(false)
         private set
-        
+
     var searchError by mutableStateOf<String?>(null)
         private set
 
@@ -58,10 +58,10 @@ class DirectionsViewModel @Inject constructor(
     // Route result state
     var routeResult by mutableStateOf<RouteResult?>(null)
         private set
-    
+
     var isRouteLoading by mutableStateOf(false)
         private set
-    
+
     var routeError by mutableStateOf<String?>(null)
         private set
 
@@ -96,15 +96,19 @@ class DirectionsViewModel @Inject constructor(
         toPlace = place
         fetchRouteIfNeeded()
     }
-    
+
     private fun fetchRouteIfNeeded() {
         val origin = fromPlace
         val destination = toPlace
         if (origin != null && destination != null) {
             fetchRoute(origin, destination)
+        } else {
+            isRouteLoading = false
+            routeError = null;
+            routeResult = null
         }
     }
-    
+
     private fun fetchRoute(origin: Place, destination: Place) {
         viewModelScope.launch {
             isRouteLoading = true
@@ -116,7 +120,7 @@ class DirectionsViewModel @Inject constructor(
                     RoutingMode.PEDESTRIAN -> "pedestrian"
                     RoutingMode.BICYCLE -> "bicycle"
                 }
-                
+
                 routingService.getRoute(
                     origin = origin,
                     destination = destination,

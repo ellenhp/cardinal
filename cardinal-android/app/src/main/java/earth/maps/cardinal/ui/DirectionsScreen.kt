@@ -116,6 +116,10 @@ fun DirectionsScreen(
                 PlaceField(
                     label = "From",
                     place = viewModel.fromPlace,
+                    onCleared = {
+                        viewModel.updateFromPlace(null)
+
+                    },
                     onTextChange = {
                         viewModel.updateSearchQuery(it)
                     },
@@ -132,6 +136,9 @@ fun DirectionsScreen(
                 PlaceField(
                     label = "To",
                     place = viewModel.toPlace,
+                    onCleared = {
+                        viewModel.updateToPlace(null)
+                    },
                     onTextChange = {
                         viewModel.updateSearchQuery(it)
                     },
@@ -205,6 +212,13 @@ fun DirectionsScreen(
             PlaceField(
                 label = if (currentFocusState == FieldFocusState.FROM) "From" else "To",
                 place = if (currentFocusState == FieldFocusState.FROM) viewModel.fromPlace else viewModel.toPlace,
+                onCleared = {
+                    if (currentFocusState == FieldFocusState.FROM) {
+                        viewModel.updateFromPlace(null)
+                    } else {
+                        viewModel.updateToPlace(null)
+                    }
+                },
                 onTextChange = {
                     viewModel.updateSearchQuery(it)
                 },
@@ -253,6 +267,7 @@ fun DirectionsScreen(
 private fun PlaceField(
     label: String,
     place: Place?,
+    onCleared: () -> Unit,
     modifier: Modifier = Modifier,
     onTextChange: (String) -> Unit = {},
     onTextFieldFocusChange: (Boolean) -> Unit = {},
@@ -281,7 +296,11 @@ private fun PlaceField(
         },
         trailingIcon = {
             if (place != null) {
-                IconButton(onClick = { /* Clear place */ }) {
+                IconButton(onClick = {
+                    textFieldValue = ""
+                    onTextChange("")
+                    onCleared()
+                }) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = stringResource(R.string.content_description_clear_search)

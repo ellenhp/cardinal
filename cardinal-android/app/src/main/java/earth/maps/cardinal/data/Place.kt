@@ -1,7 +1,5 @@
 package earth.maps.cardinal.data
 
-import android.content.Context
-
 data class Place(
     val id: Int,
     val name: String,
