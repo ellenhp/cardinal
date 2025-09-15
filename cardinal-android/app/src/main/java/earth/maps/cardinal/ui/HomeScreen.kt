@@ -52,7 +52,6 @@ import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.GeocodeResult
-import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
@@ -69,7 +68,7 @@ fun HomeScreen(
     onSearchFocusChange: (Boolean) -> Unit
 ) {
     val savedPlaces = viewModel.savedPlaces.value
-    val geocodeResults = viewModel.geocodeResults.value
+    val geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value)
     val isSearching = viewModel.isSearching
     val searchQuery = viewModel.searchQuery
 
@@ -355,4 +354,17 @@ fun generatePlaceId(result: GeocodeResult): Int {
 
     // Generate a hash code and ensure it's positive
     return abs(uniqueString.hashCode())
+}
+
+fun deduplicateSearchResults(results: List<GeocodeResult>): List<GeocodeResult> {
+    val deduplicated = mutableListOf<GeocodeResult>()
+    val seenPlaceIds = mutableSetOf<Int>()
+    for (result in results) {
+        val placeId = generatePlaceId(result)
+        if (!seenPlaceIds.contains(placeId)) {
+            seenPlaceIds.add(placeId)
+            deduplicated.add(result)
+        }
+    }
+    return deduplicated
 }

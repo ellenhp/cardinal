@@ -9,7 +9,9 @@ import android.os.Bundle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.ViewportPreferences
+import earth.maps.cardinal.data.ViewportRepository
 import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +31,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class MapViewModel @Inject constructor(
-    private val viewportPreferences: ViewportPreferences
+    private val viewportPreferences: ViewportPreferences,
+    private val viewportRepository: ViewportRepository
 ) : ViewModel() {
 
     private companion object {
@@ -54,6 +57,7 @@ class MapViewModel @Inject constructor(
     private val _locationFlow: MutableStateFlow<Location?> = MutableStateFlow(null)
     val locationFlow: StateFlow<Location?> = _locationFlow.asStateFlow()
 
+
     // Location listener for continuous updates
     private var locationListener: LocationListener? = null
 
@@ -65,6 +69,15 @@ class MapViewModel @Inject constructor(
      */
     fun saveViewport(cameraPosition: CameraPosition) {
         viewportPreferences.saveViewport(cameraPosition)
+        // Update the viewport center for geocoding focus
+        updateViewportCenter(cameraPosition)
+    }
+
+    /**
+     * Updates the current viewport center for geocoding focus.
+     */
+    fun updateViewportCenter(cameraPosition: CameraPosition) {
+        viewportRepository.updateViewportCenter(cameraPosition)
     }
 
     /**

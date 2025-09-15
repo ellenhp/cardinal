@@ -10,6 +10,7 @@ import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.PlaceEntity
 import earth.maps.cardinal.data.PlaceDao
+import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +28,8 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val placeDao: PlaceDao,
-    private val geocodingService: GeocodingService
+    private val geocodingService: GeocodingService,
+    private val viewportRepository: ViewportRepository
 ) : ViewModel() {
     
     // Saved places from database
@@ -130,7 +132,9 @@ class HomeViewModel @Inject constructor(
             isSearching = true
             searchError = null
             try {
-                geocodingService.geocode(query).collect { results ->
+                // Use current viewport center as focus point for viewport biasing
+                val focusPoint = viewportRepository.viewportCenter.value
+                geocodingService.geocode(query, focusPoint).collect { results ->
                     geocodeResults.value = results
                     isSearching = false
                 }

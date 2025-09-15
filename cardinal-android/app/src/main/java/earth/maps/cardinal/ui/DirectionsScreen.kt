@@ -248,7 +248,7 @@ fun DirectionsScreen(
                 )
             } else {
                 SearchResults(
-                    geocodeResults = viewModel.geocodeResults.value,
+                    geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value),
                     onPlaceSelected = { place ->
                         // Update the appropriate place based on which field is focused
                         if (fieldFocusState == FieldFocusState.FROM) {

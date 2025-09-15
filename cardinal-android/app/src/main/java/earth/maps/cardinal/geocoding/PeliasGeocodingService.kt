@@ -4,6 +4,7 @@ import android.util.Log
 import earth.maps.cardinal.data.Address
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.GeocodeResult
+import earth.maps.cardinal.data.LatLng
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.android.Android
@@ -37,14 +38,18 @@ class PeliasGeocodingService(private val appPreferenceRepository: AppPreferenceR
         install(Logging)
     }
 
-    override suspend fun geocode(query: String): Flow<List<GeocodeResult>> = flow {
+    override suspend fun geocode(query: String, focusPoint: LatLng?): Flow<List<GeocodeResult>> = flow {
         try {
-            Log.d(TAG, "Geocoding query: $query")
+            Log.d(TAG, "Geocoding query: $query, focusPoint: $focusPoint")
             val config = appPreferenceRepository.peliasApiConfig.value
             val response = client.get("${config.baseUrl}/autocomplete") {
                 parameter("text", query)
                 parameter("size", "10")
                 config.apiKey?.let { parameter("api_key", it) }
+                focusPoint?.let {
+                    parameter("focus.point.lat", it.latitude.toString())
+                    parameter("focus.point.lon", it.longitude.toString())
+                }
             }
 
             val result = response.body<JsonObject>()
