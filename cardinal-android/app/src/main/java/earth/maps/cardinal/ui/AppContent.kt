@@ -2,6 +2,7 @@ package earth.maps.cardinal.ui
 
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -21,7 +22,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -52,6 +53,7 @@ import androidx.navigation.compose.composable
 import com.google.gson.Gson
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.OfflineArea
@@ -231,15 +233,15 @@ fun AppContent(
                             }
                         }
                         val viewModel: OfflineAreasViewModel = hiltViewModel()
-                        
+
                         // Track the current viewport reactively
                         var currentViewport by remember { mutableStateOf(cameraState.projection?.queryVisibleRegion()) }
-                        
+
                         // Update viewport when camera state changes
                         LaunchedEffect(cameraState.position) {
                             currentViewport = cameraState.projection?.queryVisibleRegion()
                         }
-                        
+
                         currentViewport?.let { visibleRegion ->
                             OfflineAreasScreen(
                                 currentViewport = visibleRegion,
@@ -402,9 +404,10 @@ fun AppContent(
                         containerColor = MaterialTheme.colorScheme.surfaceDim,
                         shape = CircleShape
                     ) {
-                        Text(
-                            text = "\uD83E\uDD55", // Carrot emoji
-                            style = MaterialTheme.typography.headlineMedium
+                        Image(
+                            modifier = Modifier.size(48.dp),
+                            painter = painterResource(drawable.cardinal_icon),
+                            contentDescription = "Cardinal Maps Settings",
                         )
                     }
                     Box(
