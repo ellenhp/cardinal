@@ -41,7 +41,7 @@ fun SearchResults(
 }
 
 @Composable
-private fun SearchResultItem(result: GeocodeResult, onPlaceSelected: (Place) -> Unit) {
+fun SearchResultItem(result: GeocodeResult, onPlaceSelected: (Place) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -94,16 +94,9 @@ private fun SearchResultItem(result: GeocodeResult, onPlaceSelected: (Place) -> 
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                result.address?.let { address ->
+                result.address?.format()?.let { address ->
                     Text(
-                        text = buildString {
-                            address.houseNumber?.let { append("$it ") }
-                            address.road?.let { append("$it, ") }
-                            address.city?.let { append("$it, ") }
-                            address.state?.let { append("$it ") }
-                            address.postcode?.let { append("$it, ") }
-                            address.country?.let { append(it) }
-                        }.trim().trimEnd(','),
+                        text = address.trim().replace("\n", ", "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -113,26 +106,3 @@ private fun SearchResultItem(result: GeocodeResult, onPlaceSelected: (Place) -> 
     }
 }
 
-/**
- * Generate a unique ID for a place based on its properties.
- * This ensures that each search result gets a consistent but unique ID.
- */
-private fun generatePlaceId(result: GeocodeResult): Int {
-    // Create a string representation of the unique properties
-    val uniqueString = buildString {
-        append(result.latitude)
-        append(result.longitude)
-        append(result.displayName)
-        result.address?.let { address ->
-            append(address.houseNumber ?: "")
-            append(address.road ?: "")
-            append(address.city ?: "")
-            append(address.state ?: "")
-            append(address.postcode ?: "")
-            append(address.country ?: "")
-        }
-    }
-
-    // Generate a hash code and ensure it's positive
-    return kotlin.math.abs(uniqueString.hashCode())
-}

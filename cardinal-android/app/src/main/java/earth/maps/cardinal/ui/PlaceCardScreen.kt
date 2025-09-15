@@ -41,8 +41,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
 
@@ -115,38 +115,13 @@ fun PlaceCardScreen(
                     contentDescription = null,
                     modifier = Modifier.size(dimensionResource(dimen.icon_size))
                 )
-                Column(
+                Text(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(start = 16.dp)
-                ) {
-                    address.houseNumber?.let { houseNumber ->
-                        Text(
-                            text = houseNumber,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                    address.road?.let { road ->
-                        Text(
-                            text = road,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                    Text(
-                        text = buildString {
-                            address.city?.let { append("$it, ") }
-                            address.state?.let { append("$it ") }
-                            address.postcode?.let { append(it) }
-                        }.trim().trimEnd(','),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    address.country?.let { country ->
-                        Text(
-                            text = country,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                }
+                        .padding(start = 16.dp),
+                    text = displayedPlace.address.format()
+                        ?: stringResource(string.address_unavailable)
+                )
             }
         }
 
@@ -161,7 +136,7 @@ fun PlaceCardScreen(
                 modifier = Modifier
                     .padding(dimensionResource(dimen.padding_minor), end = 0.dp)
             ) {
-                Text(stringResource(R.string.get_directions))
+                Text(stringResource(string.get_directions))
             }
 
             // Save/Unsave button
@@ -190,9 +165,9 @@ fun PlaceCardScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (viewModel.isPlaceSaved.value) {
-                            stringResource(R.string.unsave_place)
+                            stringResource(string.unsave_place)
                         } else {
-                            stringResource(R.string.save_place)
+                            stringResource(string.save_place)
                         }
                     )
                 }
@@ -235,11 +210,11 @@ fun PlaceCardScreen(
     if (showUnsaveConfirmationDialog) {
         AlertDialog(
             onDismissRequest = { showUnsaveConfirmationDialog = false },
-            title = { Text(stringResource(R.string.unsave_place)) },
+            title = { Text(stringResource(string.unsave_place)) },
             text = {
                 Text(
                     stringResource(
-                        R.string.are_you_sure_you_want_to_delete,
+                        string.are_you_sure_you_want_to_delete,
                         displayedPlace.name
                     )
                 )
@@ -251,14 +226,14 @@ fun PlaceCardScreen(
                         showUnsaveConfirmationDialog = false
                     }
                 ) {
-                    Text(stringResource(R.string.unsave_place))
+                    Text(stringResource(string.unsave_place))
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { showUnsaveConfirmationDialog = false }
                 ) {
-                    Text(stringResource(R.string.cancel_button))
+                    Text(stringResource(string.cancel_button))
                 }
             }
         )
@@ -278,7 +253,7 @@ fun SavePlaceDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.save_place)) },
+        title = { Text(stringResource(string.save_place)) },
         text = {
             Column {
                 OutlinedButton(
@@ -294,7 +269,7 @@ fun SavePlaceDialog(
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.set_as_home))
+                        Text(stringResource(string.set_as_home))
                     }
                 }
 
@@ -313,7 +288,7 @@ fun SavePlaceDialog(
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.set_as_work))
+                        Text(stringResource(string.set_as_work))
                     }
                 }
 
@@ -323,13 +298,13 @@ fun SavePlaceDialog(
                     onClick = { onSaveAsOther(place) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(stringResource(R.string.save_button))
+                    Text(stringResource(string.save_button))
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel_button))
+                Text(stringResource(string.cancel_button))
             }
         }
     )

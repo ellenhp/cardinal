@@ -2,8 +2,8 @@ package earth.maps.cardinal.geocoding
 
 import android.util.Log
 import earth.maps.cardinal.data.Address
-import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.AppPreferenceRepository
+import earth.maps.cardinal.data.GeocodeResult
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.android.Android
@@ -25,7 +25,8 @@ import kotlinx.serialization.json.jsonPrimitive
 
 private const val TAG = "PeliasGeocoding"
 
-class PeliasGeocodingService(private val appPreferenceRepository: AppPreferenceRepository) : GeocodingService {
+class PeliasGeocodingService(private val appPreferenceRepository: AppPreferenceRepository) :
+    GeocodingService {
     private val client = HttpClient(Android) {
         install(ContentNegotiation) {
             json(Json {
@@ -114,7 +115,8 @@ class PeliasGeocodingService(private val appPreferenceRepository: AppPreferenceR
                         city = properties["locality"]?.jsonPrimitive?.content,
                         state = properties["region"]?.jsonPrimitive?.content,
                         postcode = properties["postalcode"]?.jsonPrimitive?.content,
-                        country = properties["country"]?.jsonPrimitive?.content
+                        country = properties["country"]?.jsonPrimitive?.content,
+                        countryCode = properties["country_code"]?.jsonPrimitive?.content
                     )
                 } else {
                     null

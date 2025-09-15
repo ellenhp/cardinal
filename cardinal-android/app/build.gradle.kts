@@ -103,6 +103,7 @@ dependencies {
     implementation(libs.ferrostar.maplibreui)
     implementation(libs.ferrostar.composeui)
     implementation(libs.okhttp3)
+    implementation(libs.androidaddressformatter)
 
     // TODO: Migrate version to TOML (doesn't work). Likely related issue: https://github.com/gradle/gradle/issues/21267
     //noinspection UseTomlInstead
