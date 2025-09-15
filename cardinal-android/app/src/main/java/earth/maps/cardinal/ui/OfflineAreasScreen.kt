@@ -346,10 +346,10 @@ fun DownloadAreaDialog(
 ) {
     val viewModel: OfflineAreasViewModel = hiltViewModel()
 
-    // Calculate default bounding box from current viewport
-    val (defaultNorth, defaultSouth, defaultEast, defaultWest) = calculateBoundingBoxFromViewport(
-        currentViewport
-    )
+    // Calculate default bounding box from current viewport - recalculate when viewport changes
+    val (defaultNorth, defaultSouth, defaultEast, defaultWest) = remember(currentViewport) {
+        calculateBoundingBoxFromViewport(currentViewport)
+    }
 
     // Pre-fill area name with current date/time
     val currentTime = System.currentTimeMillis()
@@ -362,16 +362,17 @@ fun DownloadAreaDialog(
     // Create a FocusRequester to request focus on the text field
     val focusRequester = remember { FocusRequester() }
 
-    val north = defaultNorth.toDouble()
-    val south = defaultSouth.toDouble()
-    val east = defaultEast.toDouble()
-    val west = defaultWest.toDouble()
+    // Convert to doubles and recalculate when viewport changes
+    val north = remember(defaultNorth) { defaultNorth.toDouble() }
+    val south = remember(defaultSouth) { defaultSouth.toDouble() }
+    val east = remember(defaultEast) { defaultEast.toDouble() }
+    val west = remember(defaultWest) { defaultWest.toDouble() }
     val minZoom = 7
     val maxZoom = 14
 
     var nameError by remember { mutableStateOf(false) }
 
-    // Calculate estimated tile count (fixed zoom levels 7-14)
+    // Calculate estimated tile count (fixed zoom levels 7-14) - recalculate when bounds change
     val estimatedTileCount by remember(north, south, east, west) {
         mutableIntStateOf(
             if (north >= south && east >= west) {
