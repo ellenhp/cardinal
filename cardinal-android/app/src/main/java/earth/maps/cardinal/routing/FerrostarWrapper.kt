@@ -49,7 +49,7 @@ class FerrostarWrapper(
             val route = routingService.getRoute(startLatLng, endLatLng, mode)
             val geographicCoordinates =
                 route.geometry.coordinates.map { GeographicCoordinate(it[1], it[0]) }
-            
+
             // Calculate bounding box from coordinates
             val lats = route.geometry.coordinates.map { it[1] }
             val lngs = route.geometry.coordinates.map { it[0] }
@@ -57,18 +57,23 @@ class FerrostarWrapper(
                 sw = GeographicCoordinate(lats.minOrNull() ?: 0.0, lngs.minOrNull() ?: 0.0),
                 ne = GeographicCoordinate(lats.maxOrNull() ?: 0.0, lngs.maxOrNull() ?: 0.0)
             )
-            
+
             val steps = route.legs.flatMap { leg ->
                 leg.steps.map { step ->
                     RouteStep(
-                        geometry = emptyList(), // Geometry would need to be extracted from step polyline if available
+                        geometry = step.geometry.coordinates.map {
+                            GeographicCoordinate(
+                                it[1],
+                                it[0]
+                            )
+                        },
                         distance = step.distance,
                         duration = step.duration,
                         roadName = step.name,
                         exits = emptyList(), // No exit information available in current data structure
                         instruction = step.instruction,
-                        visualInstructions = emptyList(), // Would need to be generated from instruction
-                        spokenInstructions = emptyList(), // Would need to be generated from instruction
+                        visualInstructions = emptyList(),
+                        spokenInstructions = emptyList(),
                         annotations = null, // No annotation data available
                         incidents = emptyList(), // No incident data available
                     )

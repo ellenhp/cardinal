@@ -20,8 +20,7 @@ data class RouteStep(
     val duration: Double,
     val instruction: String,
     val name: String,
-    val geometry: RouteGeometry? = null,
-    val maneuver: Maneuver
+    val geometry: RouteGeometry,
 )
 
 data class RouteGeometry(

@@ -21,6 +21,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -118,10 +119,6 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
             val locations = trip["locations"]?.jsonArray!!
             val legs = trip["legs"]?.jsonArray!!
 
-            val routeLegs = legs.mapNotNull { legElement ->
-                parseRouteLeg(legElement.jsonObject)
-            }
-
             val units = trip["units"]?.jsonPrimitive?.content ?: "kilometers"
 
             // Get total distance and duration from summary
@@ -152,6 +149,11 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
                 coordinates = emptyList()
             )
 
+            val routeLegs = legs.mapNotNull { legElement ->
+                parseRouteLeg(legElement.jsonObject, geometry)
+            }
+
+
             RouteResult(
                 distance = distance,
                 duration = duration,
@@ -164,7 +166,7 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
         }
     }
 
-    private fun parseRouteLeg(legObject: JsonObject): RouteLeg? {
+    private fun parseRouteLeg(legObject: JsonObject, routeGeometry: RouteGeometry): RouteLeg? {
         return try {
             val summary = legObject["summary"]?.jsonObject
             val distance = summary?.get("length")?.jsonPrimitive?.doubleOrNull ?: 0.0
@@ -172,7 +174,7 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
 
             val maneuvers = legObject["maneuvers"]?.jsonArray ?: JsonArray(emptyList())
             val steps = maneuvers.mapNotNull { maneuverElement ->
-                parseRouteStep(maneuverElement.jsonObject)
+                parseRouteStep(maneuverElement.jsonObject, routeGeometry)
             }
 
             RouteLeg(
@@ -187,23 +189,24 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
         }
     }
 
-    private fun parseRouteStep(stepObject: JsonObject): RouteStep? {
+    private fun parseRouteStep(stepObject: JsonObject, routeGeometry: RouteGeometry): RouteStep? {
         return try {
             val distance = stepObject["length"]?.jsonPrimitive?.doubleOrNull ?: 0.0
             val duration = stepObject["time"]?.jsonPrimitive?.doubleOrNull ?: 0.0
             val instruction = stepObject["instruction"]?.jsonPrimitive?.content ?: ""
             val name =
                 stepObject["street_names"]?.jsonArray?.firstOrNull()?.jsonPrimitive?.content ?: ""
+            val beginShapeIndex = stepObject["begin_shape_index"]?.jsonPrimitive?.intOrNull ?: 0
+            val endShapeIndex = stepObject["end_shape_index"]?.jsonPrimitive?.intOrNull ?: 0
 
-            val maneuver =
-                parseManeuver(stepObject["maneuver"]?.jsonObject ?: JsonObject(emptyMap()))
+            val geometry = RouteGeometry(coordinates = routeGeometry.coordinates.subList(beginShapeIndex, endShapeIndex))
 
             RouteStep(
+                geometry = geometry,
                 distance = distance,
                 duration = duration,
                 instruction = instruction,
                 name = name,
-                maneuver = maneuver
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing route step", e)
