@@ -4,7 +4,7 @@
 
     <string name="work">Work</string>
     <string name="home">Home</string>
-    <string name="pin_destination">Pin Destination</string>
+    <string name="content_description_edit_saved_places">Edit Saved Places</string>
     <string name="where_to">Where to?</string>
     <string name="content_description_search">Search</string>
     <string name="content_description_clear_search">Clear search</string>
@@ -100,4 +100,6 @@
     <string name="route_summary">Route Summary</string>
     <string name="start_navigation">Start Navigation</string>
     <string name="my_location">My Location</string>
+    <string name="address_unavailable">Address unavailable</string>
+    <string name="searching_in_progress">Searching...</string>
 </resources>

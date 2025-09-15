@@ -16,8 +16,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
@@ -201,9 +201,9 @@ private fun SearchPanelContent(
                     }
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
+                        imageVector = Icons.Default.Edit,
                         contentDescription = stringResource(
-                            string.pin_destination
+                            string.content_description_edit_saved_places
                         )
                     )
                 }
@@ -226,7 +226,7 @@ private fun SearchPanelContent(
                 if (isSearching) {
                     item {
                         Text(
-                            text = "Searching...",
+                            text = stringResource(string.searching_in_progress),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(dimensionResource(dimen.padding))
@@ -315,87 +315,6 @@ private fun PlaceItem(place: Place, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SearchResultItem(result: GeocodeResult, onPlaceSelected: (Place) -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = dimensionResource(dimen.padding))
-            .clickable {
-                // Convert GeocodeResult to Place with a unique ID based on properties
-                val place = Place(
-                    id = generatePlaceId(result),
-                    name = result.displayName,
-                    type = "Search Result",
-                    icon = "search",
-                    latLng = LatLng(
-                        latitude = result.latitude,
-                        longitude = result.longitude,
-                    ),
-                    address = result.address
-                )
-                onPlaceSelected(place)
-            },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dimensionResource(dimen.padding)),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Search result icon
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .padding(dimensionResource(dimen.padding) / 2),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = null,
-                    modifier = Modifier.size(dimensionResource(dimen.icon_size))
-                )
-            }
-
-            // Search result details
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = dimensionResource(dimen.padding))
-            ) {
-                Text(
-                    text = result.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                result.address?.let { address ->
-                    Text(
-                        text = buildString {
-                            address.houseNumber?.let { append("$it ") }
-                            address.road?.let { append("$it, ") }
-                            address.city?.let { append("$it, ") }
-                            address.state?.let { append("$it ") }
-                            address.postcode?.let { append("$it, ") }
-                            address.country?.let { append(it) }
-                        }.trim().trimEnd(','),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-private fun getIconForPlace(place: Place): ImageVector {
-    return when (place.icon) {
-        "home" -> Icons.Default.Home
-        "work" -> Icons.Default.AccountCircle
-        else -> Icons.Default.Search
-    }
-}
-
-@Composable
 fun NavigationIcon(
     icon: ImageVector,
     text: String,
@@ -426,20 +345,12 @@ fun NavigationIcon(
  * Generate a unique ID for a place based on its properties.
  * This ensures that each search result gets a consistent but unique ID.
  */
-private fun generatePlaceId(result: GeocodeResult): Int {
+fun generatePlaceId(result: GeocodeResult): Int {
     // Create a string representation of the unique properties
     val uniqueString = buildString {
         append(result.latitude)
         append(result.longitude)
         append(result.displayName)
-        result.address?.let { address ->
-            append(address.houseNumber ?: "")
-            append(address.road ?: "")
-            append(address.city ?: "")
-            append(address.state ?: "")
-            append(address.postcode ?: "")
-            append(address.country ?: "")
-        }
     }
 
     // Generate a hash code and ensure it's positive

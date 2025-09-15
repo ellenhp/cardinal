@@ -16,7 +16,8 @@ data class PlaceEntity(
     val city: String? = null,
     val state: String? = null,
     val postcode: String? = null,
-    val country: String? = null
+    val country: String? = null,
+    val countryCode: String? = null
 ) {
     fun toPlace(): Place {
         return Place(
@@ -28,14 +29,15 @@ data class PlaceEntity(
                 latitude = latitude,
                 longitude = longitude,
             ),
-            address = if (houseNumber != null || road != null || city != null || state != null || postcode != null || country != null) {
+            address = if (houseNumber != null || road != null || city != null || state != null || postcode != null || country != null || countryCode != null) {
                 Address(
                     houseNumber = houseNumber,
                     road = road,
                     city = city,
                     state = state,
                     postcode = postcode,
-                    country = country
+                    country = country,
+                    countryCode = countryCode
                 )
             } else {
                 null
@@ -57,7 +59,8 @@ data class PlaceEntity(
                 city = place.address?.city,
                 state = place.address?.state,
                 postcode = place.address?.postcode,
-                country = place.address?.country
+                country = place.address?.country,
+                countryCode = place.address?.countryCode
             )
         }
     }

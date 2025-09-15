@@ -4,7 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import earth.maps.cardinal.R
-import earth.maps.cardinal.data.AppPreferenceRepository
+import earth.maps.cardinal.data.AppPreferences
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
@@ -27,9 +27,8 @@ import kotlin.math.pow
 
 class Tileserver(
     private val context: Context,
-    private val appPreferenceRepository: AppPreferenceRepository
+    private val appPreferences: AppPreferences
 ) {
-    private val TAG = "Tileserver"
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? =
         null
     private var port: Int = -1
@@ -37,7 +36,6 @@ class Tileserver(
     private var landcoverDatabase: SQLiteDatabase? = null
     private var basemapDatabase: SQLiteDatabase? = null
     private var offlineAreasDatabase: SQLiteDatabase? = null
-    private val SINGLE_DATABASE_NAME = "offline_areas.mbtiles"
 
     // HTTP client for fetching tiles from the internet
     private val httpClient = HttpClient(io.ktor.client.engine.android.Android) {
@@ -361,7 +359,7 @@ class Tileserver(
                 )
 
             // Open or create the offline areas database
-            val offlineAreasFile = File(context.filesDir, SINGLE_DATABASE_NAME)
+            val offlineAreasFile = File(context.filesDir, OFFLINE_DATABASE_NAME)
             offlineAreasDatabase =
                 SQLiteDatabase.openOrCreateDatabase(
                     offlineAreasFile.absolutePath,
@@ -530,7 +528,7 @@ class Tileserver(
      * Check if the app is in offline mode
      */
     private fun isOfflineMode(): Boolean {
-        return appPreferenceRepository.offlineMode.value
+        return appPreferences.loadOfflineMode()
     }
 
     /**
@@ -559,5 +557,10 @@ class Tileserver(
             Log.e(TAG, "Error fetching tile from internet", e)
             null
         }
+    }
+
+    companion object {
+        private const val TAG = "Tileserver"
+        private const val OFFLINE_DATABASE_NAME = "offline_areas.mbtiles"
     }
 }

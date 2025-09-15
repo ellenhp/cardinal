@@ -5,18 +5,13 @@ import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
-import earth.maps.cardinal.data.AppPreferenceRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import earth.maps.cardinal.data.AppPreferences
 
 class TileserverService : Service() {
     private lateinit var tileserver: Tileserver
-    private val TAG = "TileserverService"
 
     // For accessing offline mode preference
-    private lateinit var appPreferenceRepository: AppPreferenceRepository
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private lateinit var appPreferences: AppPreferences
 
     // Binder given to clients
     private val binder = LocalBinder()
@@ -30,10 +25,10 @@ class TileserverService : Service() {
         Log.d(TAG, "Creating tile server service")
 
         // Initialize the AppPreferenceRepository
-        appPreferenceRepository = AppPreferenceRepository(this)
+        appPreferences = AppPreferences(this)
 
         tileserver =
-            Tileserver(this, appPreferenceRepository) // Pass context and repository to Tileserver
+            Tileserver(this, appPreferences) // Pass context and repository to Tileserver
         tileserver.start()
         Log.d(TAG, "Tile server service created and started")
     }
@@ -59,5 +54,9 @@ class TileserverService : Service() {
 
     fun getPort(): Int {
         return tileserver.getPort()
+    }
+
+    companion object {
+        private const val TAG = "TileserverService"
     }
 }

@@ -1,5 +1,6 @@
 [versions]
 agp = "8.13.0"
+androidaddressformatter = "8f279fe"
 desugar_jdk_libs = "2.1.5"
 kotlin = "2.2.10"
 ksp = "2.2.10-2.0.2"
@@ -26,6 +27,7 @@ ferrostar = "0.41.0"
 okhttp3 = "5.1.0"
 
 [libraries]
+androidaddressformatter = { module = "com.github.woheller69:AndroidAddressFormatter", version.ref = "androidaddressformatter" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
 desugar_jdk_libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar_jdk_libs" }
