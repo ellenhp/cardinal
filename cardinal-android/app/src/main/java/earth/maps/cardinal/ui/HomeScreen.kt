@@ -53,6 +53,7 @@ import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.deduplicateSearchResults
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import kotlin.math.abs
@@ -354,17 +355,4 @@ fun generatePlaceId(result: GeocodeResult): Int {
 
     // Generate a hash code and ensure it's positive
     return abs(uniqueString.hashCode())
-}
-
-fun deduplicateSearchResults(results: List<GeocodeResult>): List<GeocodeResult> {
-    val deduplicated = mutableListOf<GeocodeResult>()
-    val seenPlaceIds = mutableSetOf<Int>()
-    for (result in results) {
-        val placeId = generatePlaceId(result)
-        if (!seenPlaceIds.contains(placeId)) {
-            seenPlaceIds.add(placeId)
-            deduplicated.add(result)
-        }
-    }
-    return deduplicated
 }

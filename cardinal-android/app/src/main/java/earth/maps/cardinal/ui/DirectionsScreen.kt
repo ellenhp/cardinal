@@ -19,7 +19,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,12 +40,15 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R
+import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
+import earth.maps.cardinal.data.deduplicateSearchResults
 import earth.maps.cardinal.viewmodel.DirectionsViewModel
 import kotlinx.coroutines.Job
 import uniffi.ferrostar.Route
@@ -166,6 +171,15 @@ fun DirectionsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
+                )
+
+                // Inset horizontal divider
+                HorizontalDivider(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = dimensionResource(dimen.padding) / 2),
+                    thickness = DividerDefaults.Thickness,
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
             }
 
@@ -511,7 +525,7 @@ private fun FerrostarRouteResults(
                     }
 
                     Button(
-                        onClick = { 
+                        onClick = {
                             viewModel.startNavigation(navigationCoordinator)
                         },
                         modifier = Modifier.fillMaxWidth()

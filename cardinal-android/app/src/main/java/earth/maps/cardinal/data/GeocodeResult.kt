@@ -2,6 +2,7 @@ package earth.maps.cardinal.data
 
 import android.util.Log
 import com.google.gson.Gson
+import earth.maps.cardinal.ui.generatePlaceId
 import org.woheller69.AndroidAddressFormatter.AndroidAddressFormatter
 
 data class GeocodeResult(
@@ -47,4 +48,8 @@ data class Address(
     companion object {
         const val TAG = "Address"
     }
+}
+
+fun deduplicateSearchResults(results: List<GeocodeResult>): List<GeocodeResult> {
+    return results.distinctBy { generatePlaceId(it) }
 }

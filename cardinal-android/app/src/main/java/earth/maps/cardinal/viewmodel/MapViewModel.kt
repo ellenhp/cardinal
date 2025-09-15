@@ -57,7 +57,6 @@ class MapViewModel @Inject constructor(
     private val _locationFlow: MutableStateFlow<Location?> = MutableStateFlow(null)
     val locationFlow: StateFlow<Location?> = _locationFlow.asStateFlow()
 
-
     // Location listener for continuous updates
     private var locationListener: LocationListener? = null
 
