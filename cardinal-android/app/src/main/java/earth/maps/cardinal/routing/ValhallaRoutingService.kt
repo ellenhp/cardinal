@@ -94,7 +94,7 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
 
             Log.d(TAG, "Request body: $requestBody")
 
-            val config = appPreferenceRepository.valhallaApiConfig.first()
+            val config = appPreferenceRepository.valhallaApiConfig.value
             val url = if (config.apiKey != null) {
                 "${config.baseUrl}?api_key=${config.apiKey}"
             } else {

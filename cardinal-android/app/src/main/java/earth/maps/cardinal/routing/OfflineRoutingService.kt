@@ -44,8 +44,7 @@ class OfflineRoutingService(private val context: Context) : RoutingService {
             val routeResult = parseRouteResponse(valhallaResponse.jsonResponse)
             emit(routeResult)
         } catch (e: Exception) {
-            // In a real implementation, you might want to emit a default/error RouteResult
-            // For now, we'll rethrow the exception which will be handled by the caller
+            // TODO: Deal with exceptions somehow.
             throw e
         }
     }
@@ -62,8 +61,7 @@ class OfflineRoutingService(private val context: Context) : RoutingService {
             
             // Parse geometry from the first leg if available
             val geometry = if (legs.isNotEmpty()) {
-                // For now, we'll create a simple geometry object
-                // In a real implementation, you would decode the polyline
+                // TODO: Decode the polyline.
                 RouteGeometry(
                     type = "LineString",
                     coordinates = emptyList()

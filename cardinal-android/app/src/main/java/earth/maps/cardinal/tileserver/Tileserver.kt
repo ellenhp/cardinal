@@ -6,7 +6,6 @@ import android.util.Log
 import earth.maps.cardinal.R
 import earth.maps.cardinal.data.AppPreferenceRepository
 import io.ktor.client.HttpClient
-import kotlinx.coroutines.flow.first
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.ContentType
@@ -396,6 +395,17 @@ class Tileserver(
 
             db.execSQL(
                 """
+                CREATE TABLE IF NOT EXISTS valhalla_tiles (
+                    hierarchy_level INTEGER,
+                    tile_index INTEGER,
+                    file_path TEXT,
+                    area_id TEXT
+                )
+                """.trimIndent()
+            )
+
+            db.execSQL(
+                """
                 CREATE TABLE IF NOT EXISTS areas (
                     area_id TEXT PRIMARY KEY,
                     name TEXT,
@@ -411,6 +421,7 @@ class Tileserver(
             )
 
             db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS tile_index ON tiles (zoom_level, tile_column, tile_row, area_id)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS valhalla_tile_index ON valhalla_tiles (hierarchy_level, tile_index, area_id)")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing offline areas schema", e)
         }
@@ -518,8 +529,8 @@ class Tileserver(
     /**
      * Check if the app is in offline mode
      */
-    private suspend fun isOfflineMode(): Boolean {
-        return appPreferenceRepository.offlineMode.first()
+    private fun isOfflineMode(): Boolean {
+        return appPreferenceRepository.offlineMode.value
     }
 
     /**

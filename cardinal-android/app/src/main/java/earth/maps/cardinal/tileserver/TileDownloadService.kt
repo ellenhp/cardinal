@@ -18,8 +18,14 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.math.*
+import kotlin.math.cos
+import kotlin.math.ln
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.pow
+import kotlin.math.tan
 
 class TileDownloadService(
     private val context: Context,
@@ -50,7 +56,8 @@ class TileDownloadService(
         maxZoom: Int,
         areaId: String,
         name: String,
-        progressCallback: (progress: Int, total: Int) -> Unit,
+        basemapProgressCallback: (progress: Int, total: Int) -> Unit,
+        valhallaProgressCallback: (progress: Int, total: Int) -> Unit,
         completionCallback: (success: Boolean, fileSize: Long) -> Unit
     ) {
         downloadJob = coroutineScope.launch {
@@ -58,7 +65,7 @@ class TileDownloadService(
                 north, south, east, west,
                 minZoom, maxZoom,
                 areaId, name,
-                progressCallback, completionCallback
+                basemapProgressCallback, valhallaProgressCallback, completionCallback
             )
         }
     }
@@ -72,7 +79,8 @@ class TileDownloadService(
         maxZoom: Int,
         areaId: String,
         name: String,
-        progressCallback: (progress: Int, total: Int) -> Unit,
+        basemapProgressCallback: (progress: Int, total: Int) -> Unit,
+        valhallaProgressCallback: (progress: Int, total: Int) -> Unit,
         completionCallback: (success: Boolean, fileSize: Long) -> Unit
     ) {
         var db: SQLiteDatabase? = null
@@ -94,7 +102,14 @@ class TileDownloadService(
             }
 
             // Calculate total tiles to download
-            val totalTiles = calculateTotalTiles(north, south, east, west, minZoom, min(maxZoom, MAX_BASEMAP_ZOOM))
+            val totalTiles = calculateTotalTiles(
+                north,
+                south,
+                east,
+                west,
+                minZoom,
+                min(maxZoom, MAX_BASEMAP_ZOOM)
+            )
             Log.d(TAG, "Total tiles to download: $totalTiles")
 
             // Log the number of tiles already in the database
@@ -104,34 +119,36 @@ class TileDownloadService(
             tileProcessor?.beginTileProcessing()
             Log.d(TAG, "Tile processor initialized")
 
-            // Process tiles in chunks to maintain bounded memory usage
-            val downloadedTilesData = mutableListOf<Triple<Int, Pair<Int, Int>, ByteArray>>()
-
-            // Initialize downloaded count for progress tracking
-            val downloadedCount = AtomicInteger(0)
-            val failedCount = AtomicInteger(0)
-
-            try {
-                // Materialize all tile coordinates first to simplify processing
-                val tileCoordinates = generateTileCoordinates(north, south, east, west, minZoom, min(maxZoom, MAX_BASEMAP_ZOOM))
-
-                Log.d(TAG, "Total tiles to process: ${tileCoordinates.size}")
-
-                for (chunk in tileCoordinates.chunked(MAX_CONCURRENT_DOWNLOADS)) {
-                    // Process this batch with parallel downloads
-                    val results = processBatch(chunk, areaId, progressCallback, totalTiles, downloadedCount, failedCount)
-                    // Filter out null results and add to our list
-                    downloadedTilesData.addAll(results.filterNotNull())
-                }
-
-                // Batch insert all downloaded tiles in a transaction
-                batchInsertTiles(db, downloadedTilesData, areaId)
-
-                Log.d(TAG, "Download complete: ${downloadedTilesData.size} tiles downloaded, ${failedCount.get()} failed")
-            } finally {
-                tileProcessor?.endTileProcessing()
-                Log.d(TAG, "Tile processing completed")
+            // Launch basemap and Valhalla downloads in parallel
+            val basemapJob = coroutineScope.async {
+                downloadBasemapTiles(
+                    north, south, east, west, minZoom, min(maxZoom, MAX_BASEMAP_ZOOM),
+                    areaId, basemapProgressCallback
+                )
             }
+
+            val valhallaJob = coroutineScope.async {
+                val db = db!!
+                return@async downloadValhallaTiles(
+                    north, south, east, west, areaId, db, valhallaProgressCallback
+                )
+            }
+
+            // Wait for both downloads to complete
+            val basemapResult = basemapJob.await()
+            val valhallaResult = valhallaJob.await()
+
+            // Batch insert all downloaded basemap tiles in a transaction
+            batchInsertTiles(db, basemapResult.first, areaId)
+
+            Log.d(
+                TAG,
+                "Download complete: ${basemapResult.first.size} basemap tiles downloaded, ${basemapResult.second} failed"
+            )
+            Log.d(
+                TAG,
+                "Valhalla download complete: ${valhallaResult.first} tiles downloaded, ${valhallaResult.second} failed"
+            )
 
             // Log the number of tiles in the database after download
             val finalTileCount = getTileCount(db)
@@ -147,18 +164,197 @@ class TileDownloadService(
             // Get the actual file size
             val fileSize = outputFile.length()
 
-            Log.d(TAG, "Tile download completed. ${downloadedTilesData.size} tiles downloaded, ${failedCount.get()} failed. File size: $fileSize bytes")
+            Log.d(
+                TAG,
+                "Tile download completed. ${basemapResult.first.size} basemap tiles, ${valhallaResult.first} valhalla tiles downloaded. File size: $fileSize bytes"
+            )
             completionCallback(true, fileSize)
         } catch (e: Exception) {
             Log.e(TAG, "Error downloading tiles for area $name (ID: $areaId)", e)
             completionCallback(false, 0L)
         } finally {
+            tileProcessor?.endTileProcessing()
+            Log.d(TAG, "Tile processing completed")
             // Close database if it's open
             try {
                 db?.close()
             } catch (closeException: Exception) {
                 Log.e(TAG, "Error closing database", closeException)
             }
+        }
+    }
+
+    /**
+     * Download basemap tiles for the given bounds
+     */
+    private suspend fun downloadBasemapTiles(
+        north: Double,
+        south: Double,
+        east: Double,
+        west: Double,
+        minZoom: Int,
+        maxZoom: Int,
+        areaId: String,
+        progressCallback: (progress: Int, total: Int) -> Unit
+    ): Pair<List<Triple<Int, Pair<Int, Int>, ByteArray>>, Int> {
+        val downloadedTilesData = mutableListOf<Triple<Int, Pair<Int, Int>, ByteArray>>()
+        val downloadedCount = AtomicInteger(0)
+        val failedCount = AtomicInteger(0)
+
+        // Calculate total tiles
+        val totalTiles = calculateTotalTiles(north, south, east, west, minZoom, maxZoom)
+
+        // Materialize all tile coordinates first to simplify processing
+        val tileCoordinates = generateTileCoordinates(north, south, east, west, minZoom, maxZoom)
+
+        Log.d(TAG, "Total basemap tiles to process: ${tileCoordinates.size}")
+
+        for (chunk in tileCoordinates.chunked(MAX_CONCURRENT_DOWNLOADS)) {
+            // Process this batch with parallel downloads
+            val results = processBatch(
+                chunk,
+                areaId,
+                progressCallback,
+                totalTiles,
+                downloadedCount,
+                failedCount
+            )
+            // Filter out null results and add to our list
+            downloadedTilesData.addAll(results.filterNotNull())
+        }
+
+        return Pair(downloadedTilesData, failedCount.get())
+    }
+
+    /**
+     * Download Valhalla tiles for the given bounds
+     */
+    private suspend fun downloadValhallaTiles(
+        north: Double,
+        south: Double,
+        east: Double,
+        west: Double,
+        areaId: String,
+        db: SQLiteDatabase,
+        progressCallback: (progress: Int, total: Int) -> Unit
+    ): Pair<Int, Int> {
+        // Get Valhalla tiles for the bounding box
+        val valhallaTiles = ValhallaTileUtils.tilesForBoundingBox(west, south, east, north)
+        val totalValhallaTiles = valhallaTiles.size
+        val downloadedCount = AtomicInteger(0)
+        val failedCount = AtomicInteger(0)
+
+        Log.d(TAG, "Total Valhalla tiles to download: $totalValhallaTiles")
+
+        // Create valhalla tiles directory
+        val valhallaTilesDir = File(context.filesDir, "valhalla_tiles")
+        if (!valhallaTilesDir.exists()) {
+            valhallaTilesDir.mkdirs()
+        }
+
+        // Process Valhalla tiles in chunks
+        for (chunk in valhallaTiles.chunked(MAX_CONCURRENT_DOWNLOADS)) {
+            val downloadTasks = chunk.map { (hierarchyLevel, tileIndex) ->
+                coroutineScope.async {
+                    val (success, filePath) = downloadValhallaTile(
+                        hierarchyLevel,
+                        tileIndex,
+                    )
+                    if (success && filePath != null) {
+                        // Store tile reference in database
+                        storeValhallaTileReference(db, hierarchyLevel, tileIndex, filePath, areaId)
+
+                        // Update progress
+                        val currentProgress = downloadedCount.incrementAndGet()
+                        progressCallback(currentProgress, totalValhallaTiles)
+                        true
+                    } else {
+                        failedCount.incrementAndGet()
+                        false
+                    }
+                }
+            }
+
+            // Wait for all downloads in this batch to complete
+            downloadTasks.awaitAll()
+        }
+
+        return Pair(downloadedCount.get(), failedCount.get())
+    }
+
+    /**
+     * Download a single Valhalla tile and save it to disk
+     */
+    private suspend fun downloadValhallaTile(
+        hierarchyLevel: Int,
+        tileIndex: Int,
+    ): Pair<Boolean, String?> = withContext(Dispatchers.IO) {
+        try {
+            val url = ValhallaTileUtils.getTileUrl(
+                "https://cardinaldata.airmail.rs/valhalla-250825",
+                hierarchyLevel,
+                tileIndex
+            )
+
+            Log.v(TAG, "Downloading Valhalla tile $hierarchyLevel/$tileIndex from $url")
+
+            // Use ktor to get the tile data
+            val response = httpClient.get(url)
+            
+            // Check response code
+            if (response.status.value != 200) {
+                Log.e(TAG, "Error downloading Valhalla tile $hierarchyLevel/$tileIndex: HTTP ${response.status}")
+                return@withContext Pair(false, null)
+            }
+
+            val data = response.body<ByteArray>()
+
+            // Create file path for the tile
+            val tileFile = ValhallaTileUtils.getLocalTileFilePath(
+                File("${context.filesDir}/valhalla_tiles/"),
+                hierarchyLevel,
+                tileIndex
+            )
+
+            // Write tile data to file
+            FileOutputStream(tileFile).use { outputStream ->
+                outputStream.write(data)
+            }
+
+            Log.v(
+                TAG,
+                "Downloaded Valhalla tile $hierarchyLevel/$tileIndex, size: ${data.size} bytes, saved to: ${tileFile.absolutePath}"
+            )
+
+            Pair(true, tileFile.absolutePath)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error downloading Valhalla tile $hierarchyLevel/$tileIndex via HTTP", e)
+            Pair(false, null)
+        }
+    }
+
+    /**
+     * Store Valhalla tile reference in database
+     */
+    private fun storeValhallaTileReference(
+        db: SQLiteDatabase,
+        hierarchyLevel: Int,
+        tileIndex: Int,
+        filePath: String,
+        areaId: String
+    ) {
+        try {
+            val statement = db.compileStatement(
+                "INSERT OR REPLACE INTO valhalla_tiles (hierarchy_level, tile_index, file_path, area_id) VALUES (?, ?, ?, ?)"
+            )
+            statement.bindLong(1, hierarchyLevel.toLong())
+            statement.bindLong(2, tileIndex.toLong())
+            statement.bindString(3, filePath)
+            statement.bindString(4, areaId)
+            statement.executeInsert()
+            statement.close()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error storing Valhalla tile reference for $hierarchyLevel/$tileIndex", e)
         }
     }
 
@@ -178,7 +374,10 @@ class TileDownloadService(
             val (minX, maxX, minY, maxY) = calculateTileRange(north, south, east, west, zoom)
             val zoomTileCount = (maxX - minX + 1) * (maxY - minY + 1)
             totalTiles += zoomTileCount
-            Log.d(TAG, "Zoom $zoom: tiles from ($minX,$minY) to ($maxX,$maxY), count: $zoomTileCount")
+            Log.d(
+                TAG,
+                "Zoom $zoom: tiles from ($minX,$minY) to ($maxX,$maxY), count: $zoomTileCount"
+            )
         }
         return totalTiles
     }
@@ -232,7 +431,7 @@ class TileDownloadService(
                     // Update progress
                     val currentProgress = downloadedCount.incrementAndGet()
                     progressCallback(currentProgress, totalTiles)
-                    
+
                     // Convert XYZ to TMS coordinate system for MBTiles
                     // MBTiles uses TMS (Tile Map Service) coordinate system where Y=0 is at the bottom
                     // Most map libraries use XYZ coordinate system where Y=0 is at the top
@@ -276,7 +475,19 @@ class TileDownloadService(
             """.trimIndent()
         )
 
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS valhalla_tiles (
+                hierarchy_level INTEGER,
+                tile_index INTEGER,
+                file_path TEXT,
+                area_id TEXT
+            )
+            """.trimIndent()
+        )
+
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS tile_index ON tiles (zoom_level, tile_column, tile_row, area_id)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS valhalla_tile_index ON valhalla_tiles (hierarchy_level, tile_index, area_id)")
 
         // Insert basic metadata
         db.execSQL("INSERT OR REPLACE INTO metadata (name, value) VALUES ('name', 'Cardinal Maps Offline Areas')")
@@ -360,6 +571,13 @@ class TileDownloadService(
 
             // Use ktor to get the tile data
             val response = httpClient.get(url)
+            
+            // Check response code
+            if (response.status.value != 200) {
+                Log.e(TAG, "Error downloading tile $layer/$zoom/$x/$y: HTTP ${response.status}")
+                return@withContext Pair(false, null)
+            }
+            
             val data = response.body<ByteArray>()
 
             Log.v(
@@ -553,6 +771,47 @@ class TileDownloadService(
                 "Deleted $actuallyDeletedTiles tiles for area ID: $areaId (shared tiles: $sharedTiles, total: ${tilesToDelete.size})"
             )
 
+            // Delete Valhalla tiles for this area
+            val valhallaTilesToDelete = getValhallaTilesForArea(db, areaId)
+            Log.d(TAG, "Found ${valhallaTilesToDelete.size} Valhalla tiles for area ID: $areaId")
+
+            var actuallyDeletedValhallaTiles = 0
+            var sharedValhallaTiles = 0
+            for (valhallaTile in valhallaTilesToDelete) {
+                // Check if this Valhalla tile is used by other areas
+                val isShared = isValhallaTileSharedWithOtherAreas(db, valhallaTile, areaId)
+                if (!isShared) {
+                    // Delete the physical file
+                    try {
+                        val file = File(valhallaTile.filePath)
+                        if (file.exists() && file.delete()) {
+                            Log.v(TAG, "Deleted Valhalla tile file: ${valhallaTile.filePath}")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error deleting Valhalla tile file: ${valhallaTile.filePath}", e)
+                    }
+
+                    // Delete from database
+                    val deleted = deleteValhallaTile(db, valhallaTile, areaId)
+                    actuallyDeletedValhallaTiles += deleted
+                    Log.v(
+                        TAG,
+                        "Deleted Valhalla tile ${valhallaTile.hierarchyLevel}/${valhallaTile.tileIndex} for area ID: $areaId"
+                    )
+                } else {
+                    sharedValhallaTiles++
+                    Log.v(
+                        TAG,
+                        "Skipping shared Valhalla tile ${valhallaTile.hierarchyLevel}/${valhallaTile.tileIndex} for area ID: $areaId"
+                    )
+                }
+            }
+
+            Log.d(
+                TAG,
+                "Deleted $actuallyDeletedValhallaTiles Valhalla tiles for area ID: $areaId (shared tiles: $sharedValhallaTiles, total: ${valhallaTilesToDelete.size})"
+            )
+
             // Also delete the area metadata
             val deletedMetadata = db.delete("areas", "area_id = ?", arrayOf(areaId))
             Log.d(TAG, "Deleted $deletedMetadata area metadata entries for area ID: $areaId")
@@ -597,7 +856,11 @@ class TileDownloadService(
     /**
      * Check if a tile is shared with other areas
      */
-    private fun isTileSharedWithOtherAreas(db: SQLiteDatabase, tile: TileCoordinates, areaId: String): Boolean {
+    private fun isTileSharedWithOtherAreas(
+        db: SQLiteDatabase,
+        tile: TileCoordinates,
+        areaId: String
+    ): Boolean {
         var cursor: android.database.Cursor? = null
         return try {
             cursor = db.rawQuery(
@@ -657,5 +920,80 @@ class TileDownloadService(
         } finally {
             cursor?.close()
         }
+    }
+
+    private data class ValhallaTileCoordinates(
+        val hierarchyLevel: Int,
+        val tileIndex: Int,
+        val filePath: String
+    )
+
+    /**
+     * Get all Valhalla tiles for a specific area
+     */
+    private fun getValhallaTilesForArea(
+        db: SQLiteDatabase,
+        areaId: String
+    ): List<ValhallaTileCoordinates> {
+        val tiles = mutableListOf<ValhallaTileCoordinates>()
+        var cursor: android.database.Cursor? = null
+        try {
+            cursor = db.rawQuery(
+                "SELECT hierarchy_level, tile_index, file_path FROM valhalla_tiles WHERE area_id = ?",
+                arrayOf(areaId)
+            )
+            while (cursor.moveToNext()) {
+                val hierarchyLevel = cursor.getInt(0)
+                val tileIndex = cursor.getInt(1)
+                val filePath = cursor.getString(2)
+                tiles.add(ValhallaTileCoordinates(hierarchyLevel, tileIndex, filePath))
+            }
+        } finally {
+            cursor?.close()
+        }
+        return tiles
+    }
+
+    /**
+     * Check if a Valhalla tile is shared with other areas
+     */
+    private fun isValhallaTileSharedWithOtherAreas(
+        db: SQLiteDatabase,
+        tile: ValhallaTileCoordinates,
+        areaId: String
+    ): Boolean {
+        var cursor: android.database.Cursor? = null
+        return try {
+            cursor = db.rawQuery(
+                "SELECT COUNT(*) FROM valhalla_tiles WHERE hierarchy_level = ? AND tile_index = ? AND area_id != ?",
+                arrayOf(
+                    tile.hierarchyLevel.toString(),
+                    tile.tileIndex.toString(),
+                    areaId
+                )
+            )
+            cursor.moveToFirst() && cursor.getInt(0) > 0
+        } finally {
+            cursor?.close()
+        }
+    }
+
+    /**
+     * Delete a specific Valhalla tile for an area
+     */
+    private fun deleteValhallaTile(
+        db: SQLiteDatabase,
+        tile: ValhallaTileCoordinates,
+        areaId: String
+    ): Int {
+        return db.delete(
+            "valhalla_tiles",
+            "hierarchy_level = ? AND tile_index = ? AND area_id = ?",
+            arrayOf(
+                tile.hierarchyLevel.toString(),
+                tile.tileIndex.toString(),
+                areaId
+            )
+        )
     }
 }

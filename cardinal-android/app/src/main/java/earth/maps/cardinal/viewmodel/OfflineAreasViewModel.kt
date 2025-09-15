@@ -72,7 +72,10 @@ class OfflineAreasViewModel @Inject constructor(
             )
 
             Log.d("OfflineAreasViewModel", "Starting download for area: $name (ID: $areaId)")
-            Log.d("OfflineAreasViewModel", "Bounds: N=$north, S=$south, E=$east, W=$west, Zoom: $minZoom-$maxZoom")
+            Log.d(
+                "OfflineAreasViewModel",
+                "Bounds: N=$north, S=$south, E=$east, W=$west, Zoom: $minZoom-$maxZoom"
+            )
 
             offlineAreaRepository.insertOfflineArea(offlineArea)
 
@@ -85,10 +88,16 @@ class OfflineAreasViewModel @Inject constructor(
                 { progress, total ->
                     downloadProgress.intValue = progress
                     totalTiles.intValue = total
-                    Log.v("OfflineAreasViewModel", "Download progress: $progress/$total")
+                    Log.v("OfflineAreasViewModel", "Basemap download progress: $progress/$total")
+                },
+                valhallaProgressCallback = { progress, total ->
+                    Log.v("OfflineAreasViewModel", "Valhalla download progress: $progress/$total")
                 },
                 { success, fileSize ->
-                    Log.d("OfflineAreasViewModel", "Download completed for area: $name (ID: $areaId), success: $success, file size: $fileSize")
+                    Log.d(
+                        "OfflineAreasViewModel",
+                        "Download completed for area: $name (ID: $areaId), success: $success, file size: $fileSize"
+                    )
                     // Update the offline area with the result
                     val updatedArea = if (success) {
                         offlineArea.copy(
