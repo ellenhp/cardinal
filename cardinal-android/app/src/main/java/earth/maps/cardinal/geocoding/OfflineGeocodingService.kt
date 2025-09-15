@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import earth.maps.cardinal.data.Address
 import earth.maps.cardinal.data.GeocodeResult
+import earth.maps.cardinal.data.LatLng
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import uniffi.cardinal_geocoder.newAirmailIndex
@@ -13,7 +14,7 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
     private val geocoderDir = File(context.filesDir, "geocoder").apply { mkdirs() }
     private val airmailIndex = newAirmailIndex("en", geocoderDir.absolutePath)
 
-    override suspend fun geocode(query: String): Flow<List<GeocodeResult>> = flow {
+    override suspend fun geocode(query: String, focusPoint: LatLng?): Flow<List<GeocodeResult>> = flow {
         try {
             val results = airmailIndex.searchPhrase(query)
             val geocodeResults = results.map { poi ->

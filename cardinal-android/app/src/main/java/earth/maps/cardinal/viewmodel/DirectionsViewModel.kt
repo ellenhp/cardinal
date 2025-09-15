@@ -10,6 +10,7 @@ import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
+import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
 import earth.maps.cardinal.ui.NavigationCoordinator
@@ -33,7 +34,8 @@ import javax.inject.Inject
 @HiltViewModel
 class DirectionsViewModel @Inject constructor(
     private val geocodingService: GeocodingService,
-    private val ferrostarWrapperRepository: FerrostarWrapperRepository
+    private val ferrostarWrapperRepository: FerrostarWrapperRepository,
+    private val viewportRepository: ViewportRepository
 ) : ViewModel() {
 
     // Search query flow for debouncing
@@ -174,7 +176,10 @@ class DirectionsViewModel @Inject constructor(
             isSearching = true
             searchError = null
             try {
-                geocodingService.geocode(query).collect { results ->
+                // Use fromPlace as focus point for viewport biasing if available,
+                // otherwise fall back to current viewport center
+                val focusPoint = fromPlace?.latLng ?: viewportRepository.viewportCenter.value
+                geocodingService.geocode(query, focusPoint).collect { results ->
                     geocodeResults.value = results
                     isSearching = false
                 }

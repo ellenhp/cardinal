@@ -2,6 +2,7 @@ package earth.maps.cardinal.geocoding
 
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.GeocodeResult
+import earth.maps.cardinal.data.LatLng
 import kotlinx.coroutines.flow.Flow
 
 class MultiplexedGeocodingService(
@@ -10,11 +11,11 @@ class MultiplexedGeocodingService(
     private val offlineGeocodingService: GeocodingService
 ) : GeocodingService {
 
-    override suspend fun geocode(query: String): Flow<List<GeocodeResult>> {
+    override suspend fun geocode(query: String, focusPoint: LatLng?): Flow<List<GeocodeResult>> {
         return if (appPreferenceRepository.offlineMode.value) {
-            offlineGeocodingService.geocode(query)
+            offlineGeocodingService.geocode(query, focusPoint)
         } else {
-            onlineGeocodingService.geocode(query)
+            onlineGeocodingService.geocode(query, focusPoint)
         }
     }
 

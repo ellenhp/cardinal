@@ -91,6 +91,11 @@ fun MapView(
         }
     }
 
+    // Update viewport center when camera position changes
+    LaunchedEffect(cameraState.position) {
+        mapViewModel.updateViewportCenter(cameraState.position)
+    }
+
     // Start continuous location updates when we have permission
     LaunchedEffect(hasLocationPermission) {
         if (hasLocationPermission) {

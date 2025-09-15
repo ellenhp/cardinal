@@ -52,8 +52,8 @@ import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.GeocodeResult
-import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.deduplicateSearchResults
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import kotlin.math.abs
@@ -69,7 +69,7 @@ fun HomeScreen(
     onSearchFocusChange: (Boolean) -> Unit
 ) {
     val savedPlaces = viewModel.savedPlaces.value
-    val geocodeResults = viewModel.geocodeResults.value
+    val geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value)
     val isSearching = viewModel.isSearching
     val searchQuery = viewModel.searchQuery
 
