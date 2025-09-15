@@ -346,10 +346,10 @@ fun DownloadAreaDialog(
 ) {
     val viewModel: OfflineAreasViewModel = hiltViewModel()
 
-    // Calculate default bounding box from current viewport - recalculate when viewport changes
-    val (defaultNorth, defaultSouth, defaultEast, defaultWest) = remember(currentViewport) {
-        calculateBoundingBoxFromViewport(currentViewport)
-    }
+    // Calculate default bounding box from current viewport
+    val (north, south, east, west) = calculateBoundingBoxFromViewport(
+        currentViewport
+    )
 
     // Pre-fill area name with current date/time
     val currentTime = System.currentTimeMillis()
@@ -362,11 +362,6 @@ fun DownloadAreaDialog(
     // Create a FocusRequester to request focus on the text field
     val focusRequester = remember { FocusRequester() }
 
-    // Convert to doubles and recalculate when viewport changes
-    val north = remember(defaultNorth) { defaultNorth.toDouble() }
-    val south = remember(defaultSouth) { defaultSouth.toDouble() }
-    val east = remember(defaultEast) { defaultEast.toDouble() }
-    val west = remember(defaultWest) { defaultWest.toDouble() }
     val minZoom = 7
     val maxZoom = 14
 
@@ -471,22 +466,17 @@ fun formatFileSize(bytes: Long): String {
 fun calculateBoundingBoxFromViewport(
     viewport: VisibleRegion
 ): BoundingBox {
-    val north = viewport.farLeft.latitude
-    val south = viewport.nearRight.latitude
-    val east = viewport.nearRight.longitude
-    val west = viewport.farLeft.longitude
-
     return BoundingBox(
-        north.toString(),
-        south.toString(),
-        east.toString(),
-        west.toString()
+        north = viewport.farLeft.latitude,
+        south = viewport.nearRight.latitude,
+        east = viewport.nearRight.longitude,
+        west = viewport.farLeft.longitude,
     )
 }
 
 data class BoundingBox(
-    val north: String,
-    val south: String,
-    val east: String,
-    val west: String
+    val north: Double,
+    val south: Double,
+    val east: Double,
+    val west: Double
 )
