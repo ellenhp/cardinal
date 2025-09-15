@@ -3,6 +3,7 @@ package earth.maps.cardinal.routing
 import android.util.Log
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.AppPreferenceRepository
+import earth.maps.cardinal.data.RoutingMode
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.android.Android
@@ -46,7 +47,7 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
     override suspend fun getRoute(
         origin: Place,
         destination: Place,
-        profile: String,
+        mode: RoutingMode,
         options: Map<String, Any>
     ): Flow<RouteResult> = flow {
         try {
@@ -65,7 +66,7 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
                         put("type", "break")
                     })
                 })
-                put("costing", profile)
+                put("costing", mode.value)
                 
                 // Add units from options or default to kilometers
                 val units = options["units"] as? String ?: "kilometers"
@@ -76,7 +77,7 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
                     val costingOptions = buildJsonObject {
                         val profileOptions = options.filterKeys { it != "units" }
                         if (profileOptions.isNotEmpty()) {
-                            put(profile, buildJsonObject {
+                            put(mode.value, buildJsonObject {
                                 profileOptions.forEach { (key, value) ->
                                     when (value) {
                                         is String -> put(key, value)
@@ -93,7 +94,7 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
 
             Log.d(TAG, "Request body: $requestBody")
 
-            val config = appPreferenceRepository.valhallaApiConfig.first()
+            val config = appPreferenceRepository.valhallaApiConfig.value
             val url = if (config.apiKey != null) {
                 "${config.baseUrl}?api_key=${config.apiKey}"
             } else {

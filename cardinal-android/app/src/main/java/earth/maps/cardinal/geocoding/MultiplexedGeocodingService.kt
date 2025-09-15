@@ -3,16 +3,15 @@ package earth.maps.cardinal.geocoding
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.GeocodeResult
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 
 class MultiplexedGeocodingService(
     private val appPreferenceRepository: AppPreferenceRepository,
     private val onlineGeocodingService: GeocodingService,
     private val offlineGeocodingService: GeocodingService
 ) : GeocodingService {
-    
+
     override suspend fun geocode(query: String): Flow<List<GeocodeResult>> {
-        return if (appPreferenceRepository.offlineMode.first()) {
+        return if (appPreferenceRepository.offlineMode.value) {
             offlineGeocodingService.geocode(query)
         } else {
             onlineGeocodingService.geocode(query)
@@ -23,7 +22,7 @@ class MultiplexedGeocodingService(
         latitude: Double,
         longitude: Double
     ): Flow<List<GeocodeResult>> {
-        return if (appPreferenceRepository.offlineMode.first()) {
+        return if (appPreferenceRepository.offlineMode.value) {
             offlineGeocodingService.reverseGeocode(latitude, longitude)
         } else {
             onlineGeocodingService.reverseGeocode(latitude, longitude)

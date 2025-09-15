@@ -19,6 +19,8 @@ hilt = "2.57.1"
 hiltPlugin = "2.57.1"
 hiltNavigationCompose = "1.2.0"
 cargo-ndk = "0.3.4"
+valhallaMobile = "0.1.6"
+valhallaMobileConfig = "0.0.9"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -55,6 +57,9 @@ gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+valhalla-mobile = { group = "io.github.rallista", name = "valhalla-mobile", version.ref = "valhallaMobile" }
+valhalla-config = { group = "io.github.rallista", name = "valhalla-models", version.ref = "valhallaMobileConfig" }
+valhalla-models = { group = "io.github.rallista", name = "valhalla-models-config", version.ref = "valhallaMobileConfig" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

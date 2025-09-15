@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "earth.maps.cardinal"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -44,19 +44,32 @@ android {
     applicationVariants.all {
         val variant = this
         val bDir = layout.buildDirectory.dir("generated/source/uniffi/${variant.name}/java").get()
-        val generateBindings = tasks.register<Exec>("generate${variant.name.capitalize()}UniFFIBindings") {
-             workingDir = file("../../cardinal-geocoder")
-            commandLine = listOf("cargo", "run", "--bin", "uniffi-bindgen", "generate", "--library", "../cardinal-android/app/src/main/jniLibs/arm64-v8a/libcardinal_geocoder.so", "--language", "kotlin", "--out-dir", bDir.toString())
-            
-            dependsOn("buildCargoNdkRelease")
-        }
-        
+        val generateBindings =
+            tasks.register<Exec>("generate${variant.name.capitalize()}UniFFIBindings") {
+                workingDir = file("../../cardinal-geocoder")
+                commandLine = listOf(
+                    "cargo",
+                    "run",
+                    "--bin",
+                    "uniffi-bindgen",
+                    "generate",
+                    "--library",
+                    "../cardinal-android/app/src/main/jniLibs/arm64-v8a/libcardinal_geocoder.so",
+                    "--language",
+                    "kotlin",
+                    "--out-dir",
+                    bDir.toString()
+                )
+
+                dependsOn("buildCargoNdkRelease")
+            }
+
         // Add dependency from Java compilation to generateBindings task
         tasks.named("compile${variant.name.capitalize()}JavaWithJavac") {
             dependsOn(generateBindings)
         }
     }
-    
+
     sourceSets {
         getByName("main") {
             java.srcDir(layout.buildDirectory.dir("generated/source/uniffi"))
@@ -82,6 +95,9 @@ dependencies {
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.ktor.client.logging)
+    implementation(libs.valhalla.mobile)
+    implementation(libs.valhalla.config)
+    implementation(libs.valhalla.models)
 
     // TODO: Migrate version to TOML (doesn't work). Likely related issue: https://github.com/gradle/gradle/issues/21267
     //noinspection UseTomlInstead
