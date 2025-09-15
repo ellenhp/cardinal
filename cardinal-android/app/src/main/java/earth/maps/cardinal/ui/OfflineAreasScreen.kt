@@ -367,11 +367,11 @@ fun DownloadAreaDialog(
 
     var nameError by remember { mutableStateOf(false) }
 
-    // Calculate estimated tile count (fixed zoom levels 7-14)
+    // Calculate estimated tile count (fixed zoom levels 7-14) - recalculate when bounds change
     val estimatedTileCount by remember(north, south, east, west) {
         mutableIntStateOf(
             if (north >= south && east >= west) {
-                viewModel.estimateTileCount(north.toDouble(), south, east, west, minZoom, maxZoom)
+                viewModel.estimateTileCount(north, south, east, west, minZoom, maxZoom)
             } else {
                 0
             }

@@ -24,8 +24,10 @@ data class PlaceEntity(
             name = name,
             type = type,
             icon = icon,
-            latitude = latitude,
-            longitude = longitude,
+            latLng = LatLng(
+                latitude = latitude,
+                longitude = longitude,
+            ),
             address = if (houseNumber != null || road != null || city != null || state != null || postcode != null || country != null) {
                 Address(
                     houseNumber = houseNumber,
@@ -48,8 +50,8 @@ data class PlaceEntity(
                 name = place.name,
                 type = place.type,
                 icon = place.icon,
-                latitude = place.latitude,
-                longitude = place.longitude,
+                latitude = place.latLng.latitude,
+                longitude = place.latLng.longitude,
                 houseNumber = place.address?.houseNumber,
                 road = place.address?.road,
                 city = place.address?.city,

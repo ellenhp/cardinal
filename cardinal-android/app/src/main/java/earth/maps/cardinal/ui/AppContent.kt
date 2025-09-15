@@ -53,6 +53,7 @@ import com.google.gson.Gson
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.data.AppPreferenceRepository
+import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.viewmodel.DirectionsViewModel
@@ -76,7 +77,8 @@ fun AppContent(
     port: Int?,
     onRequestLocationPermission: () -> Unit,
     hasLocationPermission: Boolean,
-    appPreferenceRepository: AppPreferenceRepository
+    appPreferenceRepository: AppPreferenceRepository,
+    navigationCoordinator: NavigationCoordinator
 ) {
     val mapPins = remember { mutableStateListOf<Position>() }
     val cameraState = rememberCameraState()
@@ -115,7 +117,7 @@ fun AppContent(
                 NavHost(
                     navController = navController, startDestination = "home"
                 ) {
-                    composable("home") {
+                    composable(Screen.Home.route) {
                         LaunchedEffect(key1 = Unit) {
                             // The home screen starts partially expanded.
                             coroutineScope.launch {
@@ -159,7 +161,7 @@ fun AppContent(
                             onSearchFocusChange = { isSearchFocused = it })
                     }
 
-                    composable("place_card?place={place}") { backStackEntry ->
+                    composable(Screen.PlaceCard.route) { backStackEntry ->
                         LaunchedEffect(key1 = Unit) {
                             // The place card starts partially expanded.
                             coroutineScope.launch {
@@ -174,7 +176,8 @@ fun AppContent(
                             viewModel.setPlace(place)
 
                             DisposableEffect(place) {
-                                val position = Position(place.longitude, place.latitude)
+                                val position =
+                                    Position(place.latLng.longitude, place.latLng.latitude)
                                 // Clear any existing pins and add the new one to ensure only one pin is shown at a time
                                 mapPins.clear()
                                 mapPins.add(position)
@@ -318,7 +321,8 @@ fun AppContent(
                             val fromPlace =
                                 fromPlaceJson?.let { Gson().fromJson(it, Place::class.java) }
                             val toPlaceJson = backStackEntry.arguments?.getString("toPlace")
-                            val toPlace = toPlaceJson?.let { Gson().fromJson(it, Place::class.java) }
+                            val toPlace =
+                                toPlaceJson?.let { Gson().fromJson(it, Place::class.java) }
 
                             if (fromPlace != null) {
                                 viewModel.updateFromPlace(
@@ -331,8 +335,10 @@ fun AppContent(
                                         id = Int.MAX_VALUE,
                                         type = "",
                                         icon = "",
-                                        latitude = currentLocation.latitude,
-                                        longitude = currentLocation.longitude,
+                                        latLng = LatLng(
+                                            latitude = currentLocation.latitude,
+                                            longitude = currentLocation.longitude,
+                                        ),
                                         isMyLocation = true
                                     )
                                 )
@@ -349,6 +355,7 @@ fun AppContent(
                                     bottomSheetState.expand()
                                 }
                             },
+                            navigationCoordinator = navigationCoordinator
                         )
                     }
                 }

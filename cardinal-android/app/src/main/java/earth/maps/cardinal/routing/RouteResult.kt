@@ -4,7 +4,7 @@ data class RouteResult(
     val distance: Double, // in meters or as specified by units
     val duration: Double, // in seconds
     val legs: List<RouteLeg>,
-    val geometry: RouteGeometry? = null,
+    val geometry: RouteGeometry,
     val units: String = "kilometers" // or "miles"
 )
 
@@ -20,8 +20,7 @@ data class RouteStep(
     val duration: Double,
     val instruction: String,
     val name: String,
-    val geometry: RouteGeometry? = null,
-    val maneuver: Maneuver
+    val geometry: RouteGeometry,
 )
 
 data class RouteGeometry(

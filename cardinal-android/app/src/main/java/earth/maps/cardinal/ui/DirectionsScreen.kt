@@ -44,9 +44,9 @@ import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
-import earth.maps.cardinal.routing.RouteResult
 import earth.maps.cardinal.viewmodel.DirectionsViewModel
 import kotlinx.coroutines.Job
+import uniffi.ferrostar.Route
 
 enum class FieldFocusState {
     NONE,
@@ -61,12 +61,13 @@ fun DirectionsScreen(
     onPeekHeightChange: (dp: Dp) -> Unit,
     onBack: () -> Unit,
     onFullExpansionRequired: () -> Job,
+    navigationCoordinator: NavigationCoordinator
 ) {
     var fieldFocusState by remember { mutableStateOf(FieldFocusState.NONE) }
     val isAnyFieldFocused = fieldFocusState != FieldFocusState.NONE
 
     // Get route result from ViewModel
-    val routeResult = viewModel.routeResult
+    val ferrostarRoute = viewModel.ferrostarRoute
     val isRouteLoading = viewModel.isRouteLoading
     val routeError = viewModel.routeError
 
@@ -189,10 +190,12 @@ fun DirectionsScreen(
                     )
                 }
 
-                routeResult != null -> {
-                    RouteResults(
-                        routeResult = routeResult,
-                        modifier = Modifier.fillMaxWidth()
+                ferrostarRoute != null -> {
+                    FerrostarRouteResults(
+                        ferrostarRoute = ferrostarRoute,
+                        viewModel = viewModel,
+                        modifier = Modifier.fillMaxWidth(),
+                        navigationCoordinator = navigationCoordinator
                     )
                 }
 
@@ -446,9 +449,11 @@ private fun SegmentedButton(
 }
 
 @Composable
-private fun RouteResults(
-    routeResult: RouteResult,
-    modifier: Modifier = Modifier
+private fun FerrostarRouteResults(
+    ferrostarRoute: Route,
+    viewModel: DirectionsViewModel,
+    modifier: Modifier = Modifier,
+    navigationCoordinator: NavigationCoordinator
 ) {
     LazyColumn(modifier = modifier) {
         item {
@@ -480,12 +485,14 @@ private fun RouteResults(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = "${String.format("%.1f", routeResult.distance / 1000)} km",
+                            text = "${String.format("%.1f", ferrostarRoute.distance / 1000)} km",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
 
+                    // Calculate total duration from steps
+                    val totalDuration = ferrostarRoute.steps.sumOf { it.duration }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -497,14 +504,16 @@ private fun RouteResults(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = "${(routeResult.duration / 60).toInt()} min",
+                            text = "${(totalDuration / 60).toInt()} min",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
 
                     Button(
-                        onClick = { /* Start navigation */ },
+                        onClick = { 
+                            viewModel.startNavigation(navigationCoordinator)
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.start_navigation))
@@ -514,50 +523,48 @@ private fun RouteResults(
         }
 
         // Actual route steps
-        routeResult.legs.forEach { leg ->
-            items(leg.steps.size) { index ->
-                val step = leg.steps[index]
-                Card(
+        items(ferrostarRoute.steps.size) { index ->
+            val step = ferrostarRoute.steps[index]
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
+                    // Step number
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .size(32.dp)
+                            .padding(4.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        // Step number
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .padding(4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "${index + 1}",
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-
-                        // Step instruction
                         Text(
-                            text = step.instruction,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 16.dp)
-                        )
-
-                        // Step distance
-                        Text(
-                            text = "${String.format("%.0f", step.distance * 1000)} m",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "${index + 1}",
+                            style = MaterialTheme.typography.labelLarge
                         )
                     }
+
+                    // Step instruction
+                    Text(
+                        text = step.instruction,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 16.dp)
+                    )
+
+                    // Step distance
+                    Text(
+                        text = "${String.format("%.0f", step.distance)} m",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }

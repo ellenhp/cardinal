@@ -14,11 +14,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.google.gson.Gson
 import dagger.hilt.android.AndroidEntryPoint
 import earth.maps.cardinal.data.AppPreferenceRepository
+import earth.maps.cardinal.data.RoutingMode
+import earth.maps.cardinal.routing.FerrostarWrapperRepository
 import earth.maps.cardinal.tileserver.TileserverService
 import earth.maps.cardinal.ui.AppContent
+import earth.maps.cardinal.ui.NavigationCoordinator
+import earth.maps.cardinal.ui.Screen
+import earth.maps.cardinal.ui.TurnByTurnNavigationScreen
 import earth.maps.cardinal.ui.theme.AppTheme
 import earth.maps.cardinal.viewmodel.MapViewModel
 import javax.inject.Inject
@@ -28,7 +36,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var appPreferenceRepository: AppPreferenceRepository
-    
+
     private var tileserverService: TileserverService? = null
     private var bound by mutableStateOf(false)
     private var port by mutableStateOf<Int?>(null)
@@ -76,14 +84,57 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val mapViewModel: MapViewModel = hiltViewModel()
 
-                AppContent(
+                NavHost(
                     navController = navController,
-                    mapViewModel = mapViewModel,
-                    port = port,
-                    onRequestLocationPermission = { requestLocationPermission() },
-                    hasLocationPermission = hasLocationPermission,
-                    appPreferenceRepository = appPreferenceRepository
-                )
+                    startDestination = "main"
+                ) {
+                    composable("main") {
+                        val innerNavController = rememberNavController()
+                        val coordinator = NavigationCoordinator(
+                            mainNavController = navController,
+                            bottomSheetNavController = innerNavController
+                        )
+
+                        AppContent(
+                            navController = innerNavController,
+                            mapViewModel = mapViewModel,
+                            port = port,
+                            onRequestLocationPermission = { requestLocationPermission() },
+                            hasLocationPermission = hasLocationPermission,
+                            appPreferenceRepository = appPreferenceRepository,
+                            navigationCoordinator = coordinator
+                        )
+                    }
+
+                    composable("turn_by_turn?ferrostarRoute={ferrostarRoute}&routingMode={routingMode}") { backStackEntry ->
+                        val ferrostarRouteJson = backStackEntry.arguments?.getString("ferrostarRoute")
+                        val routingModeJson = backStackEntry.arguments?.getString("routingMode")
+                        
+                        val ferrostarRoute = ferrostarRouteJson?.let { 
+                            try {
+                                Gson().fromJson(it, uniffi.ferrostar.Route::class.java)
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                        
+                        val routingMode = routingModeJson?.let {
+                            try {
+                                Gson().fromJson(it, RoutingMode::class.java)
+                            } catch (e: Exception) {
+                                RoutingMode.AUTO
+                            }
+                        } ?: RoutingMode.AUTO
+                        
+                        port?.let { port ->
+                            TurnByTurnNavigationScreen(
+                                port = port,
+                                mode = routingMode,
+                                route = ferrostarRoute
+                            )
+                        }
+                    }
+                }
             }
         }
     }

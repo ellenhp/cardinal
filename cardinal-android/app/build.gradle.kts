@@ -31,11 +31,12 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "1.8"
     }
     buildFeatures {
         compose = true
@@ -98,10 +99,16 @@ dependencies {
     implementation(libs.valhalla.mobile)
     implementation(libs.valhalla.config)
     implementation(libs.valhalla.models)
+    implementation(libs.ferrostar.core)
+    implementation(libs.ferrostar.maplibreui)
+    implementation(libs.ferrostar.composeui)
+    implementation(libs.okhttp3)
 
     // TODO: Migrate version to TOML (doesn't work). Likely related issue: https://github.com/gradle/gradle/issues/21267
     //noinspection UseTomlInstead
     implementation("net.java.dev.jna:jna:5.17.0@aar")
+
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
