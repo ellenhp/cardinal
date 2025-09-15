@@ -6,16 +6,6 @@ Thank you for your interest in contributing to Cardinal Maps! We would love your
 
 First things first, the Cardinal project adheres to the [Rust Code of Conduct](https://www.rust-lang.org/policies/code-of-conduct). You are expected to uphold these values while participating. Please report unacceptable behavior to [the lead maintainer](mailto:ellen.h.poe@gmail.com).
 
-## Generative AI Policy
-
-Unlike quite a few projects, we do accept contributions created with generative AI tooling with some very important caveats:
-
-1. You must fully review all AI-generated code before submission (this should be obvious, and yet...)
-2. Contributors are themselves responsible for the quality and correctness of all code, including AI-generated code they submit
-3. Core business logic should not be "vibe-coded"--you may use AI for boilerplate, code review or idea generation, but not for making intricate changes to core functionality that you don't fully understand
-
-Please see our full [Generative AI Policy](GEN_AI_POLICY.md) for more details. Do not abuse this policy.
-
 ## How to Contribute
 
 ### Reporting Issues
@@ -91,3 +81,14 @@ If you need help with your contribution, feel free to:
 - Ask questions in the PR comments
 - Open an issue for discussion about larger changes
 - Contact the maintainers directly
+
+## Generative AI Policy
+
+Unlike quite a few projects, we do accept contributions created with generative AI tooling with some very important caveats:
+
+1. You must fully review all AI-generated code before submission (this should be obvious, and yet...)
+2. Contributors are themselves responsible for the quality and correctness of all code, including AI-generated code they submit
+3. Core business logic should not be "vibe-coded"—you may use AI for boilerplate, code review or idea generation, but not for making intricate changes to core functionality that you don't fully understand
+
+Please see our full [Generative AI Policy](GEN_AI_POLICY.md) for more details. Do not abuse this policy.
+
