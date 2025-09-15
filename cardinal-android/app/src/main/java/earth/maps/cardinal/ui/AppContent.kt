@@ -228,7 +228,16 @@ fun AppContent(
                             }
                         }
                         val viewModel: OfflineAreasViewModel = hiltViewModel()
-                        cameraState.projection?.queryVisibleRegion()?.let { visibleRegion ->
+                        
+                        // Track the current viewport reactively
+                        var currentViewport by remember { mutableStateOf(cameraState.projection?.queryVisibleRegion()) }
+                        
+                        // Update viewport when camera state changes
+                        LaunchedEffect(cameraState.position) {
+                            currentViewport = cameraState.projection?.queryVisibleRegion()
+                        }
+                        
+                        currentViewport?.let { visibleRegion ->
                             OfflineAreasScreen(
                                 currentViewport = visibleRegion,
                                 viewModel = viewModel,
