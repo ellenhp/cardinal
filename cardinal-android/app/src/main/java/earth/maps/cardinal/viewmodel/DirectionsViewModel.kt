@@ -7,11 +7,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.GeocodeResult
+import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.geocoding.GeocodingService
-import earth.maps.cardinal.routing.RouteResult
-import earth.maps.cardinal.routing.RoutingService
+import earth.maps.cardinal.routing.FerrostarWrapperRepository
+import earth.maps.cardinal.ui.NavigationCoordinator
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,13 +22,18 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import uniffi.ferrostar.GeographicCoordinate
+import uniffi.ferrostar.Route
+import uniffi.ferrostar.UserLocation
+import uniffi.ferrostar.Waypoint
+import uniffi.ferrostar.WaypointKind
 import javax.inject.Inject
 
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class DirectionsViewModel @Inject constructor(
     private val geocodingService: GeocodingService,
-    private val routingService: RoutingService
+    private val ferrostarWrapperRepository: FerrostarWrapperRepository
 ) : ViewModel() {
 
     // Search query flow for debouncing
@@ -55,8 +61,8 @@ class DirectionsViewModel @Inject constructor(
     var selectedRoutingMode by mutableStateOf(RoutingMode.AUTO)
         private set
 
-    // Route result state
-    var routeResult by mutableStateOf<RouteResult?>(null)
+    // Route result state - using Ferrostar's native Route format
+    var ferrostarRoute by mutableStateOf<Route?>(null)
         private set
 
     var isRouteLoading by mutableStateOf(false)
@@ -104,8 +110,8 @@ class DirectionsViewModel @Inject constructor(
             fetchRoute(origin, destination)
         } else {
             isRouteLoading = false
-            routeError = null;
-            routeResult = null
+            routeError = null
+            ferrostarRoute = null
         }
     }
 
@@ -114,17 +120,39 @@ class DirectionsViewModel @Inject constructor(
             isRouteLoading = true
             routeError = null
             try {
-                routingService.getRoute(
-                    origin = origin,
-                    destination = destination,
-                    mode = selectedRoutingMode
-                ).collect { result ->
-                    routeResult = result
-                    isRouteLoading = false
+                // Get the appropriate FerrostarWrapper based on routing mode
+                val ferrostarWrapper = when (selectedRoutingMode) {
+                    RoutingMode.AUTO -> ferrostarWrapperRepository.driving
+                    RoutingMode.PEDESTRIAN -> ferrostarWrapperRepository.walking
+                    RoutingMode.BICYCLE -> ferrostarWrapperRepository.cycling
                 }
+
+                // Create waypoints for Ferrostar
+                val waypoints = listOf(
+                    Waypoint(
+                        coordinate = GeographicCoordinate(origin.latLng.latitude, origin.latLng.longitude),
+                        kind = WaypointKind.BREAK
+                    ),
+                    Waypoint(
+                        coordinate = GeographicCoordinate(destination.latLng.latitude, destination.latLng.longitude),
+                        kind = WaypointKind.BREAK
+                    )
+                )
+                val userLocation = UserLocation(
+                    coordinates = GeographicCoordinate(origin.latLng.latitude, origin.latLng.longitude),
+                    horizontalAccuracy = 10.0,
+                    courseOverGround = null,
+                    timestamp = java.time.Instant.now(),
+                    speed = null
+                )
+
+                // Get routes from Ferrostar
+                val routes = ferrostarWrapper.core.getRoutes(userLocation, waypoints)
+                ferrostarRoute = routes.firstOrNull()
+                isRouteLoading = false
             } catch (e: Exception) {
                 routeError = e.message ?: "An error occurred while fetching the route"
-                routeResult = null
+                ferrostarRoute = null
                 isRouteLoading = false
             }
         }
@@ -133,6 +161,12 @@ class DirectionsViewModel @Inject constructor(
     fun updateRoutingMode(mode: RoutingMode) {
         selectedRoutingMode = mode
         fetchRouteIfNeeded()
+    }
+
+    fun startNavigation(navigationCoordinator: NavigationCoordinator) {
+        ferrostarRoute?.let { route ->
+            navigationCoordinator.navigateToTurnByTurnWithFerrostarRoute(route, selectedRoutingMode)
+        }
     }
 
     private fun performSearch(query: String) {

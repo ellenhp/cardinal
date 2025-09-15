@@ -5,8 +5,12 @@ data class Place(
     val name: String,
     val type: String,
     val icon: String,
-    val latitude: Double,
-    val longitude: Double,
+    val latLng: LatLng,
     val address: Address? = null,
     val isMyLocation: Boolean = false,
+)
+
+data class LatLng(
+    val latitude: Double,
+    val longitude: Double,
 )

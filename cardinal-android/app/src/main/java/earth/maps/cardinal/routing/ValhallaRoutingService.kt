@@ -1,8 +1,8 @@
 package earth.maps.cardinal.routing
 
 import android.util.Log
-import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.AppPreferenceRepository
+import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.RoutingMode
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -15,14 +15,9 @@ import io.ktor.client.request.url
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.doubleOrNull
@@ -30,10 +25,12 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import org.maplibre.geojson.utils.PolylineUtils
 
 private const val TAG = "ValhallaRouting"
 
-class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceRepository) : RoutingService {
+class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceRepository) :
+    RoutingService {
     private val client = HttpClient(Android) {
         install(ContentNegotiation) {
             json(Json {
@@ -45,14 +42,12 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
     }
 
     override suspend fun getRoute(
-        origin: Place,
-        destination: Place,
+        origin: LatLng,
+        destination: LatLng,
         mode: RoutingMode,
         options: Map<String, Any>
-    ): Flow<RouteResult> = flow {
+    ): RouteResult {
         try {
-            Log.d(TAG, "Getting route from ${origin.name} to ${destination.name}")
-
             val requestBody = buildJsonObject {
                 put("locations", buildJsonArray {
                     add(buildJsonObject {
@@ -67,11 +62,11 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
                     })
                 })
                 put("costing", mode.value)
-                
+
                 // Add units from options or default to kilometers
                 val units = options["units"] as? String ?: "kilometers"
                 put("units", units)
-                
+
                 // Add costing options if provided
                 if (options.isNotEmpty()) {
                     val costingOptions = buildJsonObject {
@@ -100,7 +95,7 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
             } else {
                 config.baseUrl
             }
-            
+
             val response = client.post {
                 url(url)
                 contentType(ContentType.Application.Json)
@@ -110,54 +105,62 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
             val result = response.body<JsonObject>()
             Log.d(TAG, "Response: $result")
 
-            val routeResult = parseRouteResult(result)
-            if (routeResult != null) {
-                emit(routeResult)
-            } else {
-                emit(RouteResult(
-                    distance = 0.0,
-                    duration = 0.0,
-                    legs = emptyList(),
-                    units = "kilometers"
-                ))
-            }
+            return parseRouteResult(result)
         } catch (e: Exception) {
             Log.e(TAG, "Error during routing", e)
-            emit(RouteResult(
-                distance = 0.0,
-                duration = 0.0,
-                legs = emptyList(),
-                units = "kilometers"
-            ))
+            throw e
         }
     }
 
-    private fun parseRouteResult(element: JsonObject): RouteResult? {
+    private fun parseRouteResult(element: JsonObject): RouteResult {
         return try {
-            val trip = element["trip"]?.jsonObject ?: return null
-            val locations = trip["locations"]?.jsonArray ?: return null
-            val legs = trip["legs"]?.jsonArray ?: return null
+            val trip = element["trip"]?.jsonObject!!
+            val locations = trip["locations"]?.jsonArray!!
+            val legs = trip["legs"]?.jsonArray!!
 
             val routeLegs = legs.mapNotNull { legElement ->
                 parseRouteLeg(legElement.jsonObject)
             }
 
             val units = trip["units"]?.jsonPrimitive?.content ?: "kilometers"
-            
+
             // Get total distance and duration from summary
             val summary = trip["summary"]?.jsonObject
             val distance = summary?.get("length")?.jsonPrimitive?.doubleOrNull ?: 0.0
             val duration = summary?.get("time")?.jsonPrimitive?.doubleOrNull ?: 0.0
 
+            // Parse geometry from the trip shape if available
+            val geometry = trip["shape"]?.jsonPrimitive?.content?.let { shape ->
+                try {
+                    // Decode the polyline using precision 6 (Valhalla uses 6-digit precision)
+                    val decodedPoints = PolylineUtils.decode(shape, 6)
+                    RouteGeometry(
+                        type = "LineString",
+                        coordinates = decodedPoints.map { point ->
+                            listOf(point.longitude(), point.latitude())
+                        }
+                    )
+                } catch (e: Exception) {
+                    // If polyline decoding fails, create empty geometry
+                    RouteGeometry(
+                        type = "LineString",
+                        coordinates = emptyList()
+                    )
+                }
+            } ?: RouteGeometry(
+                type = "LineString",
+                coordinates = emptyList()
+            )
+
             RouteResult(
                 distance = distance,
                 duration = duration,
                 legs = routeLegs,
-                units = units
+                units = units,
+                geometry = geometry
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Error parsing route result", e)
-            null
+            throw e
         }
     }
 
@@ -166,7 +169,7 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
             val summary = legObject["summary"]?.jsonObject
             val distance = summary?.get("length")?.jsonPrimitive?.doubleOrNull ?: 0.0
             val duration = summary?.get("time")?.jsonPrimitive?.doubleOrNull ?: 0.0
-            
+
             val maneuvers = legObject["maneuvers"]?.jsonArray ?: JsonArray(emptyList())
             val steps = maneuvers.mapNotNull { maneuverElement ->
                 parseRouteStep(maneuverElement.jsonObject)
@@ -189,9 +192,11 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
             val distance = stepObject["length"]?.jsonPrimitive?.doubleOrNull ?: 0.0
             val duration = stepObject["time"]?.jsonPrimitive?.doubleOrNull ?: 0.0
             val instruction = stepObject["instruction"]?.jsonPrimitive?.content ?: ""
-            val name = stepObject["street_names"]?.jsonArray?.firstOrNull()?.jsonPrimitive?.content ?: ""
+            val name =
+                stepObject["street_names"]?.jsonArray?.firstOrNull()?.jsonPrimitive?.content ?: ""
 
-            val maneuver = parseManeuver(stepObject["maneuver"]?.jsonObject ?: JsonObject(emptyMap()))
+            val maneuver =
+                parseManeuver(stepObject["maneuver"]?.jsonObject ?: JsonObject(emptyMap()))
 
             RouteStep(
                 distance = distance,
@@ -207,10 +212,10 @@ class ValhallaRoutingService(private val appPreferenceRepository: AppPreferenceR
     }
 
     private fun parseManeuver(maneuverObject: JsonObject): Maneuver {
-        val location = maneuverObject["location"]?.jsonArray?.map { 
-            it.jsonPrimitive.doubleOrNull ?: 0.0 
+        val location = maneuverObject["location"]?.jsonArray?.map {
+            it.jsonPrimitive.doubleOrNull ?: 0.0
         } ?: listOf(0.0, 0.0)
-        
+
         val bearingBefore = maneuverObject["begin_shape_index"]?.jsonPrimitive?.doubleOrNull ?: 0.0
         val bearingAfter = maneuverObject["end_shape_index"]?.jsonPrimitive?.doubleOrNull ?: 0.0
         val type = maneuverObject["type"]?.jsonPrimitive?.content ?: ""

@@ -1,6 +1,6 @@
 package earth.maps.cardinal.routing
 
-import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.RoutingMode
 import kotlinx.coroutines.flow.Flow
 
@@ -11,12 +11,12 @@ interface RoutingService {
      * @param destination The destination place
      * @param profile The routing profile (e.g., "auto", "pedestrian", "bicycle")
      * @param options Additional routing options
-     * @return Flow of routing results
+     * @return Route result
      */
     suspend fun getRoute(
-        origin: Place,
-        destination: Place,
+        origin: LatLng,
+        destination: LatLng,
         mode: RoutingMode,
         options: Map<String, Any> = emptyMap()
-    ): Flow<RouteResult>
+    ): RouteResult
 }

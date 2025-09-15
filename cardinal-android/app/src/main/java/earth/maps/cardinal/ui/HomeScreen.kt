@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.GeocodeResult
+import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
@@ -326,8 +327,10 @@ private fun SearchResultItem(result: GeocodeResult, onPlaceSelected: (Place) -> 
                     name = result.displayName,
                     type = "Search Result",
                     icon = "search",
-                    latitude = result.latitude,
-                    longitude = result.longitude,
+                    latLng = LatLng(
+                        latitude = result.latitude,
+                        longitude = result.longitude,
+                    ),
                     address = result.address
                 )
                 onPlaceSelected(place)

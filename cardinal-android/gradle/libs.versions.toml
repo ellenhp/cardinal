@@ -1,5 +1,6 @@
 [versions]
 agp = "8.13.0"
+desugar_jdk_libs = "2.1.5"
 kotlin = "2.2.10"
 ksp = "2.2.10-2.0.2"
 coreKtx = "1.17.0"
@@ -21,10 +22,13 @@ hiltNavigationCompose = "1.2.0"
 cargo-ndk = "0.3.4"
 valhallaMobile = "0.1.6"
 valhallaMobileConfig = "0.0.9"
+ferrostar = "0.41.0"
+okhttp3 = "5.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
+desugar_jdk_libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar_jdk_libs" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -60,6 +64,10 @@ hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-com
 valhalla-mobile = { group = "io.github.rallista", name = "valhalla-mobile", version.ref = "valhallaMobile" }
 valhalla-config = { group = "io.github.rallista", name = "valhalla-models", version.ref = "valhallaMobileConfig" }
 valhalla-models = { group = "io.github.rallista", name = "valhalla-models-config", version.ref = "valhallaMobileConfig" }
+ferrostar-core = { group = "com.stadiamaps.ferrostar", name = "core", version.ref = "ferrostar" }
+ferrostar-maplibreui = { group = "com.stadiamaps.ferrostar", name = "maplibreui", version.ref = "ferrostar" }
+ferrostar-composeui = { group = "com.stadiamaps.ferrostar", name = "composeui", version.ref = "ferrostar" }
+okhttp3 = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp3" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
