@@ -131,7 +131,7 @@ jobs:
     - name: Upload release artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: android-release-${{ steps.version.outputs.version }}
+        name: cardinal-maps-android-release-${{ steps.version.outputs.version }}
         path: |
           cardinal-android/app/build/outputs/apk/release/app-release.apk
         retention-days: 30
