@@ -15,6 +15,7 @@ import com.stadiamaps.ferrostar.core.DefaultNavigationViewModel
 import com.stadiamaps.ferrostar.maplibreui.views.DynamicallyOrientingNavigationView
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.viewmodel.TurnByTurnNavigationViewModel
+import uniffi.ferrostar.NavigationControllerConfig
 import uniffi.ferrostar.Route
 
 @Composable

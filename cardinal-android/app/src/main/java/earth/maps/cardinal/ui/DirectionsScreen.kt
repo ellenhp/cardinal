@@ -281,7 +281,7 @@ fun DirectionsScreen(
                     onMyLocationSelected = {
                         // Launch coroutine to get current location
                         coroutineScope.launch {
-                            val myLocationPlace = viewModel.getCurrentLocationAsPlace(context)
+                            val myLocationPlace = viewModel.getCurrentLocationAsPlace()
                             myLocationPlace?.let { place ->
                                 // Update the appropriate place based on which field is focused
                                 if (fieldFocusState == FieldFocusState.FROM) {

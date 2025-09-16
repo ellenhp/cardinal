@@ -5,6 +5,9 @@ import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import earth.maps.cardinal.R
 import earth.maps.cardinal.data.AppPreferences
+import earth.maps.cardinal.data.LatLng
+import earth.maps.cardinal.data.RoutingMode
+import earth.maps.cardinal.routing.MultiplexedRoutingService
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
@@ -15,19 +18,26 @@ import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
+import io.ktor.server.request.receiveText
 import io.ktor.server.response.header
 import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.pow
 
 
-class Tileserver(
+class LocalMapServer(
     private val context: Context,
-    private val appPreferences: AppPreferences
+    private val appPreferences: AppPreferences,
+    private val multiplexedRoutingService: MultiplexedRoutingService,
 ) {
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? =
         null
@@ -94,6 +104,30 @@ class Tileserver(
                         Log.e(TAG, "Error reading style_dark.json", e)
                         call.respondText(
                             "Error reading style_dark.json",
+                            status = HttpStatusCode.InternalServerError
+                        )
+                    }
+                }
+
+                // Valhalla-compatible routing endpoint
+                post("/route") {
+                    try {
+                        val requestBody = call.receiveText()
+                        Log.d(TAG, "Received routing request: $requestBody")
+
+                        val routeJson = multiplexedRoutingService.getRoute(requestBody)
+
+                        // Return the route response
+                        call.respondText(
+                            routeJson,
+                            contentType = ContentType.Application.Json
+                        )
+
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error processing routing request", e)
+                        call.respondText(
+                            "{\"error\":\"${e.message}\"}",
+                            contentType = ContentType.Application.Json,
                             status = HttpStatusCode.InternalServerError
                         )
                     }
@@ -560,7 +594,7 @@ class Tileserver(
     }
 
     companion object {
-        private const val TAG = "Tileserver"
+        private const val TAG = "LocalMapServer"
         private const val OFFLINE_DATABASE_NAME = "offline_areas.mbtiles"
     }
 }

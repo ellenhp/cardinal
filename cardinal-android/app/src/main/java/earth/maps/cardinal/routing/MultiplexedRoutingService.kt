@@ -13,15 +13,12 @@ class MultiplexedRoutingService
 ) : RoutingService {
 
     override suspend fun getRoute(
-        origin: LatLng,
-        destination: LatLng,
-        mode: RoutingMode,
-        options: Map<String, Any>
-    ): RouteResult {
+        request: String,
+    ): String {
         return if (appPreferenceRepository.offlineMode.value) {
-            offlineRoutingService.getRoute(origin, destination, mode, options)
+            offlineRoutingService.getRoute(request)
         } else {
-            onlineRoutingService.getRoute(origin, destination, mode, options)
+            onlineRoutingService.getRoute(request)
         }
     }
 }
