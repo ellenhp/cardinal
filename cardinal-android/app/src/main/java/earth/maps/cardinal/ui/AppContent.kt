@@ -69,6 +69,7 @@ import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
+import uniffi.ferrostar.Route
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,6 +92,9 @@ fun AppContent(
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     var selectedOfflineArea by remember { mutableStateOf<OfflineArea?>(null) }
+
+    // Route state for displaying on map
+    var currentRoute by remember { mutableStateOf<uniffi.ferrostar.Route?>(null) }
 
     val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
 
@@ -303,21 +307,12 @@ fun AppContent(
                                 bottomSheetState.partialExpand()
                             }
                         }
-                        var isTextFieldFocused by remember { mutableStateOf(false) }
-
-                        // Automatically expand the bottom sheet and disable swiping when text field is focused
-                        LaunchedEffect(isTextFieldFocused) {
-                            sheetSwipeEnabled = !isTextFieldFocused
-                            if (isTextFieldFocused) {
-                                coroutineScope.launch {
-                                    scaffoldState.bottomSheetState.expand()
-                                }
-                            }
-                        }
 
                         val viewModel: DirectionsViewModel = hiltViewModel()
                         val currentLocation = mapViewModel.locationFlow.collectAsState().value
                         val myLocationString = stringResource(R.string.my_location)
+
+                        // Handle initial place setup
                         LaunchedEffect(key1 = Unit) {
                             val fromPlaceJson = backStackEntry.arguments?.getString("fromPlace")
                             val fromPlace =
@@ -327,9 +322,7 @@ fun AppContent(
                                 toPlaceJson?.let { Gson().fromJson(it, Place::class.java) }
 
                             if (fromPlace != null) {
-                                viewModel.updateFromPlace(
-                                    fromPlace
-                                )
+                                viewModel.updateFromPlace(fromPlace)
                             } else if (currentLocation != null) {
                                 viewModel.updateFromPlace(
                                     Place(
@@ -346,6 +339,27 @@ fun AppContent(
                                 )
                             }
                             viewModel.updateToPlace(toPlace)
+                        }
+
+                        val polylinePadding = PaddingValues(
+                            start = configuration.screenWidthDp.dp / 4,
+                            top = configuration.screenHeightDp.dp / 4,
+                            end = configuration.screenWidthDp.dp / 4,
+                            bottom = configuration.screenHeightDp.dp / 2
+                        )
+
+                        // Handle route display and camera animation
+                        RouteDisplayHandler(
+                            viewModel = viewModel,
+                            cameraState = cameraState,
+                            appPreferences = appPreferenceRepository,
+                            padding = polylinePadding,
+                            onRouteUpdate = { route -> currentRoute = route }
+                        )
+                        DisposableEffect(key1 = Unit) {
+                            onDispose {
+                                currentRoute = null
+                            }
                         }
 
                         DirectionsScreen(
@@ -382,7 +396,8 @@ fun AppContent(
                         cameraState = cameraState,
                         mapPins = mapPins,
                         appPreferences = appPreferenceRepository,
-                        selectedOfflineArea = selectedOfflineArea
+                        selectedOfflineArea = selectedOfflineArea,
+                        currentRoute = currentRoute
                     )
                 }
 

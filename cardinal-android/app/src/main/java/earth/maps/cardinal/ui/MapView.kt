@@ -35,6 +35,7 @@ import earth.maps.cardinal.ui.map.LocationPuck
 import earth.maps.cardinal.viewmodel.MapViewModel
 import io.github.dellisd.spatialk.geojson.Feature
 import io.github.dellisd.spatialk.geojson.FeatureCollection
+import io.github.dellisd.spatialk.geojson.LineString
 import io.github.dellisd.spatialk.geojson.Point
 import io.github.dellisd.spatialk.geojson.Polygon
 import io.github.dellisd.spatialk.geojson.Position
@@ -68,6 +69,7 @@ fun MapView(
     cameraState: CameraState,
     appPreferences: AppPreferenceRepository,
     selectedOfflineArea: OfflineArea? = null,
+    currentRoute: uniffi.ferrostar.Route? = null,
 ) {
     val context = LocalContext.current
     val styleState = rememberStyleState()
@@ -151,6 +153,30 @@ fun MapView(
                             const((color.blue * 255).toInt())
                         ),
                         width = const(3.dp)
+                    )
+                }
+
+                // Display route if available
+                currentRoute?.let { route ->
+                    val routePositions = route.geometry.map { coord ->
+                        Position(coord.lng, coord.lat) // [longitude, latitude]
+                    }
+                    val routeLineString = LineString(routePositions)
+                    val routeFeature = Feature(geometry = routeLineString)
+                    val routeSource = rememberGeoJsonSource(
+                        GeoJsonData.Features(FeatureCollection(features = listOf(routeFeature)))
+                    )
+
+                    LineLayer(
+                        id = "route_line",
+                        source = routeSource,
+                        color = rgbColor(
+                            const(0), // Blue color
+                            const(122),
+                            const(255)
+                        ),
+                        width = const(6.dp),
+                        opacity = const(0.8f)
                     )
                 }
 
