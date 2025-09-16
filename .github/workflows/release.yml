@@ -16,6 +16,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
+        lfs: true
 
     - name: Extract version from tag
       id: version
@@ -99,11 +100,14 @@ jobs:
       run: |
         echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > cardinal-android/app/release.keystore
 
-    - name: Build release APK
+    - name: Build release APKs and AABs
       working-directory: cardinal-android
       run: |
         touch local.properties
-        ./gradlew assembleRelease --info --stacktrace --no-daemon
+        # Build APKs for each architecture
+        ./gradlew assembleArm64Release assembleX86_64Release --info --stacktrace --no-daemon
+        # Build AABs for each architecture
+        ./gradlew bundleArm64Release bundleX86_64Release --info --stacktrace --no-daemon
       env:
         ANDROID_HOME: ${{ env.ANDROID_HOME }}
         ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
@@ -115,16 +119,47 @@ jobs:
         KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-    - name: Verify APK was signed
+    - name: Verify APKs and AABs were signed
       run: |
-        APK_PATH="cardinal-android/app/build/outputs/apk/release/app-release.apk"
-        if [ -f "$APK_PATH" ]; then
-          echo "✅ Release APK found at: $APK_PATH"
-          ls -lh "$APK_PATH"
-          # Verify APK is signed
-          $ANDROID_HOME/build-tools/*/aapt dump badging "$APK_PATH" | head -5
+        echo "=== Checking ARM64 APK ==="
+        ARM64_APK="cardinal-android/app/build/outputs/apk/arm64/release/app-arm64-release.apk"
+        if [ -f "$ARM64_APK" ]; then
+          echo "✅ ARM64 APK found at: $ARM64_APK"
+          ls -lh "$ARM64_APK"
+          $ANDROID_HOME/build-tools/*/aapt dump badging "$ARM64_APK" | head -3
         else
-          echo "❌ Release APK not found!"
+          echo "❌ ARM64 APK not found!"
+          exit 1
+        fi
+        
+        echo "=== Checking x86_64 APK ==="
+        X86_64_APK="cardinal-android/app/build/outputs/apk/x86_64/release/app-x86_64-release.apk"
+        if [ -f "$X86_64_APK" ]; then
+          echo "✅ x86_64 APK found at: $X86_64_APK"
+          ls -lh "$X86_64_APK"
+          $ANDROID_HOME/build-tools/*/aapt dump badging "$X86_64_APK" | head -3
+        else
+          echo "❌ x86_64 APK not found!"
+          exit 1
+        fi
+        
+        echo "=== Checking ARM64 AAB ==="
+        ARM64_AAB="cardinal-android/app/build/outputs/bundle/arm64Release/app-arm64-release.aab"
+        if [ -f "$ARM64_AAB" ]; then
+          echo "✅ ARM64 AAB found at: $ARM64_AAB"
+          ls -lh "$ARM64_AAB"
+        else
+          echo "❌ ARM64 AAB not found!"
+          exit 1
+        fi
+        
+        echo "=== Checking x86_64 AAB ==="
+        X86_64_AAB="cardinal-android/app/build/outputs/bundle/x86_64Release/app-x86_64-release.aab"
+        if [ -f "$X86_64_AAB" ]; then
+          echo "✅ x86_64 AAB found at: $X86_64_AAB"
+          ls -lh "$X86_64_AAB"
+        else
+          echo "❌ x86_64 AAB not found!"
           exit 1
         fi
 
@@ -133,7 +168,10 @@ jobs:
       with:
         name: android-release-${{ steps.version.outputs.version }}
         path: |
-          cardinal-android/app/build/outputs/apk/release/app-release.apk
+          cardinal-android/app/build/outputs/apk/arm64/release/app-arm64-release.apk
+          cardinal-android/app/build/outputs/apk/x86_64/release/app-x86_64-release.apk
+          cardinal-android/app/build/outputs/bundle/arm64Release/app-arm64-release.aab
+          cardinal-android/app/build/outputs/bundle/x86_64Release/app-x86_64-release.aab
         retention-days: 30
 
     - name: Create GitHub Release
@@ -144,8 +182,25 @@ jobs:
         draft: false
         prerelease: false
         generate_release_notes: true
+        body: |
+          ## Cardinal Maps ${{ steps.version.outputs.version }}
+          
+          This release includes separate builds for different architectures:
+          
+          ### APK Files (for sideloading)
+          - `app-arm64-release.apk` - For ARM64 devices (most modern Android phones)
+          - `app-x86_64-release.apk` - For x86_64 devices (emulators, some tablets)
+          
+          ### AAB Files (for Google Play Store)
+          - `app-arm64-release.aab` - ARM64 Android App Bundle for Google Play
+          - `app-x86_64-release.aab` - x86_64 Android App Bundle for Google Play
+          
+          Choose the appropriate file for your device architecture. If unsure, try the ARM64 version first as it works on most modern Android devices.
         files: |
-          cardinal-android/app/build/outputs/apk/release/app-release.apk
+          cardinal-android/app/build/outputs/apk/arm64/release/app-arm64-release.apk
+          cardinal-android/app/build/outputs/apk/x86_64/release/app-x86_64-release.apk
+          cardinal-android/app/build/outputs/bundle/arm64Release/app-arm64-release.aab
+          cardinal-android/app/build/outputs/bundle/x86_64Release/app-x86_64-release.aab
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

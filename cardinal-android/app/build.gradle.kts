@@ -23,6 +23,24 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    flavorDimensions += "architecture"
+    productFlavors {
+        create("arm64") {
+            dimension = "architecture"
+            ndk {
+                abiFilters += "arm64-v8a"
+            }
+            versionNameSuffix = "-arm64"
+        }
+        create("x86_64") {
+            dimension = "architecture"
+            ndk {
+                abiFilters += "x86_64"
+            }
+            versionNameSuffix = "-x86_64"
+        }
+    }
+
     signingConfigs {
         create("release") {
             storeFile = file("release.keystore")
@@ -42,6 +60,21 @@ android {
             signingConfig = signingConfigs["release"] as ApkSigningConfig
         }
     }
+
+    bundle {
+        language {
+            // Disable language splits for now to keep bundles simpler
+            enableSplit = false
+        }
+        density {
+            // Enable density splits for smaller downloads
+            enableSplit = true
+        }
+        abi {
+            // Enable ABI splits - this works with our product flavors
+            enableSplit = true
+        }
+    }
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -57,6 +90,14 @@ android {
     applicationVariants.all {
         val variant = this
         val bDir = layout.buildDirectory.dir("generated/source/uniffi/${variant.name}/java").get()
+        
+        // Determine the architecture for this variant
+        val arch = when {
+            variant.name.contains("arm64", ignoreCase = true) -> "arm64-v8a"
+            variant.name.contains("x86_64", ignoreCase = true) -> "x86_64"
+            else -> "arm64-v8a" // default fallback
+        }
+        
         val generateBindings =
             tasks.register<Exec>("generate${variant.name.capitalize()}UniFFIBindings") {
                 workingDir = file("../../cardinal-geocoder")
@@ -67,7 +108,7 @@ android {
                     "uniffi-bindgen",
                     "generate",
                     "--library",
-                    "../cardinal-android/app/src/main/jniLibs/arm64-v8a/libcardinal_geocoder.so",
+                    "../cardinal-android/app/src/main/jniLibs/$arch/libcardinal_geocoder.so",
                     "--language",
                     "kotlin",
                     "--out-dir",
