@@ -43,6 +43,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -71,7 +72,8 @@ fun DirectionsScreen(
     onPeekHeightChange: (dp: Dp) -> Unit,
     onBack: () -> Unit,
     onFullExpansionRequired: () -> Job,
-    navigationCoordinator: NavigationCoordinator
+    navigationCoordinator: NavigationCoordinator,
+    context: android.content.Context
 ) {
     var fieldFocusState by remember { mutableStateOf(FieldFocusState.NONE) }
     val isAnyFieldFocused = fieldFocusState != FieldFocusState.NONE
@@ -80,6 +82,8 @@ fun DirectionsScreen(
     val ferrostarRoute = viewModel.ferrostarRoute
     val isRouteLoading = viewModel.isRouteLoading
     val routeError = viewModel.routeError
+
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -139,6 +143,9 @@ fun DirectionsScreen(
                         onFullExpansionRequired()
                     },
                     isFocused = fieldFocusState == FieldFocusState.FROM,
+                    showRecalculateButton = viewModel.fromPlace != null && viewModel.toPlace != null,
+                    onRecalculateClick = { viewModel.recalculateRoute() },
+                    isRouteLoading = isRouteLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp)
@@ -158,6 +165,9 @@ fun DirectionsScreen(
                         onFullExpansionRequired()
                     },
                     isFocused = fieldFocusState == FieldFocusState.TO,
+                    showFlipButton = viewModel.fromPlace != null && viewModel.toPlace != null,
+                    onFlipClick = { viewModel.flipDestinations() },
+                    isRouteLoading = isRouteLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
@@ -257,7 +267,7 @@ fun DirectionsScreen(
                     .padding(bottom = 8.dp)
             )
 
-            // Show search results or loading state
+            // Show search results or quick suggestions based on search query
             if (viewModel.isSearching) {
                 Text(
                     text = "Searching...",
@@ -265,7 +275,41 @@ fun DirectionsScreen(
                         .fillMaxWidth()
                         .padding(16.dp)
                 )
+            } else if (viewModel.searchQuery.isEmpty()) {
+                // Show quick suggestions when no search query
+                QuickSuggestions(
+                    onMyLocationSelected = {
+                        // Launch coroutine to get current location
+                        coroutineScope.launch {
+                            val myLocationPlace = viewModel.getCurrentLocationAsPlace(context)
+                            myLocationPlace?.let { place ->
+                                // Update the appropriate place based on which field is focused
+                                if (fieldFocusState == FieldFocusState.FROM) {
+                                    viewModel.updateFromPlace(place)
+                                } else {
+                                    viewModel.updateToPlace(place)
+                                }
+                                // Clear focus state after selection
+                                fieldFocusState = FieldFocusState.NONE
+                            }
+                        }
+                    },
+                    savedPlaces = viewModel.savedPlaces.value,
+                    onSavedPlaceSelected = { place ->
+                        // Update the appropriate place based on which field is focused
+                        if (fieldFocusState == FieldFocusState.FROM) {
+                            viewModel.updateFromPlace(place)
+                        } else {
+                            viewModel.updateToPlace(place)
+                        }
+                        // Clear focus state after selection
+                        fieldFocusState = FieldFocusState.NONE
+                    },
+                    isGettingLocation = viewModel.isGettingLocation,
+                    modifier = Modifier.fillMaxWidth()
+                )
             } else {
+                // Show search results when there's a query
                 SearchResults(
                     geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value),
                     onPlaceSelected = { place ->
@@ -341,52 +385,89 @@ private fun PlaceField(
     modifier: Modifier = Modifier,
     onTextChange: (String) -> Unit = {},
     onTextFieldFocusChange: (Boolean) -> Unit = {},
-    isFocused: Boolean = false
+    isFocused: Boolean = false,
+    showRecalculateButton: Boolean = false,
+    showFlipButton: Boolean = false,
+    onRecalculateClick: () -> Unit = {},
+    onFlipClick: () -> Unit = {},
+    isRouteLoading: Boolean = false
 ) {
     var textFieldValue by remember(place) { mutableStateOf(place?.name ?: "") }
     val focusRequester = remember { FocusRequester() }
 
-    OutlinedTextField(
-        value = textFieldValue,
-        onValueChange = { newValue ->
-            textFieldValue = newValue
-            onTextChange(newValue)
-        },
-        modifier = modifier
-            .onFocusChanged { focusState ->
-                onTextFieldFocusChange(focusState.isFocused)
-            }
-            .focusRequester(focusRequester),
-        label = { Text(label) },
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Default.LocationOn,
-                contentDescription = null
-            )
-        },
-        trailingIcon = {
-            if (place != null) {
-                IconButton(onClick = {
-                    textFieldValue = ""
-                    onTextChange("")
-                    onCleared()
-                }) {
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = textFieldValue,
+                onValueChange = { newValue ->
+                    textFieldValue = newValue
+                    onTextChange(newValue)
+                },
+                modifier = Modifier
+                    .weight(1.0f)
+                    .onFocusChanged { focusState ->
+                        onTextFieldFocusChange(focusState.isFocused)
+                    }
+                    .focusRequester(focusRequester),
+                label = { Text(label) },
+                leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(R.string.content_description_clear_search)
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null
+                    )
+                },
+                trailingIcon = {
+                    if (place != null) {
+                        IconButton(onClick = {
+                            textFieldValue = ""
+                            onTextChange("")
+                            onCleared()
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = stringResource(R.string.content_description_clear_search)
+                            )
+                        }
+                    }
+                },
+                placeholder = {
+                    Text(stringResource(R.string.enter_a_place))
+                },
+                readOnly = false, // Make sure the field is editable to show keyboard
+                colors = TextFieldDefaults.colors(
+                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                )
+            )
+            if (showRecalculateButton) {
+                IconButton(
+                    onClick = onRecalculateClick,
+                    enabled = !isRouteLoading,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.refresh),
+                        contentDescription = stringResource(R.string.recalculate_route)
                     )
                 }
             }
-        },
-        placeholder = {
-            Text(stringResource(R.string.enter_a_place))
-        },
-        readOnly = false, // Make sure the field is editable to show keyboard
-        colors = TextFieldDefaults.colors(
-            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-            unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-        )
-    )
+            if (showFlipButton) {
+                IconButton(
+                    onClick = onFlipClick,
+                    enabled = !isRouteLoading
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.swap_vertical),
+                        contentDescription = stringResource(R.string.flip_destinations)
+                    )
+                }
+            }
+        }
+    }
 
     if (isFocused) {
         BackHandler {

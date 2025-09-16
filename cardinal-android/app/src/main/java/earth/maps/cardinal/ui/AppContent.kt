@@ -1,6 +1,7 @@
 package earth.maps.cardinal.ui
 
 import android.annotation.SuppressLint
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -69,7 +70,6 @@ import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
-import uniffi.ferrostar.Route
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,7 +81,8 @@ fun AppContent(
     onRequestLocationPermission: () -> Unit,
     hasLocationPermission: Boolean,
     appPreferenceRepository: AppPreferenceRepository,
-    navigationCoordinator: NavigationCoordinator
+    navigationCoordinator: NavigationCoordinator,
+    context: Context,
 ) {
     val mapPins = remember { mutableStateListOf<Position>() }
     val cameraState = rememberCameraState()
@@ -327,7 +328,7 @@ fun AppContent(
                                 viewModel.updateFromPlace(
                                     Place(
                                         name = myLocationString,
-                                        id = Int.MAX_VALUE,
+                                        id = Int.MIN_VALUE,
                                         type = "",
                                         icon = "",
                                         latLng = LatLng(
@@ -363,6 +364,7 @@ fun AppContent(
                         }
 
                         DirectionsScreen(
+                            context = context,
                             viewModel = viewModel,
                             onPeekHeightChange = { peekHeight = it },
                             onBack = { navController.popBackStack() },
@@ -371,7 +373,7 @@ fun AppContent(
                                     bottomSheetState.expand()
                                 }
                             },
-                            navigationCoordinator = navigationCoordinator
+                            navigationCoordinator = navigationCoordinator,
                         )
                     }
                 }

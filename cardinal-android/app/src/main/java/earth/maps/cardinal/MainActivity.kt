@@ -102,7 +102,8 @@ class MainActivity : ComponentActivity() {
                             onRequestLocationPermission = { requestLocationPermission() },
                             hasLocationPermission = hasLocationPermission,
                             appPreferenceRepository = appPreferenceRepository,
-                            navigationCoordinator = coordinator
+                            navigationCoordinator = coordinator,
+                            context = this@MainActivity
                         )
                     }
 

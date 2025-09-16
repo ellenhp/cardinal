@@ -1,4 +1,4 @@
-package earth.maps.cardinal.viewmodel
+package earth.maps.cardinal.data
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -6,14 +6,6 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
-import earth.maps.cardinal.data.LatLng
-import earth.maps.cardinal.data.LocationRepository
-import earth.maps.cardinal.data.ViewportPreferences
-import earth.maps.cardinal.data.ViewportRepository
-import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,19 +15,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.maplibre.compose.camera.CameraPosition
-import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
- * ViewModel responsible for handling map-related functionality including location services.
+ * Repository for handling location services.
+ * Provides a centralized way to access current location across the app.
  */
-@HiltViewModel
-class MapViewModel @Inject constructor(
-    private val viewportPreferences: ViewportPreferences,
-    private val viewportRepository: ViewportRepository,
-    private val locationRepository: LocationRepository
-) : ViewModel() {
+@Singleton
+class LocationRepository @Inject constructor() {
 
     private companion object {
         private const val LOCATION_REQUEST_INTERVAL_MS = 15000L // 15 seconds
@@ -49,11 +37,9 @@ class MapViewModel @Inject constructor(
     private val locationMutex = Mutex()
     private val locationLock = Any()
 
-    // State flows for UI components - delegate to repository
-    val isLocating: StateFlow<Boolean> = locationRepository.isLocating
-
-    private val _hasPendingLocationRequest = MutableStateFlow(false)
-    val hasPendingLocationRequest: StateFlow<Boolean> = _hasPendingLocationRequest
+    // State flows for UI components
+    private val _isLocating = MutableStateFlow(false)
+    val isLocating: StateFlow<Boolean> = _isLocating
 
     private val _locationFlow: MutableStateFlow<Location?> = MutableStateFlow(null)
     val locationFlow: StateFlow<Location?> = _locationFlow.asStateFlow()
@@ -61,79 +47,127 @@ class MapViewModel @Inject constructor(
     // Location listener for continuous updates
     private var locationListener: LocationListener? = null
 
-    // Permission tracking
-    private val previousPermissionState = AtomicBoolean(false)
-
     /**
-     * Saves the current viewport to preferences.
+     * Gets the current location, either from cache or by requesting a fresh one.
+     * Returns null if location cannot be determined.
      */
-    fun saveViewport(cameraPosition: CameraPosition) {
-        viewportPreferences.saveViewport(cameraPosition)
-        // Update the viewport center for geocoding focus
-        updateViewportCenter(cameraPosition)
-    }
+    @SuppressLint("MissingPermission")
+    suspend fun getCurrentLocation(context: Context): Location? {
+        _isLocating.value = true
+        try {
+            val currentTime = System.currentTimeMillis()
 
-    /**
-     * Updates the current viewport center for geocoding focus.
-     */
-    fun updateViewportCenter(cameraPosition: CameraPosition) {
-        viewportRepository.updateViewportCenter(cameraPosition)
-    }
-
-    /**
-     * Loads the saved viewport from preferences.
-     * Returns null if no viewport has been saved.
-     */
-    fun loadViewport(): CameraPosition? {
-        return viewportPreferences.loadViewport()
-    }
-
-    /**
-     * Marks that a location request is pending due to missing permissions.
-     */
-    fun markLocationRequestPending() {
-        _hasPendingLocationRequest.value = true
-    }
-
-    /**
-     * Handles permission state changes and initiates location request if needed.
-     *
-     * @param hasPermission Current permission state
-     * @param cameraState Camera state to animate to location
-     * @param context Android context for location services
-     */
-    suspend fun handlePermissionStateChange(
-        hasPermission: Boolean,
-        cameraState: org.maplibre.compose.camera.CameraState,
-        context: Context
-    ) {
-        val previousState = previousPermissionState.getAndSet(hasPermission)
-        // Check if permissions changed from denied to granted and we have a pending request
-        if (!previousState && hasPermission && _hasPendingLocationRequest.value) {
-            _hasPendingLocationRequest.value = false
-            fetchLocationAndCreateCameraPosition(context)?.let { position ->
-                cameraState.animateTo(position)
+            // Return cached location if it's recent
+            val cachedLocation = locationMutex.withLock {
+                lastRequestedLocation
             }
+
+            cachedLocation?.let { location ->
+                if (isLocationRecent(location, currentTime)) {
+                    return location
+                }
+            }
+
+            return try {
+                val locationManager = getLocationManager(context)
+
+                // Try to get last known location from any provider
+                val lastKnownLocation = getLastKnownLocation(locationManager)
+
+                // If we have a recent last known location, use it
+                lastKnownLocation?.let { location ->
+                    if (isLocationRecent(location, currentTime)) {
+                        locationMutex.withLock {
+                            lastRequestedLocation = location
+                        }
+                        return location
+                    }
+                }
+
+                // If no recent location available, request a fresh location
+                requestFreshLocation(locationManager)
+            } catch (_: Exception) {
+                // Handle exceptions during location fetching
+                null
+            }
+        } finally {
+            _isLocating.value = false
         }
     }
 
     /**
-     * Fetches the current location and returns a CameraPosition to animate to.
-     * Returns null if location cannot be determined.
+     * Starts continuous location updates.
+     * This should be called from the UI when the map is ready.
      */
-    suspend fun fetchLocationAndCreateCameraPosition(context: Context): CameraPosition? {
-        val location = locationRepository.getCurrentLocation(context)
-        return location?.let { createCameraPosition(it) }
+    @SuppressLint("MissingPermission")
+    fun startContinuousLocationUpdates(context: Context) {
+        try {
+            val locationManager = getLocationManager(context)
+
+            @Suppress("DEPRECATION") val bestProvider = locationManager.getBestProvider(
+                android.location.Criteria().apply {
+                    accuracy = android.location.Criteria.ACCURACY_FINE
+                }, true
+            )
+
+            bestProvider?.let { provider ->
+                locationListener = object : LocationListener {
+                    override fun onLocationChanged(location: Location) {
+                        // Update the location flow with the new location
+                        _locationFlow.value = location
+                        synchronized(locationLock) {
+                            lastRequestedLocation = location
+                        }
+                    }
+
+                    override fun onProviderDisabled(provider: String) {
+                        // Stop location updates if provider is disabled
+                        try {
+                            locationManager.removeUpdates(this)
+                        } catch (_: Exception) {
+                            // Ignore exceptions during cleanup
+                        }
+                        locationListener = null
+                        _locationFlow.value = null
+                    }
+
+                    override fun onProviderEnabled(provider: String) {}
+
+                    override fun onStatusChanged(
+                        provider: String?,
+                        status: Int,
+                        extras: Bundle?
+                    ) {
+                    }
+                }
+
+                locationManager.requestLocationUpdates(
+                    provider,
+                    CONTINUOUS_LOCATION_UPDATE_INTERVAL_MS,
+                    CONTINUOUS_LOCATION_UPDATE_DISTANCE_M,
+                    locationListener!!
+                )
+            }
+        } catch (_: Exception) {
+            // Handle exceptions during setup
+            locationListener = null
+            _locationFlow.value = null
+        }
     }
 
     /**
-     * Creates a CameraPosition from a Location.
+     * Stops location updates.
      */
-    private fun createCameraPosition(location: Location): CameraPosition {
-        return CameraPosition(
-            target = Position(location.longitude, location.latitude),
-            zoom = 15.0
-        )
+    fun stopLocationUpdates(context: Context) {
+        locationListener?.let { listener ->
+            try {
+                val locationManager = getLocationManager(context)
+                locationManager.removeUpdates(listener)
+            } catch (_: Exception) {
+                // Ignore exceptions during cleanup
+            }
+            locationListener = null
+        }
     }
 
     /**
@@ -182,7 +216,7 @@ class MapViewModel @Inject constructor(
      * Requests a fresh location from the location manager.
      */
     @SuppressLint("MissingPermission")
-    private suspend fun requestFreshLocation(locationManager: LocationManager): CameraPosition? {
+    private suspend fun requestFreshLocation(locationManager: LocationManager): Location? {
         return withContext(Dispatchers.Main) {
             val locationDeferred = CompletableDeferred<Location?>()
 
@@ -213,7 +247,12 @@ class MapViewModel @Inject constructor(
 
                 // Wait for location or timeout
                 val location = locationDeferred.await()
-                location?.let { createCameraPosition(it) }
+                location?.let {
+                    synchronized(locationLock) {
+                        lastRequestedLocation = it
+                    }
+                }
+                location
             } catch (_: Exception) {
                 // Ensure cleanup in case of exceptions
                 try {
@@ -224,33 +263,6 @@ class MapViewModel @Inject constructor(
                 locationDeferred.complete(null)
                 null
             }
-        }
-    }
-
-
-    /**
-     * Starts continuous location updates.
-     * This should be called from the UI when the map is ready.
-     */
-    fun startContinuousLocationUpdates(context: Context) {
-        locationRepository.startContinuousLocationUpdates(context)
-        // Update our location flow to mirror the repository's flow
-        viewModelScope.launch {
-            locationRepository.locationFlow.collect { location ->
-                _locationFlow.value = location
-            }
-        }
-    }
-
-    /**
-     * Stops location updates when the ViewModel is cleared.
-     */
-    override fun onCleared() {
-        super.onCleared()
-        locationListener?.let { listener ->
-            // Note: We can't access context here to remove updates
-            // The UI should handle cleanup when the map is destroyed
-            locationListener = null
         }
     }
 
@@ -305,7 +317,7 @@ class MapViewModel @Inject constructor(
         locationListener: LocationListener,
         locationDeferred: CompletableDeferred<Location?>
     ) {
-        viewModelScope.launch {
+        kotlinx.coroutines.MainScope().launch {
             kotlinx.coroutines.delay(LOCATION_REQUEST_TIMEOUT_MS)
             if (locationDeferred.isActive) {
                 try {
