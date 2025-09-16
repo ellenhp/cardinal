@@ -1,0 +1,160 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-android-release
+      cancel-in-progress: true
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Extract version from tag
+      id: version
+      run: |
+        TAG=${GITHUB_REF#refs/tags/}
+        VERSION=${TAG#v}
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "version_code=$(date +%s)" >> $GITHUB_OUTPUT
+        echo "Extracted version: $VERSION from tag: $TAG"
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: 36
+
+    - name: Install NDK
+      run: sdkmanager "ndk;26.1.10909125"
+
+    - name: Configure Android NDK environment
+      run: |
+        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV
+        echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV
+        echo "NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install Rust Android targets
+      run: |
+        rustup target add aarch64-linux-android
+        rustup target add x86_64-linux-android
+
+    - name: Cache Rust dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          cardinal-geocoder/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Cache Gradle dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+          cardinal-android/.gradle
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Configure Gradle for CI
+      run: |
+        mkdir -p ~/.gradle
+        echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+        echo "org.gradle.parallel=true" >> ~/.gradle/gradle.properties
+        echo "org.gradle.configureondemand=true" >> ~/.gradle/gradle.properties
+        echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError" >> ~/.gradle/gradle.properties
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x cardinal-android/gradlew
+
+    - name: Install cargo-ndk
+      run: cargo install cargo-ndk
+
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+
+    - name: Set up keystore
+      run: |
+        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > cardinal-android/app/release.keystore
+
+    - name: Build release APK
+      working-directory: cardinal-android
+      run: |
+        touch local.properties
+        ./gradlew assembleRelease --info --stacktrace --no-daemon
+      env:
+        ANDROID_HOME: ${{ env.ANDROID_HOME }}
+        ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+        ANDROID_NDK_ROOT: ${{ env.ANDROID_NDK_ROOT }}
+        NDK_HOME: ${{ env.NDK_HOME }}
+        VERSION_NAME: ${{ steps.version.outputs.version }}
+        VERSION_CODE: ${{ steps.version.outputs.version_code }}
+        KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+    - name: Verify APK was signed
+      run: |
+        APK_PATH="cardinal-android/app/build/outputs/apk/release/app-release.apk"
+        if [ -f "$APK_PATH" ]; then
+          echo "✅ Release APK found at: $APK_PATH"
+          ls -lh "$APK_PATH"
+          # Verify APK is signed
+          $ANDROID_HOME/build-tools/*/aapt dump badging "$APK_PATH" | head -5
+        else
+          echo "❌ Release APK not found!"
+          exit 1
+        fi
+
+    - name: Upload release artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-release-${{ steps.version.outputs.version }}
+        path: |
+          cardinal-android/app/build/outputs/apk/release/app-release.apk
+        retention-days: 30
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.version.outputs.tag }}
+        name: Cardinal Maps ${{ steps.version.outputs.version }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        files: |
+          cardinal-android/app/build/outputs/apk/release/app-release.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload build logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-build-logs-${{ steps.version.outputs.version }}
+        path: |
+          cardinal-android/app/build/reports/
+          ~/.gradle/daemon/*/daemon-*.out.log
+        retention-days: 7
