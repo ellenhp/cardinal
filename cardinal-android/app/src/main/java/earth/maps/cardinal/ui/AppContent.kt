@@ -1,6 +1,7 @@
 package earth.maps.cardinal.ui
 
 import android.annotation.SuppressLint
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -80,7 +81,8 @@ fun AppContent(
     onRequestLocationPermission: () -> Unit,
     hasLocationPermission: Boolean,
     appPreferenceRepository: AppPreferenceRepository,
-    navigationCoordinator: NavigationCoordinator
+    navigationCoordinator: NavigationCoordinator,
+    context: Context,
 ) {
     val mapPins = remember { mutableStateListOf<Position>() }
     val cameraState = rememberCameraState()
@@ -362,6 +364,7 @@ fun AppContent(
                         }
 
                         DirectionsScreen(
+                            context = context,
                             viewModel = viewModel,
                             onPeekHeightChange = { peekHeight = it },
                             onBack = { navController.popBackStack() },
@@ -370,7 +373,7 @@ fun AppContent(
                                     bottomSheetState.expand()
                                 }
                             },
-                            navigationCoordinator = navigationCoordinator
+                            navigationCoordinator = navigationCoordinator,
                         )
                     }
                 }

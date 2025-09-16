@@ -7,7 +7,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.GeocodeResult
+import earth.maps.cardinal.data.LatLng
+import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.PlaceDao
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.GeocodingService
@@ -34,7 +37,9 @@ import javax.inject.Inject
 class DirectionsViewModel @Inject constructor(
     private val geocodingService: GeocodingService,
     private val ferrostarWrapperRepository: FerrostarWrapperRepository,
-    private val viewportRepository: ViewportRepository
+    private val viewportRepository: ViewportRepository,
+    private val placeDao: PlaceDao,
+    private val locationRepository: LocationRepository
 ) : ViewModel() {
 
     // Search query flow for debouncing
@@ -72,6 +77,12 @@ class DirectionsViewModel @Inject constructor(
     var routeError by mutableStateOf<String?>(null)
         private set
 
+    // Saved places for quick suggestions
+    val savedPlaces = mutableStateOf<List<Place>>(emptyList())
+
+    var isGettingLocation by mutableStateOf(false)
+        private set
+
     init {
         // Set up debounced search
         searchQueryFlow
@@ -87,6 +98,13 @@ class DirectionsViewModel @Inject constructor(
                 }
             }
             .launchIn(viewModelScope)
+
+        // Load saved places
+        viewModelScope.launch {
+            placeDao.getAllPlaces().collect { placeEntities ->
+                savedPlaces.value = placeEntities.map { it.toPlace() }
+            }
+        }
     }
 
     fun updateSearchQuery(query: String) {
@@ -213,6 +231,36 @@ class DirectionsViewModel @Inject constructor(
                 geocodeResults.value = emptyList()
                 isSearching = false
             }
+        }
+    }
+
+    suspend fun getCurrentLocationAsPlace(context: android.content.Context): Place? {
+        isGettingLocation = true
+        return try {
+            val location = locationRepository.getCurrentLocation(context)
+            location?.let {
+                Place(
+                    id = Int.MAX_VALUE, // Special ID for "My Location"
+                    name = "My Location",
+                    type = "Current Location",
+                    icon = "location",
+                    latLng = LatLng(it.latitude, it.longitude),
+                    isMyLocation = true
+                )
+            } ?: run {
+                // Fallback to viewport center if location is not available
+                val currentLatLng = viewportRepository.viewportCenter.value ?: LatLng(37.7749, -122.4194)
+                Place(
+                    id = Int.MAX_VALUE,
+                    name = "My Location",
+                    type = "Current Location",
+                    icon = "location",
+                    latLng = currentLatLng,
+                    isMyLocation = true
+                )
+            }
+        } finally {
+            isGettingLocation = false
         }
     }
 }

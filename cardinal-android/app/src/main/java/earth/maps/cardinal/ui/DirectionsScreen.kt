@@ -72,7 +72,8 @@ fun DirectionsScreen(
     onPeekHeightChange: (dp: Dp) -> Unit,
     onBack: () -> Unit,
     onFullExpansionRequired: () -> Job,
-    navigationCoordinator: NavigationCoordinator
+    navigationCoordinator: NavigationCoordinator,
+    context: android.content.Context
 ) {
     var fieldFocusState by remember { mutableStateOf(FieldFocusState.NONE) }
     val isAnyFieldFocused = fieldFocusState != FieldFocusState.NONE
@@ -81,6 +82,8 @@ fun DirectionsScreen(
     val ferrostarRoute = viewModel.ferrostarRoute
     val isRouteLoading = viewModel.isRouteLoading
     val routeError = viewModel.routeError
+
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -264,7 +267,7 @@ fun DirectionsScreen(
                     .padding(bottom = 8.dp)
             )
 
-            // Show search results or loading state
+            // Show search results or quick suggestions based on search query
             if (viewModel.isSearching) {
                 Text(
                     text = "Searching...",
@@ -272,7 +275,41 @@ fun DirectionsScreen(
                         .fillMaxWidth()
                         .padding(16.dp)
                 )
+            } else if (viewModel.searchQuery.isEmpty()) {
+                // Show quick suggestions when no search query
+                QuickSuggestions(
+                    onMyLocationSelected = {
+                        // Launch coroutine to get current location
+                        coroutineScope.launch {
+                            val myLocationPlace = viewModel.getCurrentLocationAsPlace(context)
+                            myLocationPlace?.let { place ->
+                                // Update the appropriate place based on which field is focused
+                                if (fieldFocusState == FieldFocusState.FROM) {
+                                    viewModel.updateFromPlace(place)
+                                } else {
+                                    viewModel.updateToPlace(place)
+                                }
+                                // Clear focus state after selection
+                                fieldFocusState = FieldFocusState.NONE
+                            }
+                        }
+                    },
+                    savedPlaces = viewModel.savedPlaces.value,
+                    onSavedPlaceSelected = { place ->
+                        // Update the appropriate place based on which field is focused
+                        if (fieldFocusState == FieldFocusState.FROM) {
+                            viewModel.updateFromPlace(place)
+                        } else {
+                            viewModel.updateToPlace(place)
+                        }
+                        // Clear focus state after selection
+                        fieldFocusState = FieldFocusState.NONE
+                    },
+                    isGettingLocation = viewModel.isGettingLocation,
+                    modifier = Modifier.fillMaxWidth()
+                )
             } else {
+                // Show search results when there's a query
                 SearchResults(
                     geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value),
                     onPlaceSelected = { place ->
