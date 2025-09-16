@@ -122,7 +122,6 @@ jobs:
         name: android-build-artifacts
         path: |
           cardinal-android/app/build/outputs/
-          cardinal-geocoder/target/
         retention-days: 7
 
     - name: Upload build logs on failure
