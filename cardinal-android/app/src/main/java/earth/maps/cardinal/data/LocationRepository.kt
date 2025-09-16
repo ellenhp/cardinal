@@ -6,6 +6,8 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
+import dagger.hilt.android.qualifiers.ApplicationContext
+import earth.maps.cardinal.R
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +25,9 @@ import javax.inject.Singleton
  * Provides a centralized way to access current location across the app.
  */
 @Singleton
-class LocationRepository @Inject constructor() {
+class LocationRepository @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
 
     private companion object {
         private const val LOCATION_REQUEST_INTERVAL_MS = 15000L // 15 seconds
@@ -327,6 +331,44 @@ class LocationRepository @Inject constructor() {
                 }
                 locationDeferred.complete(null)
             }
+        }
+    }
+
+    /**
+     * Creates a standardized "My Location" Place object.
+     * This centralizes the creation of "My Location" places to ensure consistency.
+     */
+    fun createMyLocationPlace(latLng: LatLng): Place {
+        return Place(
+            id = Int.MIN_VALUE, // Special ID for "My Location"
+            name = context.getString(R.string.my_location),
+            type = "Current Location",
+            icon = "location",
+            latLng = latLng,
+            isMyLocation = true
+        )
+    }
+
+    /**
+     * Creates a "My Location" Place object using the current location.
+     * Returns null if current location is not available.
+     */
+    @SuppressLint("MissingPermission")
+    suspend fun getCurrentLocationAsPlace(context: Context): Place? {
+        return getCurrentLocation(context)?.let { location ->
+            createMyLocationPlace(LatLng(location.latitude, location.longitude))
+        }
+    }
+
+    /**
+     * Forces a fresh location fetch and creates a "My Location" Place object.
+     * This bypasses the cache and always gets a new location.
+     * Returns null if fresh location cannot be obtained.
+     */
+    @SuppressLint("MissingPermission")
+    suspend fun getFreshCurrentLocationAsPlace(): Place? {
+        return requestFreshLocation(getLocationManager(context))?.let { location ->
+            createMyLocationPlace(LatLng(location.latitude, location.longitude))
         }
     }
 }

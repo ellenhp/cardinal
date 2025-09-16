@@ -209,7 +209,51 @@ class DirectionsViewModel @Inject constructor(
         val origin = fromPlace
         val destination = toPlace
         if (origin != null && destination != null) {
-            fetchRoute(origin, destination)
+            // Check if we need to refresh location for "my location" places
+            val needsLocationRefresh = origin.isMyLocation || destination.isMyLocation
+
+            if (needsLocationRefresh) {
+                // Launch coroutine to refresh location for "my location" places
+                viewModelScope.launch {
+                    isGettingLocation = true
+                    try {
+                        var updatedOrigin = origin
+                        var updatedDestination = destination
+
+                        // Refresh origin location if it's "my location"
+                        if (origin.isMyLocation) {
+                            locationRepository.getFreshCurrentLocationAsPlace()?.let { freshLocation ->
+                                updatedOrigin = freshLocation
+                                fromPlace = freshLocation
+                            }
+                        }
+
+                        // Refresh destination location if it's "my location"
+                        if (destination.isMyLocation) {
+                            locationRepository.getFreshCurrentLocationAsPlace()?.let { freshLocation ->
+                                updatedDestination = freshLocation
+                                toPlace = freshLocation
+                            }
+                        }
+
+                        // Fetch route with updated locations (ensure they're not null)
+                        if (updatedOrigin != null && updatedDestination != null) {
+                            fetchRoute(updatedOrigin, updatedDestination)
+                        } else {
+                            // Fallback to original locations if refresh failed
+                            fetchRoute(origin, destination)
+                        }
+                    } catch (e: Exception) {
+                        // If location refresh fails, use original locations
+                        fetchRoute(origin, destination)
+                    } finally {
+                        isGettingLocation = false
+                    }
+                }
+            } else {
+                // No location refresh needed, just recalculate with existing places
+                fetchRoute(origin, destination)
+            }
         }
     }
 
@@ -237,30 +281,21 @@ class DirectionsViewModel @Inject constructor(
     suspend fun getCurrentLocationAsPlace(context: android.content.Context): Place? {
         isGettingLocation = true
         return try {
-            val location = locationRepository.getCurrentLocation(context)
-            location?.let {
-                Place(
-                    id = Int.MIN_VALUE, // Special ID for "My Location"
-                    name = "My Location",
-                    type = "Current Location",
-                    icon = "location",
-                    latLng = LatLng(it.latitude, it.longitude),
-                    isMyLocation = true
-                )
-            } ?: run {
+            locationRepository.getCurrentLocationAsPlace(context) ?: run {
                 // Fallback to viewport center if location is not available
                 val currentLatLng = viewportRepository.viewportCenter.value ?: LatLng(37.7749, -122.4194)
-                Place(
-                    id = Int.MIN_VALUE,
-                    name = "My Location",
-                    type = "Current Location",
-                    icon = "location",
-                    latLng = currentLatLng,
-                    isMyLocation = true
-                )
+                locationRepository.createMyLocationPlace(currentLatLng)
             }
         } finally {
             isGettingLocation = false
         }
+    }
+
+    /**
+     * Creates a "My Location" Place object with the given coordinates.
+     * This is a public method to allow other components to create consistent "My Location" places.
+     */
+    fun createMyLocationPlace(latLng: LatLng): Place {
+        return locationRepository.createMyLocationPlace(latLng)
     }
 }
