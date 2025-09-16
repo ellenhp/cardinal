@@ -105,7 +105,7 @@ jobs:
 
     - name: Build with Gradle
       working-directory: cardinal-android
-      run: ./gradlew assembleDebug --info --stacktrace --no-daemon
+      run: touch local.properties && ./gradlew assembleDebug --info --stacktrace --no-daemon
       env:
         ANDROID_HOME: ${{ env.ANDROID_HOME }}
         ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
