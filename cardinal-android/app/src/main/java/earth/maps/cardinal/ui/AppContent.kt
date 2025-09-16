@@ -311,7 +311,6 @@ fun AppContent(
 
                         val viewModel: DirectionsViewModel = hiltViewModel()
                         val currentLocation = mapViewModel.locationFlow.collectAsState().value
-                        val myLocationString = stringResource(R.string.my_location)
 
                         // Handle initial place setup
                         LaunchedEffect(key1 = Unit) {
@@ -326,16 +325,11 @@ fun AppContent(
                                 viewModel.updateFromPlace(fromPlace)
                             } else if (currentLocation != null) {
                                 viewModel.updateFromPlace(
-                                    Place(
-                                        name = myLocationString,
-                                        id = Int.MIN_VALUE,
-                                        type = "",
-                                        icon = "",
-                                        latLng = LatLng(
+                                    viewModel.createMyLocationPlace(
+                                        LatLng(
                                             latitude = currentLocation.latitude,
                                             longitude = currentLocation.longitude,
-                                        ),
-                                        isMyLocation = true
+                                        )
                                     )
                                 )
                             }
