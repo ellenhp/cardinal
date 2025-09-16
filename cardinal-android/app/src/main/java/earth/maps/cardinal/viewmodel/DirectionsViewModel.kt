@@ -7,7 +7,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.GeocodeResult
-import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.ViewportRepository
@@ -132,16 +131,25 @@ class DirectionsViewModel @Inject constructor(
                 // Create waypoints for Ferrostar
                 val waypoints = listOf(
                     Waypoint(
-                        coordinate = GeographicCoordinate(origin.latLng.latitude, origin.latLng.longitude),
+                        coordinate = GeographicCoordinate(
+                            origin.latLng.latitude,
+                            origin.latLng.longitude
+                        ),
                         kind = WaypointKind.BREAK
                     ),
                     Waypoint(
-                        coordinate = GeographicCoordinate(destination.latLng.latitude, destination.latLng.longitude),
+                        coordinate = GeographicCoordinate(
+                            destination.latLng.latitude,
+                            destination.latLng.longitude
+                        ),
                         kind = WaypointKind.BREAK
                     )
                 )
                 val userLocation = UserLocation(
-                    coordinates = GeographicCoordinate(origin.latLng.latitude, origin.latLng.longitude),
+                    coordinates = GeographicCoordinate(
+                        origin.latLng.latitude,
+                        origin.latLng.longitude
+                    ),
                     horizontalAccuracy = 10.0,
                     courseOverGround = null,
                     timestamp = java.time.Instant.now(),
@@ -168,6 +176,22 @@ class DirectionsViewModel @Inject constructor(
     fun startNavigation(navigationCoordinator: NavigationCoordinator) {
         ferrostarRoute?.let { route ->
             navigationCoordinator.navigateToTurnByTurnWithFerrostarRoute(route, selectedRoutingMode)
+        }
+    }
+
+    fun flipDestinations() {
+        val tempFrom = fromPlace
+        val tempTo = toPlace
+        fromPlace = tempTo
+        toPlace = tempFrom
+        fetchRouteIfNeeded()
+    }
+
+    fun recalculateRoute() {
+        val origin = fromPlace
+        val destination = toPlace
+        if (origin != null && destination != null) {
+            fetchRoute(origin, destination)
         }
     }
 

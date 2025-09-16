@@ -103,4 +103,6 @@
     <string name="address_unavailable">Address unavailable</string>
     <string name="searching_in_progress">Searching…</string>
     <string name="calculating_route_in_progress">Calculating route…</string>
+    <string name="flip_destinations">Flip destinations</string>
+    <string name="recalculate_route">Recalculate route</string>
 </resources>
