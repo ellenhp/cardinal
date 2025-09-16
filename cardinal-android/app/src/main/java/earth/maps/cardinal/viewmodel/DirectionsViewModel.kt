@@ -278,14 +278,10 @@ class DirectionsViewModel @Inject constructor(
         }
     }
 
-    suspend fun getCurrentLocationAsPlace(context: android.content.Context): Place? {
+    suspend fun getCurrentLocationAsPlace(): Place? {
         isGettingLocation = true
         return try {
-            locationRepository.getCurrentLocationAsPlace(context) ?: run {
-                // Fallback to viewport center if location is not available
-                val currentLatLng = viewportRepository.viewportCenter.value ?: LatLng(37.7749, -122.4194)
-                locationRepository.createMyLocationPlace(currentLatLng)
-            }
+            locationRepository.getCurrentLocationAsPlace()
         } finally {
             isGettingLocation = false
         }

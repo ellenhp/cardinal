@@ -354,7 +354,7 @@ class LocationRepository @Inject constructor(
      * Returns null if current location is not available.
      */
     @SuppressLint("MissingPermission")
-    suspend fun getCurrentLocationAsPlace(context: Context): Place? {
+    suspend fun getCurrentLocationAsPlace(): Place? {
         return getCurrentLocation(context)?.let { location ->
             createMyLocationPlace(LatLng(location.latitude, location.longitude))
         }
