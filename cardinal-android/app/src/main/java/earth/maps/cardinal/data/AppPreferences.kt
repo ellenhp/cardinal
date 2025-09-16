@@ -24,7 +24,7 @@ class AppPreferences(context: Context) {
 
         // Default values
         private const val DEFAULT_PELIAS_BASE_URL = "https://maps.earth/pelias/v1"
-        private const val DEFAULT_VALHALLA_BASE_URL = "https://api.stadiamaps.com/route/v1"
+        private const val DEFAULT_VALHALLA_BASE_URL = "https://maps.earth/valhalla/route"
 
         // Contrast level constants
         const val CONTRAST_LEVEL_STANDARD = 0
