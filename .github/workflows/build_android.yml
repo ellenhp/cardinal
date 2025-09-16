@@ -103,6 +103,9 @@ jobs:
         echo "=== Cargo NDK Version ==="
         cargo ndk --version || echo "cargo-ndk not found"
 
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+
     - name: Build with Gradle
       working-directory: cardinal-android
       run: touch local.properties && ./gradlew assembleDebug --info --stacktrace --no-daemon
