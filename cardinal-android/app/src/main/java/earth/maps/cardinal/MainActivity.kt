@@ -22,7 +22,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
-import earth.maps.cardinal.tileserver.TileserverService
+import earth.maps.cardinal.tileserver.LocalMapServerService
 import earth.maps.cardinal.ui.AppContent
 import earth.maps.cardinal.ui.NavigationCoordinator
 import earth.maps.cardinal.ui.Screen
@@ -37,7 +37,10 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var appPreferenceRepository: AppPreferenceRepository
 
-    private var tileserverService: TileserverService? = null
+    @Inject
+    lateinit var ferrostarWrapperRepository: FerrostarWrapperRepository
+
+    private var localMapServerService: LocalMapServerService? = null
     private var bound by mutableStateOf(false)
     private var port by mutableStateOf<Int?>(null)
     private var hasLocationPermission by mutableStateOf(false)
@@ -59,13 +62,20 @@ class MainActivity : ComponentActivity() {
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
-            // We've bound to TileserverService, cast the IBinder and get TileserverService instance
-            val binder = service as TileserverService.LocalBinder
-            tileserverService = binder.getService()
+            // We've bound to LocalMapServerService, cast the IBinder and get LocalMapServerService instance
+            val binder = service as LocalMapServerService.LocalBinder
+            localMapServerService = binder.getService()
             bound = true
             // Get the port
-            port = tileserverService?.getPort()
+            port = localMapServerService?.getPort()
             Log.d(TAG, "Connected to tile server service on port: $port")
+
+            // Configure Ferrostar to use the local routing endpoint
+            port?.let { port ->
+                val routingEndpoint = "http://127.0.0.1:$port/route"
+                ferrostarWrapperRepository.setValhallaEndpoint(routingEndpoint)
+                Log.d(TAG, "Configured Ferrostar to use local routing endpoint: $routingEndpoint")
+            }
         }
 
         override fun onServiceDisconnected(arg0: ComponentName) {
@@ -142,12 +152,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        ferrostarWrapperRepository.androidTtsObserver.start()
         // Start the tile server service
-        val serviceIntent = Intent(this, TileserverService::class.java)
+        val serviceIntent = Intent(this, LocalMapServerService::class.java)
         startService(serviceIntent)
 
         // Bind to the service
         bindService(serviceIntent, connection, BIND_AUTO_CREATE)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        ferrostarWrapperRepository.androidTtsObserver.stopAndClearQueue()
     }
 
     override fun onRequestPermissionsResult(
@@ -168,6 +184,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        ferrostarWrapperRepository.androidTtsObserver.shutdown()
         if (bound) {
             unbindService(connection)
             bound = false

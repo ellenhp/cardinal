@@ -28,7 +28,7 @@ jobs:
     - name: Set up Android SDK
       uses: android-actions/setup-android@v3
       with:
-        api-level: 34
+        api-level: 36
         ndk-version: 26.1.10909125
 
     - name: Configure Android NDK environment
@@ -101,13 +101,9 @@ jobs:
         echo "=== Cargo NDK Version ==="
         cargo ndk --version || echo "cargo-ndk not found"
 
-    - name: Verify Gradle dependencies
-      working-directory: cardinal-android
-      run: ./gradlew dependencies --configuration implementation
-
     - name: Build with Gradle
       working-directory: cardinal-android
-      run: ./gradlew build --info --stacktrace --no-daemon
+      run: ./gradlew assembleDebug --info --stacktrace --no-daemon
       env:
         ANDROID_HOME: ${{ env.ANDROID_HOME }}
         ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}

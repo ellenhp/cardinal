@@ -18,7 +18,7 @@
         android:theme="@style/Theme.CardinalMaps"
         android:networkSecurityConfig="@xml/network_security_config">
         <service 
-            android:name=".tileserver.TileserverService"
+            android:name=".tileserver.LocalMapServerService"
             android:exported="false" />
         
         <activity
