@@ -499,7 +499,7 @@ private fun FerrostarRouteResults(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = "${String.format("%.1f", ferrostarRoute.distance / 1000)} km",
+                            text = "${String.format("%.1f", ferrostarRoute.distance)} km",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
