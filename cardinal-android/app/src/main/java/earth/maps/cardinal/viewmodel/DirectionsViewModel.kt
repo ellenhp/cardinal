@@ -17,10 +17,8 @@ import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
 import earth.maps.cardinal.ui.NavigationCoordinator
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +27,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import uniffi.ferrostar.GeographicCoordinate
 import uniffi.ferrostar.Route
 import uniffi.ferrostar.UserLocation
@@ -179,10 +178,9 @@ class DirectionsViewModel @Inject constructor(
                 )
 
                 // Get routes from Ferrostar
-                val routes =
-                    CoroutineScope(Dispatchers.IO).async {
-                        ferrostarWrapper.core.getRoutes(userLocation, waypoints)
-                    }.await()
+                val routes = withContext(Dispatchers.IO) {
+                    ferrostarWrapper.core.getRoutes(userLocation, waypoints)
+                }
                 ferrostarRoute = routes.firstOrNull()
                 isRouteLoading = false
             } catch (e: Exception) {

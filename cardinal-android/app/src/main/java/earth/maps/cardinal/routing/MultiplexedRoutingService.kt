@@ -1,8 +1,6 @@
 package earth.maps.cardinal.routing
 
 import earth.maps.cardinal.data.AppPreferenceRepository
-import earth.maps.cardinal.data.LatLng
-import earth.maps.cardinal.data.RoutingMode
 import javax.inject.Inject
 
 class MultiplexedRoutingService

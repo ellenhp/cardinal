@@ -5,8 +5,6 @@ import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import earth.maps.cardinal.R
 import earth.maps.cardinal.data.AppPreferences
-import earth.maps.cardinal.data.LatLng
-import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.routing.MultiplexedRoutingService
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -25,10 +23,6 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.pow
