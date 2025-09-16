@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -167,13 +168,14 @@ fun MapView(
                         GeoJsonData.Features(FeatureCollection(features = listOf(routeFeature)))
                     )
 
+                    val polylineColor = colorResource(earth.maps.cardinal.R.color.polyline_color)
                     LineLayer(
                         id = "route_line",
                         source = routeSource,
                         color = rgbColor(
-                            const(0), // Blue color
-                            const(122),
-                            const(255)
+                            const((polylineColor.red * 255.0).toInt()), // Blue color
+                            const((polylineColor.green * 255.0).toInt()),
+                            const((polylineColor.blue * 255.0).toInt())
                         ),
                         width = const(6.dp),
                         opacity = const(0.8f)

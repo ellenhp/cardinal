@@ -45,7 +45,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
@@ -57,7 +56,6 @@ import earth.maps.cardinal.viewmodel.DirectionsViewModel
 import io.github.dellisd.spatialk.geojson.BoundingBox
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import org.maplibre.compose.camera.CameraPosition
 import uniffi.ferrostar.Route
 
 enum class FieldFocusState {
