@@ -1,5 +1,6 @@
 package earth.maps.cardinal.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -16,6 +17,7 @@ import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
 import earth.maps.cardinal.ui.NavigationCoordinator
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import uniffi.ferrostar.GeographicCoordinate
 import uniffi.ferrostar.Route
 import uniffi.ferrostar.UserLocation
@@ -175,10 +178,13 @@ class DirectionsViewModel @Inject constructor(
                 )
 
                 // Get routes from Ferrostar
-                val routes = ferrostarWrapper.core.getRoutes(userLocation, waypoints)
+                val routes = withContext(Dispatchers.IO) {
+                    ferrostarWrapper.core.getRoutes(userLocation, waypoints)
+                }
                 ferrostarRoute = routes.firstOrNull()
                 isRouteLoading = false
             } catch (e: Exception) {
+                Log.e(TAG, "Error while fetching route", e)
                 routeError = e.message ?: "An error occurred while fetching the route"
                 ferrostarRoute = null
                 isRouteLoading = false
@@ -222,18 +228,20 @@ class DirectionsViewModel @Inject constructor(
 
                         // Refresh origin location if it's "my location"
                         if (origin.isMyLocation) {
-                            locationRepository.getFreshCurrentLocationAsPlace()?.let { freshLocation ->
-                                updatedOrigin = freshLocation
-                                fromPlace = freshLocation
-                            }
+                            locationRepository.getFreshCurrentLocationAsPlace()
+                                ?.let { freshLocation ->
+                                    updatedOrigin = freshLocation
+                                    fromPlace = freshLocation
+                                }
                         }
 
                         // Refresh destination location if it's "my location"
                         if (destination.isMyLocation) {
-                            locationRepository.getFreshCurrentLocationAsPlace()?.let { freshLocation ->
-                                updatedDestination = freshLocation
-                                toPlace = freshLocation
-                            }
+                            locationRepository.getFreshCurrentLocationAsPlace()
+                                ?.let { freshLocation ->
+                                    updatedDestination = freshLocation
+                                    toPlace = freshLocation
+                                }
                         }
 
                         // Fetch route with updated locations (ensure they're not null)
@@ -293,5 +301,9 @@ class DirectionsViewModel @Inject constructor(
      */
     fun createMyLocationPlace(latLng: LatLng): Place {
         return locationRepository.createMyLocationPlace(latLng)
+    }
+
+    companion object {
+        private const val TAG = "DirectionsViewModel"
     }
 }

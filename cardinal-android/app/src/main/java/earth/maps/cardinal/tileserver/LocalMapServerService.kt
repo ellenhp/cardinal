@@ -5,19 +5,26 @@ import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
+import dagger.hilt.android.AndroidEntryPoint
 import earth.maps.cardinal.data.AppPreferences
+import earth.maps.cardinal.routing.MultiplexedRoutingService
+import javax.inject.Inject
 
-class TileserverService : Service() {
-    private lateinit var tileserver: Tileserver
+@AndroidEntryPoint
+class LocalMapServerService : Service() {
+    private lateinit var localMapServer: LocalMapServer
 
     // For accessing offline mode preference
     private lateinit var appPreferences: AppPreferences
+
+    @Inject
+    lateinit var multiplexedRoutingService: MultiplexedRoutingService
 
     // Binder given to clients
     private val binder = LocalBinder()
 
     inner class LocalBinder : Binder() {
-        fun getService(): TileserverService = this@TileserverService
+        fun getService(): LocalMapServerService = this@LocalMapServerService
     }
 
     override fun onCreate() {
@@ -27,9 +34,10 @@ class TileserverService : Service() {
         // Initialize the AppPreferenceRepository
         appPreferences = AppPreferences(this)
 
-        tileserver =
-            Tileserver(this, appPreferences) // Pass context and repository to Tileserver
-        tileserver.start()
+        // TODO: Get an instance of MultiplexedRoutingService (via hilt?) and pass it in here.
+        localMapServer =
+            LocalMapServer(this, appPreferences, multiplexedRoutingService) // Pass context and repository to LocalMapServer
+        localMapServer.start()
         Log.d(TAG, "Tile server service created and started")
     }
 
@@ -44,7 +52,7 @@ class TileserverService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "Destroying tile server service")
-        tileserver.stop()
+        localMapServer.stop()
         Log.d(TAG, "Tile server service destroyed")
     }
 
@@ -53,10 +61,10 @@ class TileserverService : Service() {
     }
 
     fun getPort(): Int {
-        return tileserver.getPort()
+        return localMapServer.getPort()
     }
 
     companion object {
-        private const val TAG = "TileserverService"
+        private const val TAG = "LocalMapServerService"
     }
 }
