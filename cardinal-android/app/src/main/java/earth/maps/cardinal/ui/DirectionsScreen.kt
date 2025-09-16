@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,11 +48,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.deduplicateSearchResults
 import earth.maps.cardinal.viewmodel.DirectionsViewModel
+import io.github.dellisd.spatialk.geojson.BoundingBox
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import uniffi.ferrostar.Route
 
 enum class FieldFocusState {
@@ -187,7 +192,7 @@ fun DirectionsScreen(
             when {
                 isRouteLoading -> {
                     Text(
-                        text = "Calculating route...",
+                        text = stringResource(R.string.calculating_route_in_progress),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
@@ -275,6 +280,54 @@ fun DirectionsScreen(
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Handles route display and camera animation for the directions screen.
+ * This composable manages the route state and automatically animates the camera
+ * to show the full route when it's calculated.
+ */
+@Composable
+fun RouteDisplayHandler(
+    viewModel: DirectionsViewModel,
+    cameraState: org.maplibre.compose.camera.CameraState,
+    appPreferences: AppPreferenceRepository,
+    padding: PaddingValues,
+    onRouteUpdate: (Route?) -> Unit
+) {
+    val ferrostarRoute = viewModel.ferrostarRoute
+    val coroutineScope = rememberCoroutineScope()
+
+    // Update the route state and animate camera when route changes
+    LaunchedEffect(ferrostarRoute) {
+        onRouteUpdate(ferrostarRoute)
+
+        // Animate camera to show the full route when it's calculated
+        ferrostarRoute?.let { route ->
+            val coordinates = route.geometry
+            if (coordinates.isNotEmpty()) {
+                val lats = coordinates.map { it.lat }
+                val lngs = coordinates.map { it.lng }
+                val minLat = lats.minOrNull() ?: 0.0
+                val maxLat = lats.maxOrNull() ?: 0.0
+                val minLng = lngs.minOrNull() ?: 0.0
+                val maxLng = lngs.maxOrNull() ?: 0.0
+
+                coroutineScope.launch {
+                    cameraState.animateTo(
+                        boundingBox = BoundingBox(
+                            west = minLng,
+                            south = minLat,
+                            east = maxLng,
+                            north = maxLat
+                        ),
+                        padding = padding,
+                        duration = appPreferences.animationSpeedDurationValue
+                    )
+                }
             }
         }
     }

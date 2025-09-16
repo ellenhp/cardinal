@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -35,6 +36,7 @@ import earth.maps.cardinal.ui.map.LocationPuck
 import earth.maps.cardinal.viewmodel.MapViewModel
 import io.github.dellisd.spatialk.geojson.Feature
 import io.github.dellisd.spatialk.geojson.FeatureCollection
+import io.github.dellisd.spatialk.geojson.LineString
 import io.github.dellisd.spatialk.geojson.Point
 import io.github.dellisd.spatialk.geojson.Polygon
 import io.github.dellisd.spatialk.geojson.Position
@@ -68,6 +70,7 @@ fun MapView(
     cameraState: CameraState,
     appPreferences: AppPreferenceRepository,
     selectedOfflineArea: OfflineArea? = null,
+    currentRoute: uniffi.ferrostar.Route? = null,
 ) {
     val context = LocalContext.current
     val styleState = rememberStyleState()
@@ -151,6 +154,31 @@ fun MapView(
                             const((color.blue * 255).toInt())
                         ),
                         width = const(3.dp)
+                    )
+                }
+
+                // Display route if available
+                currentRoute?.let { route ->
+                    val routePositions = route.geometry.map { coord ->
+                        Position(coord.lng, coord.lat) // [longitude, latitude]
+                    }
+                    val routeLineString = LineString(routePositions)
+                    val routeFeature = Feature(geometry = routeLineString)
+                    val routeSource = rememberGeoJsonSource(
+                        GeoJsonData.Features(FeatureCollection(features = listOf(routeFeature)))
+                    )
+
+                    val polylineColor = colorResource(earth.maps.cardinal.R.color.polyline_color)
+                    LineLayer(
+                        id = "route_line",
+                        source = routeSource,
+                        color = rgbColor(
+                            const((polylineColor.red * 255.0).toInt()), // Blue color
+                            const((polylineColor.green * 255.0).toInt()),
+                            const((polylineColor.blue * 255.0).toInt())
+                        ),
+                        width = const(6.dp),
+                        opacity = const(0.8f)
                     )
                 }
 
