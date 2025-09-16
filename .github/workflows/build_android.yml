@@ -29,7 +29,9 @@ jobs:
       uses: android-actions/setup-android@v3
       with:
         api-level: 36
-        ndk-version: 26.1.10909125
+
+    - name: Install NDK
+      run: sdkmanager "ndk;26.1.10909125"
 
     - name: Configure Android NDK environment
       run: |
