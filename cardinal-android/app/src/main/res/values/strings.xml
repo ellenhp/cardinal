@@ -105,4 +105,5 @@
     <string name="calculating_route_in_progress">Calculating route…</string>
     <string name="flip_destinations">Flip destinations</string>
     <string name="recalculate_route">Recalculate route</string>
+    <string name="use_current_location">Use current location</string>
 </resources>

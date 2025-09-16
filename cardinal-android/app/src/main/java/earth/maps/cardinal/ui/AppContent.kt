@@ -328,7 +328,7 @@ fun AppContent(
                                 viewModel.updateFromPlace(
                                     Place(
                                         name = myLocationString,
-                                        id = Int.MAX_VALUE,
+                                        id = Int.MIN_VALUE,
                                         type = "",
                                         icon = "",
                                         latLng = LatLng(

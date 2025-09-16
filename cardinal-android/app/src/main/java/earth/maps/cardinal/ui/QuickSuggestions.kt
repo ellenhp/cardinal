@@ -88,7 +88,7 @@ fun QuickSuggestions(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Use current location",
+                            text = stringResource(R.string.use_current_location),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

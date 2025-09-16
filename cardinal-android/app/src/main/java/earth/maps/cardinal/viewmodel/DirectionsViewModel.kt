@@ -240,7 +240,7 @@ class DirectionsViewModel @Inject constructor(
             val location = locationRepository.getCurrentLocation(context)
             location?.let {
                 Place(
-                    id = Int.MAX_VALUE, // Special ID for "My Location"
+                    id = Int.MIN_VALUE, // Special ID for "My Location"
                     name = "My Location",
                     type = "Current Location",
                     icon = "location",
@@ -251,7 +251,7 @@ class DirectionsViewModel @Inject constructor(
                 // Fallback to viewport center if location is not available
                 val currentLatLng = viewportRepository.viewportCenter.value ?: LatLng(37.7749, -122.4194)
                 Place(
-                    id = Int.MAX_VALUE,
+                    id = Int.MIN_VALUE,
                     name = "My Location",
                     type = "Current Location",
                     icon = "location",
