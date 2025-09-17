@@ -368,6 +368,8 @@ fun AppContent(
                                 }
                             },
                             navigationCoordinator = navigationCoordinator,
+                            hasLocationPermission = hasLocationPermission,
+                            onRequestLocationPermission = onRequestLocationPermission,
                         )
                     }
                 }

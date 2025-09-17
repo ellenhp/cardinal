@@ -73,10 +73,15 @@ fun DirectionsScreen(
     onBack: () -> Unit,
     onFullExpansionRequired: () -> Job,
     navigationCoordinator: NavigationCoordinator,
-    context: android.content.Context
+    context: android.content.Context,
+    hasLocationPermission: Boolean,
+    onRequestLocationPermission: () -> Unit
 ) {
     var fieldFocusState by remember { mutableStateOf(FieldFocusState.NONE) }
     val isAnyFieldFocused = fieldFocusState != FieldFocusState.NONE
+
+    // Track pending location request for auto-retry after permission grant
+    var pendingLocationRequest by remember { mutableStateOf<FieldFocusState?>(null) }
 
     // Get route result from ViewModel
     val ferrostarRoute = viewModel.ferrostarRoute
@@ -84,6 +89,29 @@ fun DirectionsScreen(
     val routeError = viewModel.routeError
 
     val coroutineScope = rememberCoroutineScope()
+
+    // Auto-retry location request when permissions are granted
+    LaunchedEffect(hasLocationPermission) {
+        if (hasLocationPermission && pendingLocationRequest != null) {
+            val targetField = pendingLocationRequest!!
+            pendingLocationRequest = null // Clear the pending request
+
+            // Automatically fetch location for the target field
+            coroutineScope.launch {
+                val myLocationPlace = viewModel.getCurrentLocationAsPlace()
+                myLocationPlace?.let { place ->
+                    // Update the appropriate place based on which field was focused
+                    if (targetField == FieldFocusState.FROM) {
+                        viewModel.updateFromPlace(place)
+                    } else {
+                        viewModel.updateToPlace(place)
+                    }
+                    // Clear focus state after selection
+                    fieldFocusState = FieldFocusState.NONE
+                }
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -279,19 +307,27 @@ fun DirectionsScreen(
                 // Show quick suggestions when no search query
                 QuickSuggestions(
                     onMyLocationSelected = {
-                        // Launch coroutine to get current location
-                        coroutineScope.launch {
-                            val myLocationPlace = viewModel.getCurrentLocationAsPlace()
-                            myLocationPlace?.let { place ->
-                                // Update the appropriate place based on which field is focused
-                                if (fieldFocusState == FieldFocusState.FROM) {
-                                    viewModel.updateFromPlace(place)
-                                } else {
-                                    viewModel.updateToPlace(place)
+                        // Check permissions before attempting to get location
+                        if (hasLocationPermission) {
+                            // Launch coroutine to get current location
+                            coroutineScope.launch {
+                                val myLocationPlace = viewModel.getCurrentLocationAsPlace()
+                                myLocationPlace?.let { place ->
+                                    // Update the appropriate place based on which field is focused
+                                    if (fieldFocusState == FieldFocusState.FROM) {
+                                        viewModel.updateFromPlace(place)
+                                    } else {
+                                        viewModel.updateToPlace(place)
+                                    }
+                                    // Clear focus state after selection
+                                    fieldFocusState = FieldFocusState.NONE
                                 }
-                                // Clear focus state after selection
-                                fieldFocusState = FieldFocusState.NONE
                             }
+                        } else {
+                            // Set pending request for auto-retry after permission grant
+                            pendingLocationRequest = fieldFocusState
+                            // Request location permission
+                            onRequestLocationPermission()
                         }
                     },
                     savedPlaces = viewModel.savedPlaces.value,
@@ -306,6 +342,8 @@ fun DirectionsScreen(
                         fieldFocusState = FieldFocusState.NONE
                     },
                     isGettingLocation = viewModel.isGettingLocation,
+                    hasLocationPermission = hasLocationPermission,
+                    onRequestLocationPermission = onRequestLocationPermission,
                     modifier = Modifier.fillMaxWidth()
                 )
             } else {

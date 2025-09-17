@@ -296,6 +296,33 @@ class DirectionsViewModel @Inject constructor(
     }
 
     /**
+     * Checks if location permissions are granted before attempting to get location.
+     * This method should be called before any location-related operations.
+     */
+    fun hasLocationPermission(context: android.content.Context): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
+     * Safely gets current location as a Place, handling permission checks.
+     * Returns null if permissions are not granted or location cannot be obtained.
+     */
+    suspend fun getCurrentLocationAsPlaceSafe(context: android.content.Context): Place? {
+        return if (hasLocationPermission(context)) {
+            getCurrentLocationAsPlace()
+        } else {
+            null
+        }
+    }
+
+    /**
      * Creates a "My Location" Place object with the given coordinates.
      * This is a public method to allow other components to create consistent "My Location" places.
      */
