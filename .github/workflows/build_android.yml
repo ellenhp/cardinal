@@ -17,6 +17,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
+        lfs: true
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
@@ -108,7 +109,10 @@ jobs:
 
     - name: Build with Gradle
       working-directory: cardinal-android
-      run: touch local.properties && ./gradlew assembleDebug --info --stacktrace --no-daemon
+      run: |
+        touch local.properties
+        # Build debug APKs for each architecture to test the configuration
+        ./gradlew assembleArm64Debug assembleX86_64Debug --info --stacktrace --no-daemon
       env:
         ANDROID_HOME: ${{ env.ANDROID_HOME }}
         ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}

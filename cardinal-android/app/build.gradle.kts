@@ -23,6 +23,24 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    flavorDimensions += "architecture"
+    productFlavors {
+        create("arm64") {
+            dimension = "architecture"
+            ndk {
+                abiFilters += "arm64-v8a"
+            }
+            versionNameSuffix = "-arm64"
+        }
+        create("x86_64") {
+            dimension = "architecture"
+            ndk {
+                abiFilters += "x86_64"
+            }
+            versionNameSuffix = "-x86_64"
+        }
+    }
+
     signingConfigs {
         create("release") {
             storeFile = file("release.keystore")
@@ -42,6 +60,21 @@ android {
             signingConfig = signingConfigs["release"] as ApkSigningConfig
         }
     }
+
+    bundle {
+        language {
+            // Disable language splits for now to keep bundles simpler
+            enableSplit = false
+        }
+        density {
+            // Enable density splits for smaller downloads
+            enableSplit = true
+        }
+        abi {
+            // Enable ABI splits - this works with our product flavors
+            enableSplit = true
+        }
+    }
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -54,32 +87,32 @@ android {
         compose = true
     }
 
+    // Define a single UniFFI binding generation task outside of applicationVariants.all to avoid duplication
+    val generateUniFFIBindings = tasks.register<Exec>("generateUniFFIBindings") {
+        workingDir = file("../../cardinal-geocoder")
+        commandLine = listOf(
+            "cargo",
+            "run",
+            "--bin",
+            "uniffi-bindgen",
+            "generate",
+            "--library",
+            "../cardinal-android/app/src/main/jniLibs/arm64-v8a/libcardinal_geocoder.so",
+            "--language",
+            "kotlin",
+            "--out-dir",
+            layout.buildDirectory.dir("generated/source/uniffi/java").get().toString()
+        )
+        // Depend on both cargo builds to ensure native libraries are available
+        dependsOn("buildCargoNdkArm64Release", "buildCargoNdkX86_64Release")
+    }
+
     applicationVariants.all {
         val variant = this
-        val bDir = layout.buildDirectory.dir("generated/source/uniffi/${variant.name}/java").get()
-        val generateBindings =
-            tasks.register<Exec>("generate${variant.name.capitalize()}UniFFIBindings") {
-                workingDir = file("../../cardinal-geocoder")
-                commandLine = listOf(
-                    "cargo",
-                    "run",
-                    "--bin",
-                    "uniffi-bindgen",
-                    "generate",
-                    "--library",
-                    "../cardinal-android/app/src/main/jniLibs/arm64-v8a/libcardinal_geocoder.so",
-                    "--language",
-                    "kotlin",
-                    "--out-dir",
-                    bDir.toString()
-                )
 
-                dependsOn("buildCargoNdkRelease")
-            }
-
-        // Add dependency from Java compilation to generateBindings task
+        // Add dependency from Java compilation to the UniFFI binding generation task
         tasks.named("compile${variant.name.capitalize()}JavaWithJavac") {
-            dependsOn(generateBindings)
+            dependsOn(generateUniFFIBindings)
         }
     }
 
