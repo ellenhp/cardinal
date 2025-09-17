@@ -10,6 +10,11 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
+import io.ktor.client.request.prepareGet
+import io.ktor.client.statement.HttpStatement
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -283,12 +288,13 @@ class TileDownloadService(
     }
 
     /**
-     * Download a single Valhalla tile and save it to disk
+     * Download a single Valhalla tile and save it to disk using streaming to avoid OOM
      */
     private suspend fun downloadValhallaTile(
         hierarchyLevel: Int,
         tileIndex: Int,
     ): Pair<Boolean, String?> = withContext(Dispatchers.IO) {
+        var fileOutputStream: FileOutputStream? = null
         try {
             val url = ValhallaTileUtils.getTileUrl(
                 "https://cardinaldata.airmail.rs/valhalla-250825",
@@ -298,17 +304,6 @@ class TileDownloadService(
 
             Log.v(TAG, "Downloading Valhalla tile $hierarchyLevel/$tileIndex from $url")
 
-            // Use ktor to get the tile data
-            val response = httpClient.get(url)
-            
-            // Check response code
-            if (response.status.value != 200) {
-                Log.e(TAG, "Error downloading Valhalla tile $hierarchyLevel/$tileIndex: HTTP ${response.status}")
-                return@withContext Pair(false, null)
-            }
-
-            val data = response.body<ByteArray>()
-
             // Create file path for the tile
             val tileFile = ValhallaTileUtils.getLocalTileFilePath(
                 File("${context.filesDir}/valhalla_tiles/"),
@@ -316,20 +311,53 @@ class TileDownloadService(
                 tileIndex
             )
 
-            // Write tile data to file
-            FileOutputStream(tileFile).use { outputStream ->
-                outputStream.write(data)
+            // Use streaming approach to avoid loading entire tile into memory
+            val statement = httpClient.prepareGet(url)
+            val totalBytes = statement.execute { response ->
+                // Check response code
+                if (response.status.value != 200) {
+                    Log.e(TAG, "Error downloading Valhalla tile $hierarchyLevel/$tileIndex: HTTP ${response.status}")
+                    return@execute 0L
+                }
+
+                // Get the response channel for streaming
+                val channel = response.bodyAsChannel()
+                fileOutputStream = FileOutputStream(tileFile)
+
+                // Read and write in chunks to avoid OOM
+                val buffer = ByteArray(8192) // 8KB buffer
+                var totalBytesRead = 0L
+
+                while (true) {
+                    val bytesRead = channel.readAvailable(buffer)
+                    if (bytesRead == -1) break // End of stream
+
+                    fileOutputStream?.write(buffer, 0, bytesRead)
+                    totalBytesRead += bytesRead
+                }
+
+                totalBytesRead
             }
+
+            fileOutputStream?.close()
+            fileOutputStream = null
 
             Log.v(
                 TAG,
-                "Downloaded Valhalla tile $hierarchyLevel/$tileIndex, size: ${data.size} bytes, saved to: ${tileFile.absolutePath}"
+                "Downloaded Valhalla tile $hierarchyLevel/$tileIndex, size: $totalBytes bytes, saved to: ${tileFile.absolutePath}"
             )
 
             Pair(true, tileFile.absolutePath)
         } catch (e: Exception) {
             Log.e(TAG, "Error downloading Valhalla tile $hierarchyLevel/$tileIndex via HTTP", e)
             Pair(false, null)
+        } finally {
+            // Ensure file output stream is closed
+            try {
+                fileOutputStream?.close()
+            } catch (closeException: Exception) {
+                Log.w(TAG, "Error closing file output stream for Valhalla tile $hierarchyLevel/$tileIndex", closeException)
+            }
         }
     }
 
