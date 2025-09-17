@@ -21,10 +21,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +48,7 @@ import earth.maps.cardinal.R
 import earth.maps.cardinal.data.DownloadStatus
 import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
+import kotlinx.coroutines.launch
 import org.maplibre.compose.util.VisibleRegion
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -57,15 +58,14 @@ import java.util.Locale
 @Composable
 fun OfflineAreasScreen(
     currentViewport: VisibleRegion,
+    currentZoom: Double,
     viewModel: OfflineAreasViewModel = hiltViewModel(),
+    snackbarHostState: SnackbarHostState,
     onDismiss: () -> Unit,
     onAreaSelected: (OfflineArea) -> Unit = {}
 ) {
     val offlineAreas by viewModel.offlineAreas
     val isDownloading by viewModel.isDownloading
-    val downloadProgress by viewModel.downloadProgress
-    val totalTiles by viewModel.totalTiles
-    val currentAreaName by viewModel.currentAreaName
 
     var showDownloadDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -74,6 +74,9 @@ fun OfflineAreasScreen(
 
     // Format for displaying dates
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+    val zoomInMessage = stringResource(R.string.zoom_in_to_download_an_area)
+
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -104,11 +107,17 @@ fun OfflineAreasScreen(
 
         // Download button
         Button(
-            onClick = { showDownloadDialog = true },
-            modifier = Modifier
+            onClick = {
+                if (currentZoom < 8) {
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(zoomInMessage)
+                    }
+                } else {
+                    showDownloadDialog = true
+                }
+            }, modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            enabled = !isDownloading
+                .padding(bottom = 16.dp), enabled = !isDownloading
         ) {
             Icon(
                 painter = painterResource(R.drawable.cloud_download_24dp),
@@ -116,55 +125,6 @@ fun OfflineAreasScreen(
                 modifier = Modifier.padding(end = 8.dp)
             )
             Text(text = stringResource(R.string.download_new_area))
-        }
-
-        // Progress indicator when downloading
-        if (isDownloading) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.downloading_area, currentAreaName),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    LinearProgressIndicator(
-                        progress = { if (totalTiles > 0) downloadProgress.toFloat() / totalTiles.toFloat() else 0f },
-                        modifier = Modifier.fillMaxWidth(),
-                        color = ProgressIndicatorDefaults.linearColor,
-                        trackColor = ProgressIndicatorDefaults.linearTrackColor,
-                        strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-                    )
-                    Text(
-                        text = stringResource(
-                            R.string.download_progress,
-                            downloadProgress,
-                            totalTiles
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier
-                            .padding(top = 8.dp)
-                            .align(Alignment.End)
-                    )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(
-                            onClick = { viewModel.cancelDownload() }
-                        ) {
-                            Text(stringResource(R.string.cancel))
-                        }
-                    }
-                }
-            }
         }
 
         // List of offline areas
@@ -187,17 +147,13 @@ fun OfflineAreasScreen(
             LazyColumn {
                 items(offlineAreas) { area ->
                     OfflineAreaItem(
-                        area = area,
-                        dateFormat = dateFormat,
-                        onDeleteClick = {
+                        area = area, dateFormat = dateFormat, onDeleteClick = {
                             areaToDelete = area
                             showDeleteDialog = true
-                        },
-                        onSelected = {
+                        }, onSelected = {
                             selectedArea = area
                             onAreaSelected(area)
-                        },
-                        isSelected = selectedArea?.id == area.id
+                        }, isSelected = selectedArea?.id == area.id
                     )
                 }
             }
@@ -209,11 +165,10 @@ fun OfflineAreasScreen(
         DownloadAreaDialog(
             currentViewport = currentViewport,
             onDismiss = { showDownloadDialog = false },
-            onDownload = { name, north, south, east, west, minZoom, maxZoom ->
-                viewModel.startDownload(north, south, east, west, minZoom, maxZoom, name)
+            onDownload = { name, boundingBox ->
+                viewModel.startDownload(boundingBox, name)
                 showDownloadDialog = false
-            }
-        )
+            })
     }
 
     // Delete confirmation dialog
@@ -224,8 +179,7 @@ fun OfflineAreasScreen(
             text = {
                 Text(
                     stringResource(
-                        R.string.delete_area_confirmation,
-                        areaToDelete?.name ?: ""
+                        R.string.delete_area_confirmation, areaToDelete?.name ?: ""
                     )
                 )
             },
@@ -235,8 +189,7 @@ fun OfflineAreasScreen(
                         areaToDelete?.let { viewModel.deleteOfflineArea(it) }
                         showDeleteDialog = false
                         areaToDelete = null
-                    }
-                ) {
+                    }) {
                     Text(stringResource(R.string.delete))
                 }
             },
@@ -245,12 +198,10 @@ fun OfflineAreasScreen(
                     onClick = {
                         showDeleteDialog = false
                         areaToDelete = null
-                    }
-                ) {
+                    }) {
                     Text(stringResource(R.string.cancel))
                 }
-            }
-        )
+            })
     }
 }
 
@@ -301,7 +252,9 @@ fun OfflineAreaItem(
             // Status
             val statusText = when (area.status) {
                 DownloadStatus.PENDING -> stringResource(R.string.status_pending)
-                DownloadStatus.DOWNLOADING -> stringResource(R.string.status_downloading)
+                DownloadStatus.DOWNLOADING_BASEMAP -> stringResource(R.string.status_downloading_basemap)
+                DownloadStatus.DOWNLOADING_VALHALLA -> stringResource(R.string.status_downloading_valhalla)
+                DownloadStatus.PROCESSING_GEOCODER -> stringResource(R.string.status_processing)
                 DownloadStatus.COMPLETED -> stringResource(R.string.status_completed)
                 DownloadStatus.FAILED -> stringResource(R.string.status_failed)
             }
@@ -342,9 +295,10 @@ fun OfflineAreaItem(
 fun DownloadAreaDialog(
     currentViewport: VisibleRegion,
     onDismiss: () -> Unit,
-    onDownload: (name: String, north: Double, south: Double, east: Double, west: Double, minZoom: Int, maxZoom: Int) -> Unit
+    onDownload: (name: String, boundingBox: BoundingBox) -> Unit
 ) {
     val viewModel: OfflineAreasViewModel = hiltViewModel()
+    val coroutineScope = rememberCoroutineScope()
 
     // Calculate default bounding box from current viewport
     val (north, south, east, west) = calculateBoundingBoxFromViewport(
@@ -371,7 +325,7 @@ fun DownloadAreaDialog(
     val estimatedTileCount by remember(north, south, east, west) {
         mutableIntStateOf(
             if (north >= south && east >= west) {
-                viewModel.estimateTileCount(north, south, east, west, minZoom, maxZoom)
+                viewModel.estimateTileCount(BoundingBox(north, south, east, west), minZoom, maxZoom)
             } else {
                 0
             }
@@ -432,17 +386,10 @@ fun DownloadAreaDialog(
 
                     if (valid) {
                         onDownload(
-                            name,
-                            north,
-                            south,
-                            east,
-                            west,
-                            minZoom,
-                            maxZoom
+                            name, BoundingBox(north, south, east, west)
                         )
                     }
-                }
-            ) {
+                }) {
                 Text(stringResource(R.string.download))
             }
         },
@@ -450,8 +397,7 @@ fun DownloadAreaDialog(
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.cancel))
             }
-        }
-    )
+        })
 }
 
 fun formatFileSize(bytes: Long): String {
@@ -475,8 +421,5 @@ fun calculateBoundingBoxFromViewport(
 }
 
 data class BoundingBox(
-    val north: Double,
-    val south: Double,
-    val east: Double,
-    val west: Double
+    val north: Double, val south: Double, val east: Double, val west: Double
 )

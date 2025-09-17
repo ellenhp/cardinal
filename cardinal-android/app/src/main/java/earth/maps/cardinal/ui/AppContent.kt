@@ -53,6 +53,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.gson.Gson
+import earth.maps.cardinal.MainActivity
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.data.AppPreferenceRepository
@@ -83,6 +84,7 @@ fun AppContent(
     appPreferenceRepository: AppPreferenceRepository,
     navigationCoordinator: NavigationCoordinator,
     context: Context,
+    deepLinkDestination: String? = null,
 ) {
     val mapPins = remember { mutableStateListOf<Position>() }
     val cameraState = rememberCameraState()
@@ -260,7 +262,9 @@ fun AppContent(
                         currentViewport?.let { visibleRegion ->
                             OfflineAreasScreen(
                                 currentViewport = visibleRegion,
+                                currentZoom = cameraState.position.zoom,
                                 viewModel = viewModel,
+                                snackbarHostState = snackbarHostState,
                                 onDismiss = { navController.popBackStack() },
                                 onAreaSelected = { area ->
                                     coroutineScope.launch {
@@ -328,7 +332,11 @@ fun AppContent(
                             }
                         }
                         val profileId = backStackEntry.arguments?.getString("profileId")
-                        ProfileEditorScreen(navController = navController, profileId = profileId, snackbarHostState = snackbarHostState)
+                        ProfileEditorScreen(
+                            navController = navController,
+                            profileId = profileId,
+                            snackbarHostState = snackbarHostState
+                        )
                     }
 
                     composable(Screen.Directions.route) { backStackEntry ->
@@ -409,6 +417,16 @@ fun AppContent(
                     }
                 }
 
+                // Handle deep link navigation
+                LaunchedEffect(deepLinkDestination) {
+                    deepLinkDestination?.let { destination ->
+                        when (destination) {
+                            MainActivity.DEEP_LINK_OFFLINE_AREAS -> {
+                                navController.navigate(Screen.OfflineAreas.route)
+                            }
+                        }
+                    }
+                }
             }
         },
         content = {

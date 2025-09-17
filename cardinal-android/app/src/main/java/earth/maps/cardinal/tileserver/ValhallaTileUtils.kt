@@ -1,5 +1,6 @@
 package earth.maps.cardinal.tileserver
 
+import earth.maps.cardinal.ui.BoundingBox
 import kotlin.math.*
 
 /**
@@ -49,32 +50,17 @@ object ValhallaTileUtils {
      * Return a list of tiles that intersect the bounding box
      */
     fun tilesForBoundingBox(
-        left: Double,
-        bottom: Double,
-        right: Double,
-        top: Double
+        boundingBox: BoundingBox
     ): List<Pair<Int, Int>> {
-        require(bottom in -90.0..90.0) { "Bottom latitude must be between -90 and 90" }
-        require(top in -90.0..90.0) { "Top latitude must be between -90 and 90" }
-        require(bottom <= top) { "Bottom latitude must be less than or equal to top latitude" }
-        require(left in -180.0..180.0) { "Left longitude must be between -180 and 180" }
-        require(right in -180.0..180.0) { "Right longitude must be between -180 and 180" }
-
-        // If this is crossing the anti-meridian split it up and combine
-        if (left > right) {
-            val east = tilesForBoundingBox(left, bottom, 180.0, top)
-            val west = tilesForBoundingBox(-180.0, bottom, right, top)
-            return east + west
-        }
 
         // Move these so we can compute percentages
-        val adjustedLeft = left + 180
-        val adjustedRight = right + 180
-        val adjustedBottom = bottom + 90
-        val adjustedTop = top + 90
+        val adjustedLeft = boundingBox.east + 180
+        val adjustedRight = boundingBox.west + 180
+        val adjustedBottom = boundingBox.south + 90
+        val adjustedTop = boundingBox.north + 90
 
         val tiles = mutableListOf<Pair<Int, Int>>()
-        
+
         // For each size of tile
         for ((level, size) in levelToSize) {
             // For each column
@@ -118,12 +104,17 @@ object ValhallaTileUtils {
                 val group1 = tileIndex / 1000000
                 val group2 = (tileIndex / 1000) % 1000
                 val id = tileIndex % 1000
-                "$hierarchyLevel/${group1.toString().padStart(3, '0')}/${group2.toString().padStart(3, '0')}/${id.toString().padStart(3, '0')}.gph"
+                "$hierarchyLevel/${group1.toString().padStart(3, '0')}/${
+                    group2.toString().padStart(3, '0')
+                }/${id.toString().padStart(3, '0')}.gph"
             }
+
             else -> {
                 val group = tileIndex / 1000
                 val id = tileIndex % 1000
-                "$hierarchyLevel/${group.toString().padStart(3, '0')}/${id.toString().padStart(3, '0')}.gph"
+                "$hierarchyLevel/${group.toString().padStart(3, '0')}/${
+                    id.toString().padStart(3, '0')
+                }.gph"
             }
         }
     }
@@ -139,35 +130,40 @@ object ValhallaTileUtils {
     /**
      * Generate the local file path for a Valhalla tile
      */
-    fun getLocalTileFilePath(valhallaTilesDir: java.io.File, hierarchyLevel: Int, tileIndex: Int): java.io.File {
+    fun getLocalTileFilePath(
+        valhallaTilesDir: java.io.File,
+        hierarchyLevel: Int,
+        tileIndex: Int
+    ): java.io.File {
         return when (hierarchyLevel) {
             2 -> {
                 val group1 = tileIndex / 1000000
                 val group2 = (tileIndex / 1000) % 1000
                 val id = tileIndex % 1000
-                
+
                 // Create directory structure: valhalla_tiles/{hierarchy}/{group1}/{group2}/
                 val hierarchyDir = java.io.File(valhallaTilesDir, hierarchyLevel.toString())
                 val group1Dir = java.io.File(hierarchyDir, group1.toString().padStart(3, '0'))
                 val group2Dir = java.io.File(group1Dir, group2.toString().padStart(3, '0'))
-                
+
                 // Ensure directories exist
                 group2Dir.mkdirs()
-                
+
                 // Return file path: {group2_dir}/{id}.gph
                 java.io.File(group2Dir, "${id.toString().padStart(3, '0')}.gph")
             }
+
             else -> {
                 val group = tileIndex / 1000
                 val id = tileIndex % 1000
-                
+
                 // Create directory structure: valhalla_tiles/{hierarchy}/{group}/
                 val hierarchyDir = java.io.File(valhallaTilesDir, hierarchyLevel.toString())
                 val groupDir = java.io.File(hierarchyDir, group.toString().padStart(3, '0'))
-                
+
                 // Ensure directories exist
                 groupDir.mkdirs()
-                
+
                 // Return file path: {group_dir}/{id}.gph
                 java.io.File(groupDir, "${id.toString().padStart(3, '0')}.gph")
             }

@@ -48,7 +48,9 @@
     <string name="animation_speed_fast">Fast</string>
     
     <string name="download_new_area">Download current viewport</string>
+    <string name="downloading">Downloading</string>
     <string name="downloading_area">Downloading %1$s</string>
+    <string name="preparing_download">Preparing download...</string>
     <string name="download_progress">%1$d / %2$d tiles</string>
     <string name="saved_offline_areas">Saved Offline Areas</string>
     <string name="no_offline_areas">No offline areas downloaded yet</string>
@@ -57,7 +59,9 @@
     <string name="delete_area_confirmation">Are you sure you want to delete \"%1$s\"?</string>
     <string name="status_label">Status: %1$s</string>
     <string name="status_pending">Pending</string>
-    <string name="status_downloading">Downloading</string>
+    <string name="status_downloading_basemap">Downloading map data</string>
+    <string name="status_downloading_valhalla">Downloading routing data</string>
+    <string name="status_processing">Processing</string>
     <string name="status_completed">Completed</string>
     <string name="status_failed">Failed</string>
     <string name="downloaded_on">Downloaded on: %1$s</string>
@@ -122,4 +126,12 @@
     <string name="change_profile">Change</string>
     <string name="select_routing_profile">Select Routing Profile</string>
     <string name="cancel_change_routing_profile">Cancel</string>
+    <string name="downloading_basemap_tiles">Downloading basemap tiles...</string>
+    <string name="downloading_routing_tiles">Downloading routing tiles...</string>
+    <string name="processing_downloaded_tiles">Processing downloaded tiles...</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="paused">Paused</string>
+    <string name="status_paused">Paused</string>
+    <string name="zoom_in_to_download_an_area">Zoom in to download an area</string>
 </resources>
