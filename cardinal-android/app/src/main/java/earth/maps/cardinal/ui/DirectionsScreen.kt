@@ -91,9 +91,7 @@ fun DirectionsScreen(
     var pendingLocationRequest by remember { mutableStateOf<FieldFocusState?>(null) }
 
     // Get route result from ViewModel
-    val ferrostarRoute = viewModel.ferrostarRoute
-    val isRouteLoading = viewModel.isRouteLoading
-    val routeError = viewModel.routeError
+    val routeState = viewModel.routeState
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -183,7 +181,7 @@ fun DirectionsScreen(
                     isFocused = fieldFocusState == FieldFocusState.FROM,
                     showRecalculateButton = viewModel.fromPlace != null && viewModel.toPlace != null,
                     onRecalculateClick = { viewModel.recalculateRoute() },
-                    isRouteLoading = isRouteLoading,
+                    isRouteLoading = routeState.isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp)
@@ -205,7 +203,7 @@ fun DirectionsScreen(
                     isFocused = fieldFocusState == FieldFocusState.TO,
                     showFlipButton = viewModel.fromPlace != null && viewModel.toPlace != null,
                     onFlipClick = { viewModel.flipDestinations() },
-                    isRouteLoading = isRouteLoading,
+                    isRouteLoading = routeState.isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
@@ -218,14 +216,17 @@ fun DirectionsScreen(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
+                val availableRoutingModes by viewModel.getAvailableRoutingModes()
+                    .collectAsState(initial = listOf(RoutingMode.AUTO, RoutingMode.PEDESTRIAN, RoutingMode.BICYCLE))
+
                 RoutingModeSelector(
+                    availableModes = availableRoutingModes,
                     selectedMode = viewModel.selectedRoutingMode,
                     onModeSelected = { viewModel.updateRoutingMode(it) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
                 )
-
 
 
                 // Inset horizontal divider
@@ -240,7 +241,7 @@ fun DirectionsScreen(
 
             // Route results
             when {
-                isRouteLoading -> {
+                routeState.isLoading -> {
                     Text(
                         text = stringResource(R.string.calculating_route_in_progress),
                         modifier = Modifier
@@ -249,9 +250,9 @@ fun DirectionsScreen(
                     )
                 }
 
-                routeError != null -> {
+                routeState.error != null -> {
                     Text(
-                        text = stringResource(R.string.directions_error, routeError),
+                        text = stringResource(R.string.directions_error, routeState.error),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -259,9 +260,9 @@ fun DirectionsScreen(
                     )
                 }
 
-                ferrostarRoute != null -> {
+                routeState.route != null -> {
                     FerrostarRouteResults(
-                        ferrostarRoute = ferrostarRoute,
+                        ferrostarRoute = routeState.route,
                         viewModel = viewModel,
                         modifier = Modifier.fillMaxWidth(),
                         navigationCoordinator = navigationCoordinator,
@@ -274,7 +275,8 @@ fun DirectionsScreen(
                             }
                         },
                         distanceUnit = appPreferences.distanceUnit.value,
-                        availableProfiles = viewModel.getAvailableProfilesForCurrentMode().collectAsState(initial = emptyList()).value
+                        availableProfiles = viewModel.getAvailableProfilesForCurrentMode()
+                            .collectAsState(initial = emptyList()).value
                     )
                 }
 
@@ -402,15 +404,15 @@ fun RouteDisplayHandler(
     padding: PaddingValues,
     onRouteUpdate: (Route?) -> Unit
 ) {
-    val ferrostarRoute = viewModel.ferrostarRoute
+    val routeState = viewModel.routeState
     val coroutineScope = rememberCoroutineScope()
 
     // Update the route state and animate camera when route changes
-    LaunchedEffect(ferrostarRoute) {
-        onRouteUpdate(ferrostarRoute)
+    LaunchedEffect(routeState.route) {
+        onRouteUpdate(routeState.route)
 
         // Animate camera to show the full route when it's calculated
-        ferrostarRoute?.let { route ->
+        routeState.route?.let { route ->
             val coordinates = route.geometry
             if (coordinates.isNotEmpty()) {
                 val lats = coordinates.map { it.lat }
@@ -550,11 +552,13 @@ private fun PlaceField(
 
 @Composable
 private fun RoutingModeSelector(
+    availableModes: List<RoutingMode>,
     selectedMode: RoutingMode,
     onModeSelected: (RoutingMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
     SegmentedButtonRow(
+        availableModes = availableModes,
         selectedMode = selectedMode,
         onModeSelected = onModeSelected,
         modifier = modifier
@@ -563,16 +567,11 @@ private fun RoutingModeSelector(
 
 @Composable
 private fun SegmentedButtonRow(
+    availableModes: List<RoutingMode>,
     selectedMode: RoutingMode,
     onModeSelected: (RoutingMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val routingModes = listOf(
-        RoutingMode.AUTO,
-        RoutingMode.PEDESTRIAN,
-        RoutingMode.BICYCLE
-    )
-
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
@@ -585,15 +584,16 @@ private fun SegmentedButtonRow(
                 .padding(4.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            routingModes.forEachIndexed { index, mode ->
+            availableModes.forEachIndexed { index, mode ->
                 val isSelected = selectedMode == mode
                 val isFirst = index == 0
-                val isLast = index == routingModes.size - 1
+                val isLast = index == availableModes.size - 1
 
                 SegmentedButton(
                     selected = isSelected,
                     onClick = { onModeSelected(mode) },
                     label = mode.label,
+                    icon = mode.icon,
                     modifier = Modifier
                         .weight(1f)
                         .padding(
@@ -629,6 +629,7 @@ private fun SegmentedButton(
     selected: Boolean,
     onClick: () -> Unit,
     label: String,
+    icon: Int? = null,
     modifier: Modifier = Modifier,
     shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.medium
 ) {
@@ -649,10 +650,14 @@ private fun SegmentedButton(
         },
         elevation = ButtonDefaults.buttonElevation(0.dp)
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge
-        )
+        if (icon != null) {
+            Icon(painter = painterResource(icon), contentDescription = label)
+        } else {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
     }
 }
 
@@ -767,22 +772,26 @@ private fun FerrostarRouteResults(
                         )
                     }
 
-                    // Show current profile and change button if there are custom profiles
-                    if (availableProfiles.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                    // Show current profile and change button
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(
+                                R.string.routing_profile_format,
+                                selectedProfile?.name ?: stringResource(R.string.default_profile)
+                            ),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        TextButton(
+                            onClick = { showProfileDialog = true },
+                            enabled = availableProfiles.isNotEmpty()
                         ) {
-                            Text(
-                                text = "Profile: ${selectedProfile?.name ?: "Default"}",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            TextButton(onClick = { showProfileDialog = true }) {
-                                Text("Change")
-                            }
+                            Text(stringResource(R.string.change_profile))
                         }
                     }
 
@@ -855,7 +864,7 @@ private fun FerrostarRouteResults(
     if (showProfileDialog) {
         AlertDialog(
             onDismissRequest = { showProfileDialog = false },
-            title = { Text("Select Routing Profile") },
+            title = { Text(stringResource(R.string.select_routing_profile)) },
             text = {
                 Column {
                     // Default option
@@ -867,7 +876,7 @@ private fun FerrostarRouteResults(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "Default",
+                            text = stringResource(R.string.default_profile),
                             color = if (selectedProfile == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -891,7 +900,7 @@ private fun FerrostarRouteResults(
             },
             confirmButton = {
                 TextButton(onClick = { showProfileDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel_change_routing_profile))
                 }
             }
         )

@@ -42,7 +42,15 @@ class ProfileEditorViewModel @Inject constructor(
     private val _isNewProfile = MutableStateFlow(true)
     val isNewProfile: StateFlow<Boolean> = _isNewProfile.asStateFlow()
 
+    private val _hasUnsavedChanges = MutableStateFlow(false)
+    val hasUnsavedChanges: StateFlow<Boolean> = _hasUnsavedChanges.asStateFlow()
+
     private var currentProfileId: String? = null
+
+    // Track initial values for change detection
+    private var initialProfileName: String = ""
+    private var initialSelectedMode: RoutingMode = RoutingMode.AUTO
+    private var initialRoutingOptions: RoutingOptions = AutoRoutingOptions()
 
     fun loadProfile(profileId: String?) {
         if (profileId == null) {
@@ -51,6 +59,12 @@ class ProfileEditorViewModel @Inject constructor(
             _profileName.value = ""
             _selectedMode.value = RoutingMode.AUTO
             _routingOptions.value = AutoRoutingOptions()
+
+            // Set initial values for new profile
+            initialProfileName = ""
+            initialSelectedMode = RoutingMode.AUTO
+            initialRoutingOptions = AutoRoutingOptions()
+            _hasUnsavedChanges.value = false
         } else {
             // Existing profile
             _isNewProfile.value = false
@@ -67,20 +81,34 @@ class ProfileEditorViewModel @Inject constructor(
             repository.getProfileById(profileId).fold(
                 onSuccess = { profile ->
                     profile?.let {
-                        _profileName.value = it.name
-                        _selectedMode.value = RoutingMode.entries.find { mode ->
+                        val name = it.name
+                        val mode = RoutingMode.entries.find { mode ->
                             mode.value == it.routingMode
                         } ?: RoutingMode.AUTO
-
-                        // Parse options from JSON
                         val options = repository.deserializeOptions(it.routingMode, it.optionsJson)
+
+                        // Update state
+                        _profileName.value = name
+                        _selectedMode.value = mode
                         _routingOptions.value = options
+
+                        // Capture initial values for change detection
+                        initialProfileName = name
+                        initialSelectedMode = mode
+                        initialRoutingOptions = options
+                        _hasUnsavedChanges.value = false
                     } ?: run {
                         // Profile doesn't exist, treat as new profile
                         _isNewProfile.value = true
                         _profileName.value = ""
                         _selectedMode.value = RoutingMode.AUTO
                         _routingOptions.value = AutoRoutingOptions()
+
+                        // Set initial values for new profile
+                        initialProfileName = ""
+                        initialSelectedMode = RoutingMode.AUTO
+                        initialRoutingOptions = AutoRoutingOptions()
+                        _hasUnsavedChanges.value = false
                     }
                 },
                 onFailure = { error ->
@@ -94,6 +122,7 @@ class ProfileEditorViewModel @Inject constructor(
 
     fun updateProfileName(name: String) {
         _profileName.value = name
+        updateHasUnsavedChanges()
     }
 
     fun updateRoutingMode(mode: RoutingMode) {
@@ -101,6 +130,7 @@ class ProfileEditorViewModel @Inject constructor(
             _selectedMode.value = mode
             // Create new options for the selected mode
             _routingOptions.value = createDefaultOptionsForMode(mode)
+            updateHasUnsavedChanges()
         }
     }
 
@@ -117,6 +147,7 @@ class ProfileEditorViewModel @Inject constructor(
 
     fun updateRoutingOptions(options: RoutingOptions) {
         _routingOptions.value = options
+        updateHasUnsavedChanges()
     }
 
     fun saveProfile(onSuccess: () -> Unit) {
@@ -152,5 +183,11 @@ class ProfileEditorViewModel @Inject constructor(
 
     fun clearError() {
         _error.value = null
+    }
+
+    private fun updateHasUnsavedChanges() {
+        _hasUnsavedChanges.value = _profileName.value != initialProfileName ||
+                _selectedMode.value != initialSelectedMode ||
+                _routingOptions.value != initialRoutingOptions
     }
 }

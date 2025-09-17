@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -24,9 +23,9 @@ import javax.inject.Singleton
 
 @Singleton
 class RoutingProfileRepository @Inject constructor(
-    private val database: AppDatabase
+    database: AppDatabase
 ) {
-    private val viewModelScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val gson = Gson()
     private val dao = database.routingProfileDao()
 
@@ -34,7 +33,7 @@ class RoutingProfileRepository @Inject constructor(
     val allProfiles: StateFlow<List<RoutingProfile>> = _allProfiles.asStateFlow()
 
     init {
-        viewModelScope.launch {
+        coroutineScope.launch {
             dao.getAllProfiles().collect { profiles ->
                 _allProfiles.value = profiles
             }
@@ -64,7 +63,7 @@ class RoutingProfileRepository @Inject constructor(
                 dao.clearDefaultForMode(routingMode.value)
             }
 
-            val profileId = dao.insert(profile)
+            dao.insert(profile)
             Result.success(profile.id)
         } catch (e: Exception) {
             Result.failure(e)
@@ -179,15 +178,38 @@ class RoutingProfileRepository @Inject constructor(
     }
 
     /**
-     * Sets a profile as the default for its routing mode.
+     * Gets the default profile for a routing mode if it exists, returns null if none exists.
+     */
+    suspend fun getDefaultProfile(routingMode: RoutingMode): Result<Pair<RoutingProfile, RoutingOptions>?> = withContext(Dispatchers.IO) {
+        try {
+            val existingDefault = dao.getDefaultProfileForMode(routingMode.value)
+            if (existingDefault != null) {
+                val options = deserializeOptions(existingDefault.routingMode, existingDefault.optionsJson)
+                Result.success(Pair(existingDefault, options))
+            } else {
+                Result.success(null)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Sets a profile as the default for its routing mode, or clears the default if it's already the default.
      */
     suspend fun setDefaultProfile(profileId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val profile = dao.getProfileById(profileId)
                 ?: return@withContext Result.failure(IllegalArgumentException("Profile not found"))
 
-            dao.clearDefaultForMode(profile.routingMode)
-            dao.setDefaultProfile(profileId)
+            if (profile.isDefault) {
+                // If already default, clear the default for this mode
+                dao.clearDefaultForMode(profile.routingMode)
+            } else {
+                // If not default, clear existing default and set this as default
+                dao.clearDefaultForMode(profile.routingMode)
+                dao.setDefaultProfile(profileId)
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -224,16 +246,9 @@ class RoutingProfileRepository @Inject constructor(
             }
         } catch (e: JsonSyntaxException) {
             // If deserialization fails, return default options for the mode
-            val mode = RoutingMode.values().find { it.value == routingMode }
+            val mode = RoutingMode.entries.find { it.value == routingMode }
                 ?: throw IllegalArgumentException("Unknown routing mode: $routingMode")
             createDefaultOptionsForMode(mode)
         }
-    }
-
-    /**
-     * Gets the count of profiles for a specific mode.
-     */
-    suspend fun getProfileCountForMode(routingMode: RoutingMode): Int = withContext(Dispatchers.IO) {
-        dao.getProfileCountForMode(routingMode.value)
     }
 }

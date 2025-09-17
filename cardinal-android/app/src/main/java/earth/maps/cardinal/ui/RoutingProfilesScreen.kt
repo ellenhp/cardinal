@@ -2,6 +2,7 @@ package earth.maps.cardinal.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,14 +26,18 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TextButton
+
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,46 +56,65 @@ fun RoutingProfilesScreen(
 ) {
     val allProfiles by viewModel.allProfiles.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.routing_profiles_title)) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Custom app bar using Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                }
+
+                Text(
+                    text = stringResource(R.string.routing_profiles_title),
+                    style = MaterialTheme.typography.titleLarge
+                )
+
+                // Placeholder to maintain layout symmetry
+                IconButton(onClick = {}, enabled = false) {
+                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.Transparent)
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 16.dp) // Reduced padding since we removed TopAppBar
+            ) {
+                // Group profiles by routing mode
+                RoutingMode.entries.forEach { mode ->
+                    val modeProfiles = allProfiles.filter { it.routingMode == mode.value }
+
+                    if (modeProfiles.isNotEmpty()) {
+                        RoutingModeSection(
+                            routingMode = mode,
+                            profiles = modeProfiles,
+                            navController = navController,
+                            onSetDefault = { profile ->
+                                viewModel.setDefaultProfile(profile.id)
+                            },
+                            onDelete = { profile ->
+                                viewModel.deleteProfile(profile.id)
+                            }
+                        )
                     }
                 }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate(Screen.ProfileEditor.route) }) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_profile))
             }
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            // Group profiles by routing mode
-            RoutingMode.entries.forEach { mode ->
-                val modeProfiles = allProfiles.filter { it.routingMode == mode.value }
 
-                if (modeProfiles.isNotEmpty()) {
-                    RoutingModeSection(
-                        routingMode = mode,
-                        profiles = modeProfiles,
-                        navController = navController,
-                        onSetDefault = { profile ->
-                            viewModel.setDefaultProfile(profile.id)
-                        },
-                        onDelete = { profile ->
-                            viewModel.deleteProfile(profile.id)
-                        }
-                    )
-                }
-            }
+        // Floating Action Button positioned at bottom right
+        FloatingActionButton(
+            onClick = { navController.navigate(Screen.ProfileEditor.route) },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_profile))
         }
     }
 }
@@ -137,6 +163,8 @@ private fun ProfileCard(
     onSetDefault: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val showDeleteDialog = remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -189,10 +217,31 @@ private fun ProfileCard(
                 IconButton(onClick = onClick) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit")
                 }
-                IconButton(onClick = onDelete) {
+                IconButton(onClick = { showDeleteDialog.value = true }) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete")
                 }
             }
         }
+    }
+
+    if (showDeleteDialog.value) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog.value = false },
+            title = { Text("Delete Profile") },
+            text = { Text("Are you sure you want to delete this routing profile?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDelete()
+                    showDeleteDialog.value = false
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog.value = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

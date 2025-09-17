@@ -117,4 +117,9 @@
     <string name="directions">Directions</string>
     <string name="from">From</string>
     <string name="to">To</string>
+    <string name="routing_profile_format">Profile: %1$s</string>
+    <string name="default_profile">Default</string>
+    <string name="change_profile">Change</string>
+    <string name="select_routing_profile">Select Routing Profile</string>
+    <string name="cancel_change_routing_profile">Cancel</string>
 </resources>

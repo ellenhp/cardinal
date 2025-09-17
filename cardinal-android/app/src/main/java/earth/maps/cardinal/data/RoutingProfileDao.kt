@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
@@ -45,4 +46,27 @@ interface RoutingProfileDao {
 
     @Query("SELECT COUNT(*) FROM routing_profiles WHERE routingMode = :routingMode")
     suspend fun getProfileCountForMode(routingMode: String): Int
+
+    @Transaction
+    suspend fun setProfileAsDefault(profileId: String) {
+        val profile = getProfileById(profileId) ?: throw IllegalArgumentException("Profile not found")
+        clearDefaultForMode(profile.routingMode)
+        setDefaultProfile(profileId)
+    }
+
+    @Transaction
+    suspend fun createProfileWithDefault(profile: RoutingProfile): Long {
+        if (profile.isDefault) {
+            clearDefaultForMode(profile.routingMode)
+        }
+        return insert(profile)
+    }
+
+    @Transaction
+    suspend fun updateProfileWithDefault(profile: RoutingProfile) {
+        if (profile.isDefault) {
+            clearDefaultForMode(profile.routingMode)
+        }
+        update(profile)
+    }
 }
