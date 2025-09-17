@@ -12,7 +12,7 @@ Every decision we make puts the user first:
 
 ## Screenshots
 
-<img src="assets/screenshot_basemap.png" width="30%" alt="Basemap view" style="padding: 0; margin: 0;"> <img src="assets/screenshot_directions.png" width="30%" alt="Directions view" style="padding: 0; margin: 0;"> <img src="assets/screenshot_place_card.png" width="30%" alt="Place card view" style="padding: 0; margin: 0;">
+<img src="assets/screenshot_basemap.png" width="33%" alt="Basemap view" style="padding: 0; margin: 0;"><img src="assets/screenshot_place_card.png" width="33%" alt="Place card view" style="padding: 0; margin: 0;"><img src="assets/screenshot_directions.png" width="33%" alt="Directions view" style="padding: 0; margin: 0;">
 
 ## Feature Comparison
 
