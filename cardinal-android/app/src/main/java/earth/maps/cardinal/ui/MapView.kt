@@ -27,6 +27,7 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
@@ -235,6 +236,7 @@ private fun MapControls(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .zIndex(100000f)
             .padding(fabInsets)
     ) {
         Column(
