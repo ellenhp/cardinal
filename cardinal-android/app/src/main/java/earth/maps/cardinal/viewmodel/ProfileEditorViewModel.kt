@@ -1,0 +1,156 @@
+package earth.maps.cardinal.viewmodel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import earth.maps.cardinal.data.RoutingMode
+import earth.maps.cardinal.data.RoutingProfile
+import earth.maps.cardinal.data.RoutingProfileRepository
+import earth.maps.cardinal.routing.AutoRoutingOptions
+import earth.maps.cardinal.routing.CyclingRoutingOptions
+import earth.maps.cardinal.routing.MotorScooterRoutingOptions
+import earth.maps.cardinal.routing.MotorcycleRoutingOptions
+import earth.maps.cardinal.routing.PedestrianRoutingOptions
+import earth.maps.cardinal.routing.RoutingOptions
+import earth.maps.cardinal.routing.TruckRoutingOptions
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class ProfileEditorViewModel @Inject constructor(
+    private val repository: RoutingProfileRepository
+) : ViewModel() {
+
+    private val _profileName = MutableStateFlow("")
+    val profileName: StateFlow<String> = _profileName.asStateFlow()
+
+    private val _selectedMode = MutableStateFlow(RoutingMode.AUTO)
+    val selectedMode: StateFlow<RoutingMode> = _selectedMode.asStateFlow()
+
+    private val _routingOptions = MutableStateFlow<RoutingOptions>(AutoRoutingOptions())
+    val routingOptions: StateFlow<RoutingOptions> = _routingOptions.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    private val _isNewProfile = MutableStateFlow(true)
+    val isNewProfile: StateFlow<Boolean> = _isNewProfile.asStateFlow()
+
+    private var currentProfileId: String? = null
+
+    fun loadProfile(profileId: String?) {
+        if (profileId == null) {
+            // New profile
+            _isNewProfile.value = true
+            _profileName.value = ""
+            _selectedMode.value = RoutingMode.AUTO
+            _routingOptions.value = AutoRoutingOptions()
+        } else {
+            // Existing profile
+            _isNewProfile.value = false
+            currentProfileId = profileId
+            loadExistingProfile(profileId)
+        }
+    }
+
+    private fun loadExistingProfile(profileId: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            repository.getProfileById(profileId).fold(
+                onSuccess = { profile ->
+                    profile?.let {
+                        _profileName.value = it.name
+                        _selectedMode.value = RoutingMode.entries.find { mode ->
+                            mode.value == it.routingMode
+                        } ?: RoutingMode.AUTO
+
+                        // Parse options from JSON
+                        val options = repository.deserializeOptions(it.routingMode, it.optionsJson)
+                        _routingOptions.value = options
+                    } ?: run {
+                        // Profile doesn't exist, treat as new profile
+                        _isNewProfile.value = true
+                        _profileName.value = ""
+                        _selectedMode.value = RoutingMode.AUTO
+                        _routingOptions.value = AutoRoutingOptions()
+                    }
+                },
+                onFailure = { error ->
+                    _error.value = "Failed to load profile: ${error.message}"
+                }
+            )
+
+            _isLoading.value = false
+        }
+    }
+
+    fun updateProfileName(name: String) {
+        _profileName.value = name
+    }
+
+    fun updateRoutingMode(mode: RoutingMode) {
+        if (mode != _selectedMode.value) {
+            _selectedMode.value = mode
+            // Create new options for the selected mode
+            _routingOptions.value = createDefaultOptionsForMode(mode)
+        }
+    }
+
+    private fun createDefaultOptionsForMode(mode: RoutingMode): RoutingOptions {
+        return when (mode) {
+            RoutingMode.AUTO -> AutoRoutingOptions()
+            RoutingMode.TRUCK -> TruckRoutingOptions()
+            RoutingMode.MOTOR_SCOOTER -> MotorScooterRoutingOptions()
+            RoutingMode.MOTORCYCLE -> MotorcycleRoutingOptions()
+            RoutingMode.BICYCLE -> CyclingRoutingOptions()
+            RoutingMode.PEDESTRIAN -> PedestrianRoutingOptions()
+        }
+    }
+
+    fun updateRoutingOptions(options: RoutingOptions) {
+        _routingOptions.value = options
+    }
+
+    fun saveProfile(onSuccess: () -> Unit) {
+        if (_profileName.value.isBlank()) {
+            _error.value = "Profile name cannot be empty"
+            return
+        }
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            val result = if (_isNewProfile.value) {
+                repository.createProfile(_profileName.value, _selectedMode.value, _routingOptions.value)
+            } else {
+                currentProfileId?.let { profileId ->
+                    repository.updateProfile(profileId, _profileName.value, _routingOptions.value)
+                } ?: Result.failure(Exception("Profile ID not found"))
+            }
+
+            result.fold(
+                onSuccess = {
+                    onSuccess()
+                },
+                onFailure = { error ->
+                    _error.value = "Failed to save profile: ${error.message}"
+                }
+            )
+
+            _isLoading.value = false
+        }
+    }
+
+    fun clearError() {
+        _error.value = null
+    }
+}

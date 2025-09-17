@@ -94,6 +94,7 @@
     <string name="pelias_api_key_title">Pelias API Key</string>
     <string name="valhalla_base_url_title">Valhalla Base URL</string>
     <string name="valhalla_api_key_title">Valhalla API Key</string>
+    <string name="routing_profiles_title">Routing Profiles</string>
     <string name="content_description_collapse">Collapse</string>
     <string name="content_description_expand">Expand</string>
     <string name="enter_a_place">Enter a place</string>
@@ -107,4 +108,13 @@
     <string name="recalculate_route">Recalculate route</string>
     <string name="use_current_location">Use current location</string>
     <string name="change_start_location_to_my_location">Navigation only available for routes from "My Location"</string>
+    <string name="back">Back</string>
+    <string name="add_profile">Add Profile</string>
+    <string name="enter_start_and_end_locations_to_get_directions">Enter start and end locations to get directions</string>
+    <string name="directions_error">Error: %1$s</string>
+    <string name="routing_profile">Routing Profile</string>
+    <string name="routing_mode">Routing Mode</string>
+    <string name="directions">Directions</string>
+    <string name="from">From</string>
+    <string name="to">To</string>
 </resources>

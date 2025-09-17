@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -27,13 +28,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.data.AppPreferenceRepository
+import earth.maps.cardinal.data.DistanceUtils
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.deduplicateSearchResults
@@ -78,7 +80,9 @@ fun DirectionsScreen(
     navigationCoordinator: NavigationCoordinator,
     context: android.content.Context,
     hasLocationPermission: Boolean,
-    onRequestLocationPermission: () -> Unit
+    onRequestLocationPermission: () -> Unit,
+    appPreferences: AppPreferenceRepository,
+    snackbarHostState: SnackbarHostState
 ) {
     var fieldFocusState by remember { mutableStateOf(FieldFocusState.NONE) }
     val isAnyFieldFocused = fieldFocusState != FieldFocusState.NONE
@@ -92,7 +96,6 @@ fun DirectionsScreen(
     val routeError = viewModel.routeError
 
     val coroutineScope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
 
     // Auto-retry location request when permissions are granted
     LaunchedEffect(hasLocationPermission) {
@@ -120,268 +123,267 @@ fun DirectionsScreen(
     val navUnavailableSnackbarMessage =
         stringResource(R.string.change_start_location_to_my_location)
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-                .padding(paddingValues)
-        ) {
-            val density = androidx.compose.ui.platform.LocalDensity.current
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+    ) {
+        val density = androidx.compose.ui.platform.LocalDensity.current
 
-            // Conditionally show UI based on field focus
-            if (!isAnyFieldFocused) {
-                // Show full UI when no field is focused
-                Column(
+        // Conditionally show UI based on field focus
+        if (!isAnyFieldFocused) {
+            // Show full UI when no field is focused
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { coordinates ->
+                        val heightInDp = with(density) { coordinates.size.height.toDp() }
+                        onPeekHeightChange(heightInDp)
+                    }
+            ) {
+                // Header with back button
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .onGloballyPositioned { coordinates ->
-                            val heightInDp = with(density) { coordinates.size.height.toDp() }
-                            onPeekHeightChange(heightInDp)
-                        }
+                        .padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Header with back button
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
-                            )
-                        }
-
-                        Text(
-                            text = "Directions",
-                            style = MaterialTheme.typography.headlineSmall
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
                         )
-
-                        // Spacer to balance the row
-                        Box(modifier = Modifier.size(48.dp))
                     }
 
-                    // From and To fields
-                    PlaceField(
-                        label = "From",
-                        place = viewModel.fromPlace,
-                        onCleared = {
-                            viewModel.updateFromPlace(null)
-
-                        },
-                        onTextChange = {
-                            viewModel.updateSearchQuery(it)
-                        },
-                        onTextFieldFocusChange = {
-                            fieldFocusState = if (it) FieldFocusState.FROM else FieldFocusState.NONE
-                            onFullExpansionRequired()
-                        },
-                        isFocused = fieldFocusState == FieldFocusState.FROM,
-                        showRecalculateButton = viewModel.fromPlace != null && viewModel.toPlace != null,
-                        onRecalculateClick = { viewModel.recalculateRoute() },
-                        isRouteLoading = isRouteLoading,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                    )
-
-                    PlaceField(
-                        label = "To",
-                        place = viewModel.toPlace,
-                        onCleared = {
-                            viewModel.updateToPlace(null)
-                        },
-                        onTextChange = {
-                            viewModel.updateSearchQuery(it)
-                        },
-                        onTextFieldFocusChange = {
-                            fieldFocusState = if (it) FieldFocusState.TO else FieldFocusState.NONE
-                            onFullExpansionRequired()
-                        },
-                        isFocused = fieldFocusState == FieldFocusState.TO,
-                        showFlipButton = viewModel.fromPlace != null && viewModel.toPlace != null,
-                        onFlipClick = { viewModel.flipDestinations() },
-                        isRouteLoading = isRouteLoading,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp)
-                    )
-
-                    // Routing mode selection
                     Text(
-                        text = "Routing Mode",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        text = stringResource(R.string.directions),
+                        style = MaterialTheme.typography.headlineSmall
                     )
 
-                    RoutingModeSelector(
-                        selectedMode = viewModel.selectedRoutingMode,
-                        onModeSelected = { viewModel.updateRoutingMode(it) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp)
-                    )
-
-                    // Inset horizontal divider
-                    HorizontalDivider(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = dimensionResource(dimen.padding) / 2),
-                        thickness = DividerDefaults.Thickness,
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
+                    // Spacer to balance the row
+                    Box(modifier = Modifier.size(48.dp))
                 }
 
-                // Route results
-                when {
-                    isRouteLoading -> {
-                        Text(
-                            text = stringResource(R.string.calculating_route_in_progress),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        )
-                    }
-
-                    routeError != null -> {
-                        Text(
-                            text = "Error: $routeError",
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        )
-                    }
-
-                    ferrostarRoute != null -> {
-                        FerrostarRouteResults(
-                            ferrostarRoute = ferrostarRoute,
-                            viewModel = viewModel,
-                            modifier = Modifier.fillMaxWidth(),
-                            navigationCoordinator = navigationCoordinator,
-                            fromPlace = viewModel.fromPlace,
-                            onDisabledButtonClick = {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        message = navUnavailableSnackbarMessage
-                                    )
-                                }
-                            }
-                        )
-                    }
-
-                    else -> {
-                        // No route calculated yet
-                        Text(
-                            text = "Enter start and end locations to get directions",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        )
-                    }
-                }
-            } else {
-                // Show only the focused field and search results when a field is focused
-                val currentFocusState = fieldFocusState
+                // From and To fields
                 PlaceField(
-                    label = if (currentFocusState == FieldFocusState.FROM) "From" else "To",
-                    place = if (currentFocusState == FieldFocusState.FROM) viewModel.fromPlace else viewModel.toPlace,
+                    label = stringResource(R.string.from),
+                    place = viewModel.fromPlace,
                     onCleared = {
-                        if (currentFocusState == FieldFocusState.FROM) {
-                            viewModel.updateFromPlace(null)
-                        } else {
-                            viewModel.updateToPlace(null)
-                        }
+                        viewModel.updateFromPlace(null)
+
                     },
                     onTextChange = {
                         viewModel.updateSearchQuery(it)
                     },
-                    onTextFieldFocusChange = { isFocused ->
-                        fieldFocusState = if (isFocused) {
-                            currentFocusState
-                        } else {
-                            FieldFocusState.NONE
-                        }
+                    onTextFieldFocusChange = {
+                        fieldFocusState = if (it) FieldFocusState.FROM else FieldFocusState.NONE
+                        onFullExpansionRequired()
                     },
-                    isFocused = true,
+                    isFocused = fieldFocusState == FieldFocusState.FROM,
+                    showRecalculateButton = viewModel.fromPlace != null && viewModel.toPlace != null,
+                    onRecalculateClick = { viewModel.recalculateRoute() },
+                    isRouteLoading = isRouteLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp)
                 )
 
-                // Show search results or quick suggestions based on search query
-                if (viewModel.isSearching) {
+                PlaceField(
+                    label = stringResource(R.string.to),
+                    place = viewModel.toPlace,
+                    onCleared = {
+                        viewModel.updateToPlace(null)
+                    },
+                    onTextChange = {
+                        viewModel.updateSearchQuery(it)
+                    },
+                    onTextFieldFocusChange = {
+                        fieldFocusState = if (it) FieldFocusState.TO else FieldFocusState.NONE
+                        onFullExpansionRequired()
+                    },
+                    isFocused = fieldFocusState == FieldFocusState.TO,
+                    showFlipButton = viewModel.fromPlace != null && viewModel.toPlace != null,
+                    onFlipClick = { viewModel.flipDestinations() },
+                    isRouteLoading = isRouteLoading,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                )
+
+                // Routing mode selection
+                Text(
+                    text = stringResource(R.string.routing_mode),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                RoutingModeSelector(
+                    selectedMode = viewModel.selectedRoutingMode,
+                    onModeSelected = { viewModel.updateRoutingMode(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                )
+
+
+
+                // Inset horizontal divider
+                HorizontalDivider(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = dimensionResource(dimen.padding) / 2),
+                    thickness = DividerDefaults.Thickness,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
+
+            // Route results
+            when {
+                isRouteLoading -> {
                     Text(
-                        text = "Searching...",
+                        text = stringResource(R.string.calculating_route_in_progress),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
                     )
-                } else if (viewModel.searchQuery.isEmpty()) {
-                    // Show quick suggestions when no search query
-                    QuickSuggestions(
-                        onMyLocationSelected = {
-                            // Check permissions before attempting to get location
-                            if (hasLocationPermission) {
-                                // Launch coroutine to get current location
-                                coroutineScope.launch {
-                                    val myLocationPlace = viewModel.getCurrentLocationAsPlace()
-                                    myLocationPlace?.let { place ->
-                                        // Update the appropriate place based on which field is focused
-                                        if (fieldFocusState == FieldFocusState.FROM) {
-                                            viewModel.updateFromPlace(place)
-                                        } else {
-                                            viewModel.updateToPlace(place)
-                                        }
-                                        // Clear focus state after selection
-                                        fieldFocusState = FieldFocusState.NONE
-                                    }
-                                }
-                            } else {
-                                // Set pending request for auto-retry after permission grant
-                                pendingLocationRequest = fieldFocusState
-                                // Request location permission
-                                onRequestLocationPermission()
-                            }
-                        },
-                        savedPlaces = viewModel.savedPlaces.value,
-                        onSavedPlaceSelected = { place ->
-                            // Update the appropriate place based on which field is focused
-                            if (fieldFocusState == FieldFocusState.FROM) {
-                                viewModel.updateFromPlace(place)
-                            } else {
-                                viewModel.updateToPlace(place)
-                            }
-                            // Clear focus state after selection
-                            fieldFocusState = FieldFocusState.NONE
-                        },
-                        isGettingLocation = viewModel.isGettingLocation,
-                        hasLocationPermission = hasLocationPermission,
-                        onRequestLocationPermission = onRequestLocationPermission,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    // Show search results when there's a query
-                    SearchResults(
-                        geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value),
-                        onPlaceSelected = { place ->
-                            // Update the appropriate place based on which field is focused
-                            if (fieldFocusState == FieldFocusState.FROM) {
-                                viewModel.updateFromPlace(place)
-                            } else {
-                                viewModel.updateToPlace(place)
-                            }
-                            // Clear focus state after selection
-                            fieldFocusState = FieldFocusState.NONE
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                }
+
+                routeError != null -> {
+                    Text(
+                        text = stringResource(R.string.directions_error, routeError),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
                     )
                 }
+
+                ferrostarRoute != null -> {
+                    FerrostarRouteResults(
+                        ferrostarRoute = ferrostarRoute,
+                        viewModel = viewModel,
+                        modifier = Modifier.fillMaxWidth(),
+                        navigationCoordinator = navigationCoordinator,
+                        fromPlace = viewModel.fromPlace,
+                        onDisabledButtonClick = {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = navUnavailableSnackbarMessage
+                                )
+                            }
+                        },
+                        distanceUnit = appPreferences.distanceUnit.value,
+                        availableProfiles = viewModel.getAvailableProfilesForCurrentMode().collectAsState(initial = emptyList()).value
+                    )
+                }
+
+                else -> {
+                    // No route calculated yet
+                    Text(
+                        text = stringResource(R.string.enter_start_and_end_locations_to_get_directions),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
+                }
+            }
+        } else {
+            // Show only the focused field and search results when a field is focused
+            val currentFocusState = fieldFocusState
+            PlaceField(
+                label = if (currentFocusState == FieldFocusState.FROM) "From" else "To",
+                place = if (currentFocusState == FieldFocusState.FROM) viewModel.fromPlace else viewModel.toPlace,
+                onCleared = {
+                    if (currentFocusState == FieldFocusState.FROM) {
+                        viewModel.updateFromPlace(null)
+                    } else {
+                        viewModel.updateToPlace(null)
+                    }
+                },
+                onTextChange = {
+                    viewModel.updateSearchQuery(it)
+                },
+                onTextFieldFocusChange = { isFocused ->
+                    fieldFocusState = if (isFocused) {
+                        currentFocusState
+                    } else {
+                        FieldFocusState.NONE
+                    }
+                },
+                isFocused = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            )
+
+            // Show search results or quick suggestions based on search query
+            if (viewModel.isSearching) {
+                Text(
+                    text = "Searching...",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+            } else if (viewModel.searchQuery.isEmpty()) {
+                // Show quick suggestions when no search query
+                QuickSuggestions(
+                    onMyLocationSelected = {
+                        // Check permissions before attempting to get location
+                        if (hasLocationPermission) {
+                            // Launch coroutine to get current location
+                            coroutineScope.launch {
+                                val myLocationPlace = viewModel.getCurrentLocationAsPlace()
+                                myLocationPlace?.let { place ->
+                                    // Update the appropriate place based on which field is focused
+                                    if (fieldFocusState == FieldFocusState.FROM) {
+                                        viewModel.updateFromPlace(place)
+                                    } else {
+                                        viewModel.updateToPlace(place)
+                                    }
+                                    // Clear focus state after selection
+                                    fieldFocusState = FieldFocusState.NONE
+                                }
+                            }
+                        } else {
+                            // Set pending request for auto-retry after permission grant
+                            pendingLocationRequest = fieldFocusState
+                            // Request location permission
+                            onRequestLocationPermission()
+                        }
+                    },
+                    savedPlaces = viewModel.savedPlaces.value,
+                    onSavedPlaceSelected = { place ->
+                        // Update the appropriate place based on which field is focused
+                        if (fieldFocusState == FieldFocusState.FROM) {
+                            viewModel.updateFromPlace(place)
+                        } else {
+                            viewModel.updateToPlace(place)
+                        }
+                        // Clear focus state after selection
+                        fieldFocusState = FieldFocusState.NONE
+                    },
+                    isGettingLocation = viewModel.isGettingLocation,
+                    hasLocationPermission = hasLocationPermission,
+                    onRequestLocationPermission = onRequestLocationPermission,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                // Show search results when there's a query
+                SearchResults(
+                    geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value),
+                    onPlaceSelected = { place ->
+                        // Update the appropriate place based on which field is focused
+                        if (fieldFocusState == FieldFocusState.FROM) {
+                            viewModel.updateFromPlace(place)
+                        } else {
+                            viewModel.updateToPlace(place)
+                        }
+                        // Clear focus state after selection
+                        fieldFocusState = FieldFocusState.NONE
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
@@ -457,7 +459,7 @@ private fun PlaceField(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedTextField(
@@ -655,14 +657,58 @@ private fun SegmentedButton(
 }
 
 @Composable
+private fun RoutingProfileSelector(
+    viewModel: DirectionsViewModel,
+    modifier: Modifier = Modifier
+) {
+    val availableProfiles by viewModel.getAvailableProfilesForCurrentMode()
+        .collectAsState(initial = emptyList())
+    val selectedProfile = viewModel.selectedRoutingProfile
+
+    // Add "Default" option at the beginning
+    val profileOptions = listOf(null) + availableProfiles
+
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.Start
+        ) {
+            profileOptions.forEach { profile ->
+                val isSelected = selectedProfile?.id == profile?.id
+                val label = profile?.name ?: "Default"
+
+                SegmentedButton(
+                    selected = isSelected,
+                    onClick = { viewModel.selectRoutingProfile(profile) },
+                    label = label,
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun FerrostarRouteResults(
     ferrostarRoute: Route,
     viewModel: DirectionsViewModel,
     modifier: Modifier = Modifier,
     navigationCoordinator: NavigationCoordinator,
     fromPlace: Place?,
-    onDisabledButtonClick: () -> Unit
+    onDisabledButtonClick: () -> Unit,
+    distanceUnit: Int,
+    availableProfiles: List<earth.maps.cardinal.data.RoutingProfile>
 ) {
+    var showProfileDialog by remember { mutableStateOf(false) }
+    val selectedProfile = viewModel.selectedRoutingProfile
+
     LazyColumn(modifier = modifier) {
         item {
             Card(
@@ -693,7 +739,10 @@ private fun FerrostarRouteResults(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = "${String.format("%.1f", ferrostarRoute.distance / 1000.0)} km",
+                            text = DistanceUtils.formatDistance(
+                                ferrostarRoute.distance,
+                                distanceUnit
+                            ),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -716,6 +765,25 @@ private fun FerrostarRouteResults(
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
+                    }
+
+                    // Show current profile and change button if there are custom profiles
+                    if (availableProfiles.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Profile: ${selectedProfile?.name ?: "Default"}",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            TextButton(onClick = { showProfileDialog = true }) {
+                                Text("Change")
+                            }
+                        }
                     }
 
                     Button(
@@ -774,12 +842,58 @@ private fun FerrostarRouteResults(
 
                     // Step distance
                     Text(
-                        text = "${String.format("%.0f", step.distance)} m",
+                        text = DistanceUtils.formatShortDistance(step.distance, distanceUnit),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
+    }
+
+    // Profile selection dialog
+    if (showProfileDialog) {
+        AlertDialog(
+            onDismissRequest = { showProfileDialog = false },
+            title = { Text("Select Routing Profile") },
+            text = {
+                Column {
+                    // Default option
+                    TextButton(
+                        onClick = {
+                            viewModel.selectRoutingProfile(null)
+                            showProfileDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Default",
+                            color = if (selectedProfile == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    // Custom profiles
+                    availableProfiles.forEach { profile ->
+                        TextButton(
+                            onClick = {
+                                viewModel.selectRoutingProfile(profile)
+                                showProfileDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = profile.name,
+                                color = if (selectedProfile?.id == profile.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showProfileDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

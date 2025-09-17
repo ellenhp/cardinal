@@ -33,6 +33,9 @@ fun TurnByTurnNavigationScreen(
         RoutingMode.AUTO -> ferrostarWrapperRepository.driving
         RoutingMode.PEDESTRIAN -> ferrostarWrapperRepository.walking
         RoutingMode.BICYCLE -> ferrostarWrapperRepository.cycling
+        RoutingMode.TRUCK -> ferrostarWrapperRepository.truck
+        RoutingMode.MOTOR_SCOOTER -> ferrostarWrapperRepository.motorScooter
+        RoutingMode.MOTORCYCLE -> ferrostarWrapperRepository.motorcycle
     }
 
     val ferrostarCore = ferrostarWrapper.core

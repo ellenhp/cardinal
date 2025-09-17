@@ -13,9 +13,12 @@ import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.PlaceDao
 import earth.maps.cardinal.data.RoutingMode
+import earth.maps.cardinal.data.RoutingProfile
+import earth.maps.cardinal.data.RoutingProfileRepository
 import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
+import earth.maps.cardinal.routing.RoutingOptions
 import earth.maps.cardinal.ui.NavigationCoordinator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -42,7 +45,8 @@ class DirectionsViewModel @Inject constructor(
     private val ferrostarWrapperRepository: FerrostarWrapperRepository,
     private val viewportRepository: ViewportRepository,
     private val placeDao: PlaceDao,
-    private val locationRepository: LocationRepository
+    private val locationRepository: LocationRepository,
+    private val routingProfileRepository: RoutingProfileRepository
 ) : ViewModel() {
 
     // Search query flow for debouncing
@@ -68,6 +72,9 @@ class DirectionsViewModel @Inject constructor(
         private set
 
     var selectedRoutingMode by mutableStateOf(RoutingMode.AUTO)
+        private set
+
+    var selectedRoutingProfile by mutableStateOf<RoutingProfile?>(null)
         private set
 
     // Route result state - using Ferrostar's native Route format
@@ -142,11 +149,42 @@ class DirectionsViewModel @Inject constructor(
             isRouteLoading = true
             routeError = null
             try {
-                // Get the appropriate FerrostarWrapper based on routing mode
-                val ferrostarWrapper = when (selectedRoutingMode) {
-                    RoutingMode.AUTO -> ferrostarWrapperRepository.driving
-                    RoutingMode.PEDESTRIAN -> ferrostarWrapperRepository.walking
-                    RoutingMode.BICYCLE -> ferrostarWrapperRepository.cycling
+                // Get the appropriate FerrostarWrapper based on routing mode and profile
+                val ferrostarWrapper = if (selectedRoutingProfile != null) {
+                    // Use custom routing profile - update options on existing wrapper
+                    val profileWithOptions = routingProfileRepository.getProfileWithOptions(selectedRoutingProfile!!.id)
+                    profileWithOptions.fold(
+                        onSuccess = { pair ->
+                            pair?.let { (_, options) ->
+                                // Update options on the appropriate wrapper
+                                ferrostarWrapperRepository.setOptionsForMode(selectedRoutingMode, options)
+                                // Return the updated wrapper
+                                when (selectedRoutingMode) {
+                                    RoutingMode.AUTO -> ferrostarWrapperRepository.driving
+                                    RoutingMode.PEDESTRIAN -> ferrostarWrapperRepository.walking
+                                    RoutingMode.BICYCLE -> ferrostarWrapperRepository.cycling
+                                    else -> ferrostarWrapperRepository.driving
+                                }
+                            } ?: ferrostarWrapperRepository.driving // Fallback if profile not found
+                        },
+                        onFailure = {
+                            // Fallback to default if profile loading fails
+                            when (selectedRoutingMode) {
+                                RoutingMode.AUTO -> ferrostarWrapperRepository.driving
+                                RoutingMode.PEDESTRIAN -> ferrostarWrapperRepository.walking
+                                RoutingMode.BICYCLE -> ferrostarWrapperRepository.cycling
+                                else -> ferrostarWrapperRepository.driving
+                            }
+                        }
+                    )
+                } else {
+                    // Use default wrapper based on routing mode
+                    when (selectedRoutingMode) {
+                        RoutingMode.AUTO -> ferrostarWrapperRepository.driving
+                        RoutingMode.PEDESTRIAN -> ferrostarWrapperRepository.walking
+                        RoutingMode.BICYCLE -> ferrostarWrapperRepository.cycling
+                        else -> ferrostarWrapperRepository.driving
+                    }
                 }
 
                 // Create waypoints for Ferrostar
@@ -194,8 +232,26 @@ class DirectionsViewModel @Inject constructor(
 
     fun updateRoutingMode(mode: RoutingMode) {
         selectedRoutingMode = mode
+        // Clear selected profile when mode changes, as profiles are mode-specific
+        selectedRoutingProfile = null
+        // Reset wrapper options to defaults when mode changes
+        ferrostarWrapperRepository.resetOptionsToDefaultsForMode(mode)
         fetchRouteIfNeeded()
     }
+
+    fun selectRoutingProfile(profile: RoutingProfile?) {
+        selectedRoutingProfile = profile
+        // Reset wrapper options to defaults when switching to "Default" profile
+        if (profile == null) {
+            ferrostarWrapperRepository.resetOptionsToDefaultsForMode(selectedRoutingMode)
+        }
+        fetchRouteIfNeeded()
+    }
+
+    /**
+     * Gets available routing profiles for the current routing mode.
+     */
+    fun getAvailableProfilesForCurrentMode() = routingProfileRepository.getProfilesForMode(selectedRoutingMode)
 
     fun startNavigation(navigationCoordinator: NavigationCoordinator) {
         ferrostarRoute?.let { route ->
