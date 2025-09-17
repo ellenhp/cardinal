@@ -49,7 +49,8 @@ interface RoutingProfileDao {
 
     @Transaction
     suspend fun setProfileAsDefault(profileId: String) {
-        val profile = getProfileById(profileId) ?: throw IllegalArgumentException("Profile not found")
+        val profile =
+            getProfileById(profileId) ?: throw IllegalArgumentException("Profile not found")
         clearDefaultForMode(profile.routingMode)
         setDefaultProfile(profileId)
     }

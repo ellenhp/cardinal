@@ -285,7 +285,7 @@ private fun RoutingModeSelector(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            RoutingMode.values().forEach { mode ->
+            RoutingMode.entries.forEach { mode ->
                 DropdownMenuItem(
                     text = { Text(mode.label) },
                     onClick = {

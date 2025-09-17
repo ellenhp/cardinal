@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.RoutingMode
-import earth.maps.cardinal.data.RoutingProfile
 import earth.maps.cardinal.data.RoutingProfileRepository
 import earth.maps.cardinal.routing.AutoRoutingOptions
 import earth.maps.cardinal.routing.CyclingRoutingOptions
@@ -161,7 +160,11 @@ class ProfileEditorViewModel @Inject constructor(
             _error.value = null
 
             val result = if (_isNewProfile.value) {
-                repository.createProfile(_profileName.value, _selectedMode.value, _routingOptions.value)
+                repository.createProfile(
+                    _profileName.value,
+                    _selectedMode.value,
+                    _routingOptions.value
+                )
             } else {
                 currentProfileId?.let { profileId ->
                     repository.updateProfile(profileId, _profileName.value, _routingOptions.value)
