@@ -106,4 +106,5 @@
     <string name="flip_destinations">Flip destinations</string>
     <string name="recalculate_route">Recalculate route</string>
     <string name="use_current_location">Use current location</string>
+    <string name="change_start_location_to_my_location">Navigation only available for routes from "My Location"</string>
 </resources>
