@@ -3,6 +3,7 @@ package earth.maps.cardinal.data
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import java.util.Locale
 
 /**
  * Helper class to save and load app preferences using SharedPreferences.
@@ -15,6 +16,7 @@ class AppPreferences(context: Context) {
         private const val KEY_CONTRAST_LEVEL = "contrast_level"
         private const val KEY_ANIMATION_SPEED = "animation_speed"
         private const val KEY_OFFLINE_MODE = "offline_mode"
+        private const val KEY_DISTANCE_UNIT = "distance_unit"
 
         // API configuration keys
         private const val KEY_PELIAS_BASE_URL = "pelias_base_url"
@@ -39,6 +41,10 @@ class AppPreferences(context: Context) {
         // Offline mode constants
         const val OFFLINE_MODE_DISABLED = false
         const val OFFLINE_MODE_ENABLED = true
+
+        // Distance unit constants
+        const val DISTANCE_UNIT_METRIC = 0
+        const val DISTANCE_UNIT_IMPERIAL = 1
     }
 
     /**
@@ -116,6 +122,49 @@ class AppPreferences(context: Context) {
     fun clearOfflineMode() {
         prefs.edit {
             remove(KEY_OFFLINE_MODE)
+        }
+    }
+
+    /**
+     * Saves the distance unit preference.
+     */
+    fun saveDistanceUnit(distanceUnit: Int) {
+        prefs.edit {
+            putInt(KEY_DISTANCE_UNIT, distanceUnit)
+        }
+    }
+
+    /**
+     * Loads the saved distance unit preference.
+     * Returns a locale-based default: imperial for US, Liberia, Myanmar; metric for others.
+     */
+    fun loadDistanceUnit(): Int {
+        val defaultUnit = getDefaultDistanceUnitFromLocale()
+        return prefs.getInt(KEY_DISTANCE_UNIT, defaultUnit)
+    }
+
+    /**
+     * Clears the saved distance unit preference.
+     */
+    fun clearDistanceUnit() {
+        prefs.edit {
+            remove(KEY_DISTANCE_UNIT)
+        }
+    }
+
+    /**
+     * Gets the default distance unit based on the system locale.
+     * Returns imperial for countries that use imperial system (US, Liberia, Myanmar),
+     * metric for all others.
+     */
+    private fun getDefaultDistanceUnitFromLocale(): Int {
+        val locale = Locale.getDefault()
+        val countryCode = locale.country.uppercase()
+
+        // Countries that use imperial system
+        return when (countryCode) {
+            "US", "LR", "MM" -> DISTANCE_UNIT_IMPERIAL
+            else -> DISTANCE_UNIT_METRIC
         }
     }
 

@@ -35,6 +35,9 @@ class AppPreferenceRepository @Inject constructor(
     private val _offlineMode = MutableStateFlow(AppPreferences.OFFLINE_MODE_DISABLED)
     val offlineMode: StateFlow<Boolean> = _offlineMode.asStateFlow()
 
+    private val _distanceUnit = MutableStateFlow(AppPreferences.DISTANCE_UNIT_METRIC)
+    val distanceUnit: StateFlow<Int> = _distanceUnit.asStateFlow()
+
     // Pelias API configuration
     private val _peliasApiConfig = MutableStateFlow(
         ApiConfiguration(
@@ -57,6 +60,7 @@ class AppPreferenceRepository @Inject constructor(
         loadContrastLevel()
         loadAnimationSpeed()
         loadOfflineMode()
+        loadDistanceUnit()
         loadApiConfigurations()
     }
 
@@ -94,6 +98,18 @@ class AppPreferenceRepository @Inject constructor(
     private fun loadOfflineMode() {
         val offlineMode = appPreferences.loadOfflineMode()
         _offlineMode.value = offlineMode
+    }
+
+    fun setDistanceUnit(distanceUnit: Int) {
+        _distanceUnit.value = distanceUnit
+        viewModelScope.launch {
+            appPreferences.saveDistanceUnit(distanceUnit)
+        }
+    }
+
+    private fun loadDistanceUnit() {
+        val distanceUnit = appPreferences.loadDistanceUnit()
+        _distanceUnit.value = distanceUnit
     }
 
     private fun loadApiConfigurations() {

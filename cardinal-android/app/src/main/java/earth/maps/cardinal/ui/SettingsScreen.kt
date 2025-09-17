@@ -157,6 +157,39 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.outlineVariant
         )
 
+        // Routing Profiles Settings Item
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { navController.navigate(Screen.RoutingProfiles.route) }
+                .padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Routing Profiles",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Icon(
+                    painter = painterResource(drawable.commute_icon),
+                    contentDescription = null
+                )
+            }
+            Text(
+                text = "Create and manage custom routing profiles for different transportation modes",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            thickness = DividerDefaults.Thickness,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+
         // Privacy Section
         ExpandableSection(
             title = stringResource(string.privacy_settings_title),
@@ -499,6 +532,12 @@ fun SettingsScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                 )
             }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp),
+                thickness = DividerDefaults.Thickness,
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
         }
 
         // Add some bottom padding to ensure proper spacing

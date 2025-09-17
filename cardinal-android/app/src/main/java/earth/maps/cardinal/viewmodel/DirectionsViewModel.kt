@@ -13,6 +13,8 @@ import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.PlaceDao
 import earth.maps.cardinal.data.RoutingMode
+import earth.maps.cardinal.data.RoutingProfile
+import earth.maps.cardinal.data.RoutingProfileRepository
 import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
@@ -22,9 +24,11 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -35,6 +39,13 @@ import uniffi.ferrostar.Waypoint
 import uniffi.ferrostar.WaypointKind
 import javax.inject.Inject
 
+// Consolidated route state
+data class RouteState(
+    val route: Route? = null,
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class DirectionsViewModel @Inject constructor(
@@ -42,7 +53,8 @@ class DirectionsViewModel @Inject constructor(
     private val ferrostarWrapperRepository: FerrostarWrapperRepository,
     private val viewportRepository: ViewportRepository,
     private val placeDao: PlaceDao,
-    private val locationRepository: LocationRepository
+    private val locationRepository: LocationRepository,
+    private val routingProfileRepository: RoutingProfileRepository
 ) : ViewModel() {
 
     // Search query flow for debouncing
@@ -70,14 +82,11 @@ class DirectionsViewModel @Inject constructor(
     var selectedRoutingMode by mutableStateOf(RoutingMode.AUTO)
         private set
 
-    // Route result state - using Ferrostar's native Route format
-    var ferrostarRoute by mutableStateOf<Route?>(null)
+    var selectedRoutingProfile by mutableStateOf<RoutingProfile?>(null)
         private set
 
-    var isRouteLoading by mutableStateOf(false)
-        private set
-
-    var routeError by mutableStateOf<String?>(null)
+    // Consolidated route state
+    var routeState by mutableStateOf(RouteState())
         private set
 
     // Saved places for quick suggestions
@@ -108,6 +117,9 @@ class DirectionsViewModel @Inject constructor(
                 savedPlaces.value = placeEntities.map { it.toPlace() }
             }
         }
+
+        // Initialize with the default profile for the current routing mode
+        initializeDefaultProfileForMode(selectedRoutingMode)
     }
 
     fun updateSearchQuery(query: String) {
@@ -131,74 +143,177 @@ class DirectionsViewModel @Inject constructor(
         if (origin != null && destination != null) {
             fetchRoute(origin, destination)
         } else {
-            isRouteLoading = false
-            routeError = null
-            ferrostarRoute = null
+            routeState = RouteState()
         }
     }
 
     private fun fetchRoute(origin: Place, destination: Place) {
         viewModelScope.launch {
-            isRouteLoading = true
-            routeError = null
+            routeState = routeState.copy(isLoading = true, error = null)
+
             try {
-                // Get the appropriate FerrostarWrapper based on routing mode
-                val ferrostarWrapper = when (selectedRoutingMode) {
-                    RoutingMode.AUTO -> ferrostarWrapperRepository.driving
-                    RoutingMode.PEDESTRIAN -> ferrostarWrapperRepository.walking
-                    RoutingMode.BICYCLE -> ferrostarWrapperRepository.cycling
-                }
+                val ferrostarWrapper = getFerrostarWrapper()
+                val waypoints = createWaypoints(destination)
+                val userLocation = createUserLocation(origin)
 
-                // Create waypoints for Ferrostar
-                val waypoints = listOf(
-                    Waypoint(
-                        coordinate = GeographicCoordinate(
-                            origin.latLng.latitude,
-                            origin.latLng.longitude
-                        ),
-                        kind = WaypointKind.BREAK
-                    ),
-                    Waypoint(
-                        coordinate = GeographicCoordinate(
-                            destination.latLng.latitude,
-                            destination.latLng.longitude
-                        ),
-                        kind = WaypointKind.BREAK
-                    )
-                )
-                val userLocation = UserLocation(
-                    coordinates = GeographicCoordinate(
-                        origin.latLng.latitude,
-                        origin.latLng.longitude
-                    ),
-                    horizontalAccuracy = 10.0,
-                    courseOverGround = null,
-                    timestamp = java.time.Instant.now(),
-                    speed = null
-                )
-
-                // Get routes from Ferrostar
                 val routes = withContext(Dispatchers.IO) {
                     ferrostarWrapper.core.getRoutes(userLocation, waypoints)
                 }
-                ferrostarRoute = routes.firstOrNull()
-                isRouteLoading = false
+
+                routeState = routeState.copy(
+                    route = routes.firstOrNull(),
+                    isLoading = false,
+                    error = null
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Error while fetching route", e)
-                routeError = e.message ?: "An error occurred while fetching the route"
-                ferrostarRoute = null
-                isRouteLoading = false
+                routeState = routeState.copy(
+                    route = null,
+                    isLoading = false,
+                    error = e.message ?: "An error occurred while fetching the route"
+                )
             }
         }
     }
 
+    private fun getFerrostarWrapper() = when (selectedRoutingMode) {
+        RoutingMode.AUTO -> ferrostarWrapperRepository.driving
+        RoutingMode.PEDESTRIAN -> ferrostarWrapperRepository.walking
+        RoutingMode.BICYCLE -> ferrostarWrapperRepository.cycling
+        else -> ferrostarWrapperRepository.driving
+    }
+
+    private fun createWaypoints(destination: Place) = listOf(
+        Waypoint(
+            coordinate = GeographicCoordinate(destination.latLng.latitude, destination.latLng.longitude),
+            kind = WaypointKind.BREAK
+        )
+    )
+
+    private fun createUserLocation(origin: Place) = UserLocation(
+        coordinates = GeographicCoordinate(origin.latLng.latitude, origin.latLng.longitude),
+        horizontalAccuracy = 10.0,
+        courseOverGround = null,
+        timestamp = java.time.Instant.now(),
+        speed = null
+    )
+
     fun updateRoutingMode(mode: RoutingMode) {
         selectedRoutingMode = mode
+        // Load the default profile for the new mode
+        initializeDefaultProfileForMode(mode)
         fetchRouteIfNeeded()
     }
 
+    /**
+     * Ensures the selected routing mode is valid by checking if it's in the available modes list.
+     * If not, falls back to AUTO mode. This should be called when available modes change.
+     */
+    private fun ensureSelectedModeIsValid(availableModes: List<RoutingMode>) {
+        if (selectedRoutingMode !in availableModes) {
+            // Fall back to AUTO mode if current mode is no longer available
+            updateRoutingMode(RoutingMode.AUTO)
+        }
+    }
+
+    fun selectRoutingProfile(profile: RoutingProfile?) {
+        selectedRoutingProfile = profile
+
+        viewModelScope.launch {
+            // Apply profile options to the ferrostar wrapper
+            if (profile != null) {
+                // Use custom routing profile - update options on existing wrapper
+                val profileWithOptions = routingProfileRepository.getProfileWithOptions(profile.id)
+                profileWithOptions.fold(
+                    onSuccess = { pair ->
+                        pair?.let { (_, options) ->
+                            // Update options on the appropriate wrapper
+                            ferrostarWrapperRepository.setOptionsForMode(selectedRoutingMode, options)
+                        }
+                    },
+                    onFailure = {
+                        // Fallback to default if profile loading fails
+                        ferrostarWrapperRepository.resetOptionsToDefaultsForMode(selectedRoutingMode)
+                    }
+                )
+            } else {
+                // User explicitly selected "Default" - use built-in defaults
+                selectedRoutingProfile = null
+                ferrostarWrapperRepository.resetOptionsToDefaultsForMode(selectedRoutingMode)
+            }
+
+            fetchRouteIfNeeded()
+        }
+
+    }
+
+    /**
+     * Gets available routing profiles for the current routing mode.
+     */
+    fun getAvailableProfilesForCurrentMode() = routingProfileRepository.getProfilesForMode(selectedRoutingMode)
+
+    /**
+     * Gets available routing modes for display in the UI.
+     * Always includes AUTO, PEDESTRIAN, and BICYCLE.
+     * Conditionally includes TRUCK, MOTOR_SCOOTER, and MOTORCYCLE only if custom profiles exist for those modes.
+     */
+    fun getAvailableRoutingModes() = combine(
+        routingProfileRepository.getProfilesForMode(RoutingMode.TRUCK),
+        routingProfileRepository.getProfilesForMode(RoutingMode.MOTOR_SCOOTER),
+        routingProfileRepository.getProfilesForMode(RoutingMode.MOTORCYCLE)
+    ) { truckProfiles, motorScooterProfiles, motorcycleProfiles ->
+        val modes = mutableListOf(RoutingMode.AUTO, RoutingMode.PEDESTRIAN, RoutingMode.BICYCLE)
+
+        // Add conditional modes only if they have custom profiles
+        if (truckProfiles.isNotEmpty()) {
+            modes.add(RoutingMode.TRUCK)
+        }
+        if (motorScooterProfiles.isNotEmpty()) {
+            modes.add(RoutingMode.MOTOR_SCOOTER)
+        }
+        if (motorcycleProfiles.isNotEmpty()) {
+            modes.add(RoutingMode.MOTORCYCLE)
+        }
+
+        // Ensure the selected mode is still valid
+        ensureSelectedModeIsValid(modes)
+
+        modes
+    }
+
+    /**
+     * Initializes the default routing profile for the given mode.
+     * This loads the saved default profile from the database and applies its options.
+     * If no default profile exists, sets selectedRoutingProfile to null and uses built-in defaults.
+     */
+    private fun initializeDefaultProfileForMode(mode: RoutingMode) {
+        viewModelScope.launch {
+            routingProfileRepository.getDefaultProfile(mode).fold(
+                onSuccess = { profileWithOptions ->
+                    if (profileWithOptions != null) {
+                        val (profile, options) = profileWithOptions
+                        selectedRoutingProfile = profile
+                        ferrostarWrapperRepository.setOptionsForMode(mode, options)
+                    } else {
+                        // No default profile exists, use built-in defaults
+                        selectedRoutingProfile = null
+                        ferrostarWrapperRepository.resetOptionsToDefaultsForMode(mode)
+                    }
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Failed to load default profile for mode $mode", error)
+                    // Fallback to built-in defaults
+                    selectedRoutingProfile = null
+                    ferrostarWrapperRepository.resetOptionsToDefaultsForMode(mode)
+                }
+            )
+        }
+    }
+
+
+
     fun startNavigation(navigationCoordinator: NavigationCoordinator) {
-        ferrostarRoute?.let { route ->
+        routeState.route?.let { route ->
             navigationCoordinator.navigateToTurnByTurnWithFerrostarRoute(route, selectedRoutingMode)
         }
     }
@@ -215,52 +330,31 @@ class DirectionsViewModel @Inject constructor(
         val origin = fromPlace
         val destination = toPlace
         if (origin != null && destination != null) {
-            // Check if we need to refresh location for "my location" places
-            val needsLocationRefresh = origin.isMyLocation || destination.isMyLocation
-
-            if (needsLocationRefresh) {
-                // Launch coroutine to refresh location for "my location" places
-                viewModelScope.launch {
-                    isGettingLocation = true
-                    try {
-                        var updatedOrigin = origin
-                        var updatedDestination = destination
-
-                        // Refresh origin location if it's "my location"
-                        if (origin.isMyLocation) {
-                            locationRepository.getFreshCurrentLocationAsPlace()
-                                ?.let { freshLocation ->
-                                    updatedOrigin = freshLocation
-                                    fromPlace = freshLocation
-                                }
-                        }
-
-                        // Refresh destination location if it's "my location"
-                        if (destination.isMyLocation) {
-                            locationRepository.getFreshCurrentLocationAsPlace()
-                                ?.let { freshLocation ->
-                                    updatedDestination = freshLocation
-                                    toPlace = freshLocation
-                                }
-                        }
-
-                        // Fetch route with updated locations (ensure they're not null)
-                        if (updatedOrigin != null && updatedDestination != null) {
-                            fetchRoute(updatedOrigin, updatedDestination)
-                        } else {
-                            // Fallback to original locations if refresh failed
-                            fetchRoute(origin, destination)
-                        }
-                    } catch (e: Exception) {
-                        // If location refresh fails, use original locations
-                        fetchRoute(origin, destination)
-                    } finally {
-                        isGettingLocation = false
-                    }
-                }
+            if (origin.isMyLocation || destination.isMyLocation) {
+                refreshMyLocationPlacesAndRecalculate(origin, destination)
             } else {
-                // No location refresh needed, just recalculate with existing places
                 fetchRoute(origin, destination)
+            }
+        }
+    }
+
+    private fun refreshMyLocationPlacesAndRecalculate(origin: Place, destination: Place) {
+        viewModelScope.launch {
+            isGettingLocation = true
+            try {
+                val updatedOrigin = if (origin.isMyLocation) {
+                    locationRepository.getFreshCurrentLocationAsPlace()?.also { fromPlace = it } ?: origin
+                } else origin
+
+                val updatedDestination = if (destination.isMyLocation) {
+                    locationRepository.getFreshCurrentLocationAsPlace()?.also { toPlace = it } ?: destination
+                } else destination
+
+                fetchRoute(updatedOrigin, updatedDestination)
+            } catch (e: Exception) {
+                fetchRoute(origin, destination)
+            } finally {
+                isGettingLocation = false
             }
         }
     }
@@ -286,6 +380,9 @@ class DirectionsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Gets current location as a Place, handling loading state.
+     */
     suspend fun getCurrentLocationAsPlace(): Place? {
         isGettingLocation = true
         return try {
@@ -324,7 +421,6 @@ class DirectionsViewModel @Inject constructor(
 
     /**
      * Creates a "My Location" Place object with the given coordinates.
-     * This is a public method to allow other components to create consistent "My Location" places.
      */
     fun createMyLocationPlace(latLng: LatLng): Place {
         return locationRepository.createMyLocationPlace(latLng)
