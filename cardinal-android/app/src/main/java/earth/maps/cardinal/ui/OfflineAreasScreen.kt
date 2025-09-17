@@ -362,7 +362,7 @@ fun DownloadAreaDialog(
     // Create a FocusRequester to request focus on the text field
     val focusRequester = remember { FocusRequester() }
 
-    val minZoom = 7
+    val minZoom = 5
     val maxZoom = 14
 
     var nameError by remember { mutableStateOf(false) }
