@@ -317,7 +317,7 @@ class TileDownloadService(
                 // Check response code
                 if (response.status.value != 200) {
                     Log.e(TAG, "Error downloading Valhalla tile $hierarchyLevel/$tileIndex: HTTP ${response.status}")
-                    return@execute 0L
+                    throw Exception("HTTP ${response.status.value}: ${response.status.description}")
                 }
 
                 // Get the response channel for streaming
@@ -338,9 +338,6 @@ class TileDownloadService(
 
                 totalBytesRead
             }
-
-            fileOutputStream?.close()
-            fileOutputStream = null
 
             Log.v(
                 TAG,
