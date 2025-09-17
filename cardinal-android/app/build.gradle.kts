@@ -59,6 +59,9 @@ android {
             )
             signingConfig = signingConfigs["release"] as ApkSigningConfig
         }
+        debug {
+            applicationIdSuffix = ".debug"
+        }
     }
 
     bundle {
