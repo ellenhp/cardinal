@@ -45,14 +45,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.gson.Gson
-import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.data.AppPreferenceRepository
@@ -368,6 +366,8 @@ fun AppContent(
                                 }
                             },
                             navigationCoordinator = navigationCoordinator,
+                            hasLocationPermission = hasLocationPermission,
+                            onRequestLocationPermission = onRequestLocationPermission,
                         )
                     }
                 }

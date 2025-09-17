@@ -35,6 +35,8 @@ fun QuickSuggestions(
     savedPlaces: List<Place>,
     onSavedPlaceSelected: (Place) -> Unit,
     isGettingLocation: Boolean,
+    hasLocationPermission: Boolean,
+    onRequestLocationPermission: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(modifier = modifier) {
