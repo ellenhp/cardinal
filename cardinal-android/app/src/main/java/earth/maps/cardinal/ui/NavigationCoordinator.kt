@@ -5,24 +5,12 @@ import androidx.navigation.NavController
 import com.google.gson.Gson
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
-import earth.maps.cardinal.routing.RouteResult
 import uniffi.ferrostar.Route
 
 class NavigationCoordinator(
     private val mainNavController: NavController,
     private val bottomSheetNavController: NavController? = null
 ) {
-
-    // Navigation to full-screen experiences
-    fun navigateToTurnByTurn(routeResult: RouteResult? = null) {
-        val route = if (routeResult != null) {
-            // Pass route data as navigation argument if needed in the future
-            "turn_by_turn?route=${Uri.encode(Gson().toJson(routeResult))}"
-        } else {
-            Screen.TurnByTurnNavigation.route
-        }
-        mainNavController.navigate(route)
-    }
 
     // Navigation to turn-by-turn with Ferrostar route
     fun navigateToTurnByTurnWithFerrostarRoute(ferrostarRoute: Route, routingMode: RoutingMode) {
@@ -59,10 +47,9 @@ class NavigationCoordinator(
 
     fun navigateToPlaceCard(place: Place) {
         val placeJson = Uri.encode(Gson().toJson(place))
-        if (isInPlaceCard()) {
-            bottomSheetNavController?.popBackStack()
+        bottomSheetNavController?.navigate("place_card?place=$placeJson") {
+            popUpTo("place_card") { inclusive = true }
         }
-        bottomSheetNavController?.navigate("place_card?place=$placeJson")
     }
 
     fun navigateToHome() {
