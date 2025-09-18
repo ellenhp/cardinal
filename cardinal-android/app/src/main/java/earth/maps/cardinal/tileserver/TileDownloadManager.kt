@@ -1528,7 +1528,8 @@ class TileDownloadManager(
         for ((zoom, coords, data) in tileBatch) {
             try {
                 val (x, y) = coords
-                tileProcessor?.processTile(data, zoom, x, y)
+                val tmsY = (2.0.pow(zoom.toDouble()) - 1 - y).toInt()
+                tileProcessor?.processTile(data, zoom, x, tmsY)
                 processedCount++
                 Log.v(TAG, "Processed tile $zoom/$x/$y for area $areaId")
             } catch (e: Exception) {
