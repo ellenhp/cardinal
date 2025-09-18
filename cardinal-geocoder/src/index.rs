@@ -203,6 +203,88 @@ impl AirmailIndex {
 
         Ok(results)
     }
+
+    fn ingest_layer(
+        &self,
+        reader: &mvt_reader::Reader,
+        layer_name: &str,
+        tile_x: u32,
+        tile_y: u32,
+        tile_z: u8,
+        writer: &Arc<Mutex<tantivy::IndexWriter>>,
+        alphabetic_regex: &regex::Regex,
+        schema: &tantivy::schema::Schema,
+    ) -> Result<usize, AirmailError> {
+        let mut count = 0usize;
+        let layers = reader.get_layer_names()?;
+
+        if let Some((layer_id, _)) = layers
+            .iter()
+            .enumerate()
+            .filter(|(_, layer)| layer.as_str() == Some(layer_name))
+            .next()
+        {
+            let extent = reader.get_layer_metadata()?[layer_id].extent;
+            let features = reader.get_features(layer_id)?;
+
+            for feature in &features {
+                let mut tags = HashMap::new();
+                for (key, value) in feature.properties.as_ref().unwrap_or(&HashMap::new()) {
+                    match value {
+                        mvt_reader::feature::Value::String(value) => {
+                            tags.insert(key.clone(), value.clone())
+                        }
+                        _ => continue,
+                    };
+                }
+
+                // Create InputPoi from tags - works for both POI and housenumber layers
+                if let Some(poi) = InputPoi::from_tags_with_transform(
+                    &self.lang,
+                    feature.get_geometry().clone(),
+                    &tags,
+                    tile_x,
+                    tile_y,
+                    tile_z,
+                    extent,
+                ) {
+                    let poi: SchemafiedPoi = poi.into();
+
+                    let mut doc = TantivyDocument::default();
+                    for content in poi.content {
+                        doc.add_text(schema.get_field(FIELD_CONTENT).unwrap(), content);
+                    }
+                    for (k, v) in &tags {
+                        if alphabetic_regex.is_match(&k) && alphabetic_regex.is_match(&v) {
+                            doc.add_text(
+                                schema.get_field(FIELD_CONTENT).unwrap(),
+                                format!("{k}={v}"),
+                            );
+                        }
+                    }
+                    doc.add_object(
+                        self.field_tags(),
+                        poi.tags
+                            .iter()
+                            .map(|(k, v)| (k.to_string(), OwnedValue::Str(v.to_string())))
+                            .collect::<BTreeMap<String, OwnedValue>>(),
+                    );
+                    doc.add_u64(self.field_s2cell(), poi.s2cell);
+                    for parent in poi.s2cell_parents {
+                        doc.add_u64(self.field_s2cell_parents(), parent);
+                    }
+
+                    // Acquire the inner lock only when needed
+                    writer
+                        .lock()
+                        .expect("Failed to lock writer mutex")
+                        .add_document(doc)?;
+                    count += 1;
+                }
+            }
+        }
+        Ok(count)
+    }
 }
 
 #[uniffi::export]
@@ -269,75 +351,37 @@ impl AirmailIndex {
             }
         };
 
-        let mut count = 0usize;
         let alphabetic_regex = regex::Regex::new("[a-z]+")?;
         let schema = AirmailIndex::schema(&self.lang);
         let reader = mvt_reader::Reader::new(mvt)?;
-        let layers = reader.get_layer_names()?;
-        if let Some((poi_layer_id, _)) = layers
-            .iter()
-            .enumerate()
-            .filter(|(_, layer)| layer.as_str() == Some("poi"))
-            .next()
-        {
-            let extent = reader.get_layer_metadata()?[poi_layer_id].extent;
-            let features = reader.get_features(poi_layer_id)?;
 
-            for feature in &features {
-                let mut tags = HashMap::new();
-                for (key, value) in feature.properties.as_ref().unwrap_or(&HashMap::new()) {
-                    match value {
-                        mvt_reader::feature::Value::String(value) => {
-                            tags.insert(key.clone(), value.clone())
-                        }
-                        _ => continue,
-                    };
-                }
-                if let Some(poi) = InputPoi::from_tags_with_transform(
-                    &self.lang,
-                    feature.get_geometry().clone(),
-                    &tags,
-                    tile_x,
-                    tile_y,
-                    tile_z,
-                    extent,
-                ) {
-                    let poi: SchemafiedPoi = poi.into();
+        let mut total_count = 0usize;
 
-                    let mut doc = TantivyDocument::default();
-                    for content in poi.content {
-                        doc.add_text(schema.get_field(FIELD_CONTENT).unwrap(), content);
-                    }
-                    for (k, v) in &tags {
-                        if alphabetic_regex.is_match(&k) && alphabetic_regex.is_match(&v) {
-                            doc.add_text(
-                                schema.get_field(FIELD_CONTENT).unwrap(),
-                                format!("{k}={v}"),
-                            );
-                        }
-                    }
-                    doc.add_object(
-                        self.field_tags(),
-                        poi.tags
-                            .iter()
-                            .map(|(k, v)| (k.to_string(), OwnedValue::Str(v.to_string())))
-                            .collect::<BTreeMap<String, OwnedValue>>(),
-                    );
-                    doc.add_u64(self.field_s2cell(), poi.s2cell);
-                    for parent in poi.s2cell_parents {
-                        doc.add_u64(self.field_s2cell_parents(), parent);
-                    }
+        // Ingest POI layer
+        total_count += self.ingest_layer(
+            &reader,
+            "poi",
+            tile_x,
+            tile_y,
+            tile_z,
+            &writer,
+            &alphabetic_regex,
+            &schema,
+        )?;
 
-                    // Acquire the inner lock only when needed
-                    writer
-                        .lock()
-                        .expect("Failed to lock writer mutex")
-                        .add_document(doc)?;
-                    count += 1;
-                }
-            }
-        }
-        Ok(count as u64)
+        // Ingest housenumber layer
+        total_count += self.ingest_layer(
+            &reader,
+            "housenumber",
+            tile_x,
+            tile_y,
+            tile_z,
+            &writer,
+            &alphabetic_regex,
+            &schema,
+        )?;
+
+        Ok(total_count as u64)
     }
 
     pub fn commit_ingestion(&self) -> Result<(), AirmailError> {
