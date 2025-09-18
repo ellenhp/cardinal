@@ -154,6 +154,7 @@ fun AppContent(
 
                         // Automatically expand the bottom sheet and disable swiping when search box is focused
                         LaunchedEffect(isSearchFocused) {
+                            mapPins.clear()
                             sheetSwipeEnabled = !isSearchFocused
                             if (isSearchFocused) {
                                 scaffoldState.bottomSheetState.expand()
@@ -196,7 +197,8 @@ fun AppContent(
 
                             viewModel.setPlace(place)
 
-                            DisposableEffect(place) {
+                            LaunchedEffect(place) {
+                                mapPins.clear()
                                 val position =
                                     Position(place.latLng.longitude, place.latLng.latitude)
                                 // Clear any existing pins and add the new one to ensure only one pin is shown at a time
@@ -219,9 +221,6 @@ fun AppContent(
                                         )
                                     }
                                 }
-                                onDispose {
-                                    mapPins.clear()
-                                }
                             }
 
                             PlaceCardScreen(
@@ -240,6 +239,7 @@ fun AppContent(
 
                     composable(Screen.OfflineAreas.route) {
                         LaunchedEffect(key1 = Unit) {
+                            mapPins.clear()
                             // Allow partial expansion and swiping for the offline areas screen
                             allowPartialExpansion = true
                             sheetSwipeEnabled = true
@@ -298,6 +298,7 @@ fun AppContent(
 
                     composable(Screen.Settings.route) {
                         LaunchedEffect(key1 = Unit) {
+                            mapPins.clear()
                             // Don't allow partial expansion while we're in this state.
                             allowPartialExpansion = false
                             sheetSwipeEnabled = false
@@ -315,6 +316,7 @@ fun AppContent(
 
                     composable(Screen.RoutingProfiles.route) {
                         LaunchedEffect(key1 = Unit) {
+                            mapPins.clear()
                             // Don't allow partial expansion while we're in this state.
                             allowPartialExpansion = false
                             sheetSwipeEnabled = false
@@ -328,6 +330,7 @@ fun AppContent(
 
                     composable(Screen.ProfileEditor.route) { backStackEntry ->
                         LaunchedEffect(key1 = Unit) {
+                            mapPins.clear()
                             // Don't allow partial expansion while we're in this state.
                             allowPartialExpansion = false
                             sheetSwipeEnabled = false
