@@ -32,6 +32,7 @@ import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.AppPreferenceRepository
+import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.ui.map.LocationPuck
 import earth.maps.cardinal.viewmodel.MapViewModel
@@ -57,6 +58,7 @@ import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
 import org.maplibre.compose.style.rememberStyleState
+import org.maplibre.compose.util.ClickResult
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -64,6 +66,7 @@ fun MapView(
     port: Int,
     mapViewModel: MapViewModel,
     onMapInteraction: () -> Unit,
+    onDropPin: (LatLng) -> Unit,
     onRequestLocationPermission: () -> Unit,
     hasLocationPermission: Boolean,
     mapPins: List<Position>,
@@ -122,7 +125,11 @@ fun MapView(
                 options = MapOptions(
                     ornamentOptions = OrnamentOptions.AllDisabled,
                     renderOptions = RenderOptions()
-                )
+                ),
+                onMapLongClick = { position, dpOffset ->
+                    onDropPin(LatLng(position.latitude, position.longitude))
+                    ClickResult.Consume
+                }
             ) {
                 val location by mapViewModel.locationFlow.collectAsState()
                 location?.let { LocationPuck(it) }
