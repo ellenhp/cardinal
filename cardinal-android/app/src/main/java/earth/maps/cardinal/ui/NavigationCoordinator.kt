@@ -12,7 +12,7 @@ class NavigationCoordinator(
     private val mainNavController: NavController,
     private val bottomSheetNavController: NavController? = null
 ) {
-    
+
     // Navigation to full-screen experiences
     fun navigateToTurnByTurn(routeResult: RouteResult? = null) {
         val route = if (routeResult != null) {
@@ -23,7 +23,7 @@ class NavigationCoordinator(
         }
         mainNavController.navigate(route)
     }
-    
+
     // Navigation to turn-by-turn with Ferrostar route
     fun navigateToTurnByTurnWithFerrostarRoute(ferrostarRoute: Route, routingMode: RoutingMode) {
         // Serialize the route and routing mode as navigation arguments
@@ -32,7 +32,7 @@ class NavigationCoordinator(
         val route = "turn_by_turn?ferrostarRoute=$routeJson&routingMode=$modeJson"
         mainNavController.navigate(route)
     }
-    
+
     // Navigation within bottom sheet
     fun navigateToDirections(fromPlace: Place? = null, toPlace: Place? = null) {
         val route = when {
@@ -41,38 +41,44 @@ class NavigationCoordinator(
                 val toJson = Uri.encode(Gson().toJson(toPlace))
                 "directions?fromPlace=$fromJson&toPlace=$toJson"
             }
+
             toPlace != null -> {
                 val toJson = Uri.encode(Gson().toJson(toPlace))
                 "directions?toPlace=$toJson"
             }
+
             fromPlace != null -> {
                 val fromJson = Uri.encode(Gson().toJson(fromPlace))
                 "directions?fromPlace=$fromJson"
             }
+
             else -> Screen.Directions.route
         }
         bottomSheetNavController?.navigate(route)
     }
-    
+
     fun navigateToPlaceCard(place: Place) {
         val placeJson = Uri.encode(Gson().toJson(place))
+        if (isInPlaceCard()) {
+            bottomSheetNavController?.popBackStack()
+        }
         bottomSheetNavController?.navigate("place_card?place=$placeJson")
     }
-    
+
     fun navigateToHome() {
         bottomSheetNavController?.navigate("home") {
             popUpTo("home") { inclusive = true }
         }
     }
-    
+
     fun navigateToSettings() {
         bottomSheetNavController?.navigate(Screen.Settings.route)
     }
-    
+
     fun navigateToOfflineAreas() {
         bottomSheetNavController?.navigate(Screen.OfflineAreas.route)
     }
-    
+
     // Back navigation that knows which controller to use
     fun navigateBack(): Boolean {
         return when {
@@ -86,16 +92,26 @@ class NavigationCoordinator(
             else -> mainNavController.popBackStack()
         }
     }
-    
+
     // Check current location
     fun isInTurnByTurn(): Boolean {
         return mainNavController.currentDestination?.route == Screen.TurnByTurnNavigation.route
     }
-    
+
     fun isInMainApp(): Boolean {
         return mainNavController.currentDestination?.route == "main"
     }
-    
+
+    fun isInPlaceCard() : Boolean {
+        return isInMainApp() && bottomSheetNavController?.currentDestination?.route?.startsWith("place_card") == true
+    }
+
+    fun onMapInteraction() {
+        if (isInPlaceCard()) {
+            bottomSheetNavController?.popBackStack()
+        }
+    }
+
     // Get current bottom sheet route
     fun getCurrentBottomSheetRoute(): String? {
         return bottomSheetNavController?.currentDestination?.route

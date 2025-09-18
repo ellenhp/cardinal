@@ -444,7 +444,12 @@ fun AppContent(
                     MapView(
                         port = port,
                         mapViewModel = mapViewModel,
-                        onMapInteraction = { },
+                        onMapInteraction = {
+                            navigationCoordinator.onMapInteraction()
+                        },
+                        onMapPoiClick = {
+                            navigationCoordinator.navigateToPlaceCard(it)
+                        },
                         onDropPin = {
                             val place = Place(
                                 id = -Random.nextInt().absoluteValue,
