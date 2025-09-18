@@ -1,19 +1,26 @@
 package earth.maps.cardinal
 
+import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -23,12 +30,15 @@ import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
 import earth.maps.cardinal.tileserver.LocalMapServerService
+import earth.maps.cardinal.tileserver.PermissionRequest
+import earth.maps.cardinal.tileserver.PermissionRequestManager
 import earth.maps.cardinal.ui.AppContent
 import earth.maps.cardinal.ui.NavigationCoordinator
 import earth.maps.cardinal.ui.Screen
 import earth.maps.cardinal.ui.TurnByTurnNavigationScreen
 import earth.maps.cardinal.ui.theme.AppTheme
 import earth.maps.cardinal.viewmodel.MapViewModel
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -40,14 +50,20 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var ferrostarWrapperRepository: FerrostarWrapperRepository
 
+    @Inject
+    lateinit var permissionRequestManager: PermissionRequestManager
+
     private var localMapServerService: LocalMapServerService? = null
     private var bound by mutableStateOf(false)
     private var port by mutableStateOf<Int?>(null)
     private var hasLocationPermission by mutableStateOf(false)
+    private var deepLinkDestination by mutableStateOf<String?>(null)
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1001
         private const val TAG = "MainActivity"
+        const val EXTRA_DEEP_LINK_DESTINATION = "deep_link_destination"
+        const val DEEP_LINK_OFFLINE_AREAS = "offline_areas"
     }
 
     private fun requestLocationPermission() {
@@ -58,6 +74,23 @@ class MainActivity : ComponentActivity() {
             ),
             LOCATION_PERMISSION_REQUEST_CODE
         )
+    }
+
+    // Permission request launcher for notification permission (Android 13+)
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Log.d(TAG, "Notification permission granted")
+            lifecycleScope.launch {
+                permissionRequestManager.onPermissionGranted(PermissionRequest.NotificationPermission)
+            }
+        } else {
+            Log.d(TAG, "Notification permission denied")
+            lifecycleScope.launch {
+                permissionRequestManager.onPermissionDenied(PermissionRequest.NotificationPermission)
+            }
+        }
     }
 
     private val connection = object : ServiceConnection {
@@ -88,6 +121,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Check for deep link destination
+        deepLinkDestination = intent?.getStringExtra(EXTRA_DEEP_LINK_DESTINATION)
+
         setContent {
             val contrastLevel by appPreferenceRepository.contrastLevel.collectAsState()
             AppTheme(contrastLevel = contrastLevel) {
@@ -113,7 +149,8 @@ class MainActivity : ComponentActivity() {
                             hasLocationPermission = hasLocationPermission,
                             appPreferenceRepository = appPreferenceRepository,
                             navigationCoordinator = coordinator,
-                            context = this@MainActivity
+                            context = this@MainActivity,
+                            deepLinkDestination = deepLinkDestination
                         )
                     }
 
@@ -153,6 +190,24 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         ferrostarWrapperRepository.androidTtsObserver.start()
+
+        // Observe permission requests from services
+        lifecycleScope.launch {
+            permissionRequestManager.permissionRequests.collect { request ->
+                when (request) {
+                    is PermissionRequest.NotificationPermission -> {
+                        Log.d(TAG, "Handling notification permission request")
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            // Permission not required for older Android versions
+                            permissionRequestManager.onPermissionGranted(request)
+                        }
+                    }
+                }
+            }
+        }
+
         // Start the tile server service
         val serviceIntent = Intent(this, LocalMapServerService::class.java)
         startService(serviceIntent)
