@@ -54,8 +54,8 @@ object ValhallaTileUtils {
     ): List<Pair<Int, Int>> {
 
         // Move these so we can compute percentages
-        val adjustedLeft = boundingBox.east + 180
-        val adjustedRight = boundingBox.west + 180
+        val adjustedLeft = boundingBox.west + 180
+        val adjustedRight = boundingBox.east + 180
         val adjustedBottom = boundingBox.south + 90
         val adjustedTop = boundingBox.north + 90
 

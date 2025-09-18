@@ -124,9 +124,9 @@ class TileDownloadForegroundService : Service() {
     }
 
     enum class DownloadStage {
-        BASEMAP,    // Stage 1: 0-33.3%
-        VALHALLA,   // Stage 2: 33.3-66.6%
-        PROCESSING  // Stage 3: 66.6-100%
+        BASEMAP,
+        VALHALLA,
+        PROCESSING
     }
 
     inner class TileDownloadBinder : Binder() {
