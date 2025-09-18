@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.gson.Gson
 import earth.maps.cardinal.ui.generatePlaceId
 import org.woheller69.AndroidAddressFormatter.AndroidAddressFormatter
+import java.util.Locale
 
 data class GeocodeResult(
     val latitude: Double,
@@ -23,21 +24,21 @@ data class Address(
 ) {
     fun format(): String? {
         try {
-            // Country code can be null in cases where a feature's centroid falls in e.g. the ocean, and the lib will throw.
-            return countryCode?.let { countryCode ->
-                AndroidAddressFormatter(true, true, false).format(
-                    Gson().toJson(
-                        mapOf(
-                            "house_number" to houseNumber,
-                            "road" to road,
-                            "city" to city,
-                            "state" to state,
-                            "postcode" to postcode,
-                            "country" to country
-                        ).filterValues { it != null }),
-                    countryCode
-                )
-            }
+            val locale = Locale.getDefault()
+            val fallbackCountryCode = locale.country.uppercase()
+            return AndroidAddressFormatter(true, true, false).format(
+                Gson().toJson(
+                    mapOf(
+                        "house_number" to houseNumber,
+                        "road" to road,
+                        "city" to city,
+                        "state" to state,
+                        "postcode" to postcode,
+                        "country" to country,
+                        "country_code" to countryCode,
+                    ).filterValues { it != null }),
+                fallbackCountryCode
+            )
         } catch (e: Throwable) {
             // I'd really like to catch something more specific here but the library throws all sorts of different kinds of errors.
             Log.e(TAG, "Failed to format address", e)
