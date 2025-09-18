@@ -266,15 +266,7 @@ fun DirectionsScreen(
                         viewModel = viewModel,
                         modifier = Modifier.fillMaxWidth(),
                         navigationCoordinator = navigationCoordinator,
-                        fromPlace = viewModel.fromPlace,
-                        onDisabledButtonClick = {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar(
-                                    message = navUnavailableSnackbarMessage
-                                )
-                            }
-                        },
-                        distanceUnit = appPreferences.distanceUnit.value,
+                        distanceUnit = appPreferences.distanceUnit.collectAsState().value,
                         availableProfiles = viewModel.getAvailableProfilesForCurrentMode()
                             .collectAsState(initial = emptyList()).value
                     )
@@ -706,8 +698,6 @@ private fun FerrostarRouteResults(
     viewModel: DirectionsViewModel,
     modifier: Modifier = Modifier,
     navigationCoordinator: NavigationCoordinator,
-    fromPlace: Place?,
-    onDisabledButtonClick: () -> Unit,
     distanceUnit: Int,
     availableProfiles: List<earth.maps.cardinal.data.RoutingProfile>
 ) {
@@ -797,11 +787,7 @@ private fun FerrostarRouteResults(
 
                     Button(
                         onClick = {
-                            if (fromPlace?.isMyLocation == true) {
                                 viewModel.startNavigation(navigationCoordinator)
-                            } else {
-                                onDisabledButtonClick()
-                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = true
