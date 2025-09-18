@@ -1,7 +1,7 @@
 package earth.maps.cardinal.ui
 
 import android.content.Context
-import androidx.compose.foundation.clickable
+import android.util.Log
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +34,7 @@ import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.OfflineArea
+import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.ui.map.LocationPuck
 import earth.maps.cardinal.viewmodel.MapViewModel
 import io.github.dellisd.spatialk.geojson.Feature
@@ -65,6 +66,7 @@ import kotlin.time.Duration.Companion.milliseconds
 fun MapView(
     port: Int,
     mapViewModel: MapViewModel,
+    onMapPoiClick: (Place) -> Unit,
     onMapInteraction: () -> Unit,
     onDropPin: (LatLng) -> Unit,
     onRequestLocationPermission: () -> Unit,
@@ -79,6 +81,7 @@ fun MapView(
     val context = LocalContext.current
     val styleState = rememberStyleState()
     val pinFeatures = mapPins.map { Feature(geometry = Point(it)) }
+    val coroutineScope = rememberCoroutineScope()
 
     val styleVariant = if (isSystemInDarkTheme()) "dark" else "light"
 
@@ -113,7 +116,6 @@ fun MapView(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clickable { onMapInteraction() }
     ) {
         // Validate port before using it in URL
         if (port > 0 && port < 65536) {
@@ -126,6 +128,11 @@ fun MapView(
                     ornamentOptions = OrnamentOptions.AllDisabled,
                     renderOptions = RenderOptions()
                 ),
+                onMapClick = { position, dpOffset ->
+                    Log.d("MapView", "Logged tap at location $position")
+                    mapViewModel.handleMapTap(cameraState, dpOffset, onMapPoiClick, onMapInteraction)
+                    ClickResult.Consume
+                },
                 onMapLongClick = { position, dpOffset ->
                     onDropPin(LatLng(position.latitude, position.longitude))
                     ClickResult.Consume

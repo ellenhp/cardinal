@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.flow
 import uniffi.cardinal_geocoder.newAirmailIndex
 import java.io.File
 
-class OfflineGeocodingService(private val context: Context) : GeocodingService, TileProcessor {
+class OfflineGeocodingService(context: Context) : GeocodingService, TileProcessor {
     private val geocoderDir = File(context.filesDir, "geocoder").apply { mkdirs() }
     private val airmailIndex = newAirmailIndex("en", geocoderDir.absolutePath)
 
@@ -22,19 +22,7 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
                 for (tag in poi.tags) {
                     tagMap[tag.key] = tag.value
                 }
-
-                // Get display name from name tag or create from address components
-                val displayName = tagMap["name"] ?: buildAddressString(tagMap)
-
-                // Populate address from available tags
-                val address = buildAddress(tagMap)
-
-                GeocodeResult(
-                    displayName = displayName,
-                    latitude = poi.lat,
-                    longitude = poi.lng,
-                    address = address
-                )
+                buildResult(tagMap, poi.lat, poi.lng)
             }
             emit(geocodeResults)
         } catch (e: Exception) {
@@ -72,6 +60,22 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
             // Log the error but don't throw as this shouldn't break the tile download process
             Log.e(TAG, "Error processing tile $zoom/$x/$y", e)
         }
+    }
+
+    fun buildResult(tags: Map<String, String>, latitude: Double, longitude: Double) : GeocodeResult{
+
+        // Get display name from name tag or create from address components
+        val displayName = tags["name"] ?: buildAddressString(tags)
+
+        // Populate address from available tags
+        val address = buildAddress(tags)
+
+        return GeocodeResult(
+            displayName = displayName,
+            latitude = latitude,
+            longitude = longitude,
+            address = address
+        )
     }
 
     private fun buildAddressString(tags: Map<String, String>): String {

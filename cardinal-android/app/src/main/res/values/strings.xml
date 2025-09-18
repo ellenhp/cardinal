@@ -135,4 +135,6 @@
     <string name="status_paused">Paused</string>
     <string name="zoom_in_to_download_an_area">Zoom in to download an area</string>
     <string name="dropped_pin">Dropped Pin</string>
+    <string name="search_result_description">Search Result</string>
+    <string name="point_of_interest">Point of Interest</string>
 </resources>

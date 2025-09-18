@@ -6,13 +6,22 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
+import android.util.Log
+import androidx.compose.ui.unit.DpOffset
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import earth.maps.cardinal.R
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
+import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.ViewportPreferences
 import earth.maps.cardinal.data.ViewportRepository
+import earth.maps.cardinal.geocoding.OfflineGeocodingService
+import earth.maps.cardinal.ui.generatePlaceId
+import io.github.dellisd.spatialk.geojson.Feature
+import io.github.dellisd.spatialk.geojson.Point
 import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -21,9 +30,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.jsonPrimitive
 import org.maplibre.compose.camera.CameraPosition
+import org.maplibre.compose.camera.CameraState
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
@@ -32,12 +42,16 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class MapViewModel @Inject constructor(
+    @param:ApplicationContext
+    private val context: Context,
     private val viewportPreferences: ViewportPreferences,
     private val viewportRepository: ViewportRepository,
-    private val locationRepository: LocationRepository
+    private val locationRepository: LocationRepository,
+    private val offlineGeocodingService: OfflineGeocodingService,
 ) : ViewModel() {
 
     private companion object {
+        const val TAG = "MapViewModel"
         private const val LOCATION_REQUEST_INTERVAL_MS = 15000L // 15 seconds
         private const val LOCATION_REQUEST_TIMEOUT_MS = 10000L // 10 seconds
         private const val CONTINUOUS_LOCATION_UPDATE_INTERVAL_MS = 5000L // 5 seconds
@@ -95,6 +109,62 @@ class MapViewModel @Inject constructor(
         _hasPendingLocationRequest.value = true
     }
 
+    fun handleMapTap(
+        cameraState: CameraState,
+        dpOffset: DpOffset,
+        onMapPoiClick: (Place) -> Unit,
+        onMapInteraction: () -> Unit
+    ) {
+        val features = cameraState.projection?.queryRenderedFeatures(
+            dpOffset,
+            layerIds = setOf("poi_z14", "poi_z15", "poi_z16", "poi_transit")
+        )
+        Log.d(TAG, "${features?.count()} features available at tap location")
+        val filteredFeatures = features?.filter {
+            it.geometry is Point
+        }
+        val namedFeatures = filteredFeatures?.filter { it.properties.contains("name") }
+        val feature =
+            namedFeatures?.firstOrNull() ?: filteredFeatures?.firstOrNull()
+        if (feature != null) {
+            onMapPoiClick(
+                convertFeatureToPlace(
+                    feature,
+                    description = context.getString(R.string.point_of_interest)
+                )
+            )
+        } else {
+            onMapInteraction()
+        }
+    }
+
+    fun convertFeatureToPlace(feature: Feature, description: String? = null): Place {
+        // Convert JsonElement properties to Map<String, String>
+        val tags = feature.properties.mapValues { (_, value) ->
+            value.jsonPrimitive.content
+        }
+
+        // Extract coordinates from geometry (assuming Point geometry)
+        val point = feature.geometry as Point
+        val coordinates = point.coordinates
+        val longitude = coordinates.longitude
+        val latitude = coordinates.latitude
+
+        val result =
+            offlineGeocodingService.buildResult(tags, latitude = latitude, longitude = longitude)
+        return Place(
+            id = generatePlaceId(result),
+            name = result.displayName,
+            type = description ?: context.getString(R.string.search_result_description),
+            icon = "search",
+            latLng = LatLng(
+                latitude = result.latitude,
+                longitude = result.longitude,
+            ),
+            address = result.address
+        )
+    }
+
     /**
      * Handles permission state changes and initiates location request if needed.
      *
@@ -104,7 +174,7 @@ class MapViewModel @Inject constructor(
      */
     suspend fun handlePermissionStateChange(
         hasPermission: Boolean,
-        cameraState: org.maplibre.compose.camera.CameraState,
+        cameraState: CameraState,
         context: Context
     ) {
         val previousState = previousPermissionState.getAndSet(hasPermission)
@@ -317,4 +387,5 @@ class MapViewModel @Inject constructor(
             }
         }
     }
+
 }
