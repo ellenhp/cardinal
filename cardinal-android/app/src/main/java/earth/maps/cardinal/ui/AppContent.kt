@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -54,6 +55,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.gson.Gson
 import earth.maps.cardinal.MainActivity
+import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.data.AppPreferenceRepository
@@ -71,6 +73,9 @@ import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
+import uniffi.ferrostar.Route
+import kotlin.math.absoluteValue
+import kotlin.random.Random
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,7 +102,7 @@ fun AppContent(
     var selectedOfflineArea by remember { mutableStateOf<OfflineArea?>(null) }
 
     // Route state for displaying on map
-    var currentRoute by remember { mutableStateOf<uniffi.ferrostar.Route?>(null) }
+    var currentRoute by remember { mutableStateOf<Route?>(null) }
 
     val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
 
@@ -430,12 +435,25 @@ fun AppContent(
             }
         },
         content = {
+            val droppedPinName = stringResource(R.string.dropped_pin)
             Box(modifier = Modifier.fillMaxSize()) {
                 port?.let { port ->
                     MapView(
                         port = port,
                         mapViewModel = mapViewModel,
                         onMapInteraction = { },
+                        onDropPin = {
+                            val place = Place(
+                                id = -Random.nextInt().absoluteValue,
+                                name = droppedPinName,
+                                type = "",
+                                icon = "place",
+                                latLng = it,
+                                address = null,
+                                isMyLocation = false
+                            )
+                            navigationCoordinator.navigateToPlaceCard(place)
+                        },
                         onRequestLocationPermission = onRequestLocationPermission,
                         hasLocationPermission = hasLocationPermission,
                         fabInsets = PaddingValues(
