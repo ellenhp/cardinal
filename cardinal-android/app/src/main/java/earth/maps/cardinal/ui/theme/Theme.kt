@@ -260,27 +260,21 @@ fun AppTheme(
     contrastLevel: Int = 0, // 0 = standard, 1 = medium, 2 = high
     content: @Composable() () -> Unit
 ) {
-    val dynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    val colorScheme = when {
-        dynamicColor && darkTheme -> dynamicDarkColorScheme(LocalContext.current)
-        dynamicColor && !darkTheme -> dynamicLightColorScheme(LocalContext.current)
-        else -> when (darkTheme) {
-            true -> when (contrastLevel) {
-                0 -> darkScheme
-                1 -> mediumContrastDarkColorScheme
-                else -> highContrastDarkColorScheme
-            }
-
-            else -> when (contrastLevel) {
-                0 -> lightScheme
-                1 -> mediumContrastLightColorScheme
-                else -> highContrastLightColorScheme
-            }
+    val dynamicPreferred = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (darkTheme) {
+            dynamicDarkColorScheme(LocalContext.current)
+        } else {
+            dynamicLightColorScheme(LocalContext.current)
         }
+    } else {
+        if (darkTheme) darkScheme else lightScheme
+    }
+    val colorScheme = when (contrastLevel) {
+        0 -> dynamicPreferred
+        1 -> if (darkTheme) mediumContrastDarkColorScheme else mediumContrastLightColorScheme
+        else -> if (darkTheme) highContrastDarkColorScheme else highContrastLightColorScheme
     }
     MaterialTheme(
-        colorScheme = colorScheme,
-        typography = AppTypography,
-        content = content
+        colorScheme = colorScheme, typography = AppTypography, content = content
     )
 }
