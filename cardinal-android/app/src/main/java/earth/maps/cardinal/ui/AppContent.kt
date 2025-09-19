@@ -72,7 +72,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.gson.Gson
-import earth.maps.cardinal.MainActivity
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
@@ -96,8 +95,6 @@ import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
 import uniffi.ferrostar.Route
-import kotlin.math.absoluteValue
-import kotlin.random.Random
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,7 +108,6 @@ fun AppContent(
     appPreferenceRepository: AppPreferenceRepository,
     navigationCoordinator: NavigationCoordinator,
     context: Context,
-    deepLinkDestination: String? = null,
 ) {
     val mapPins = remember { mutableStateListOf<Position>() }
     val cameraState = rememberCameraState()
@@ -516,17 +512,6 @@ fun AppContent(
                 }
 
                 Spacer(modifier = Modifier.height(bottomInset))
-
-                // Handle deep link navigation
-                LaunchedEffect(deepLinkDestination) {
-                    deepLinkDestination?.let { destination ->
-                        when (destination) {
-                            MainActivity.DEEP_LINK_OFFLINE_AREAS -> {
-                                navigationCoordinator.navigateToOfflineAreas()
-                            }
-                        }
-                    }
-                }
             }
         },
         content = {
@@ -544,7 +529,6 @@ fun AppContent(
                         },
                         onDropPin = {
                             val place = Place(
-                                id = -Random.nextInt().absoluteValue,
                                 name = droppedPinName,
                                 type = "",
                                 icon = "place",

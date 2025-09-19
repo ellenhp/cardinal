@@ -18,6 +18,8 @@ package earth.maps.cardinal.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlin.math.absoluteValue
+import kotlin.random.Random
 
 @Entity(tableName = "places")
 data class PlaceEntity(
@@ -64,7 +66,7 @@ data class PlaceEntity(
     companion object {
         fun fromPlace(place: Place): PlaceEntity {
             return PlaceEntity(
-                id = place.id,
+                id = place.id ?: -Random.nextInt().absoluteValue,
                 name = place.name,
                 type = place.type,
                 icon = place.icon,

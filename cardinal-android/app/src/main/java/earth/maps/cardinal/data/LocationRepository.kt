@@ -42,7 +42,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class LocationRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
 
     private companion object {
@@ -113,6 +113,13 @@ class LocationRepository @Inject constructor(
         } finally {
             _isLocating.value = false
         }
+    }
+
+    fun fromNameAndLatLng(name: String?, latLng: LatLng): Place {
+        return Place(
+            name = name ?: context.getString(R.string.unnamed_location),
+            latLng = latLng,
+        )
     }
 
     /**
