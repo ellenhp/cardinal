@@ -41,8 +41,10 @@ class PlaceCardViewModel @Inject constructor(
 
     fun checkIfPlaceIsSaved(place: Place) {
         viewModelScope.launch {
-            val existingPlace = placeDao.getPlaceById(place.id)
-            isPlaceSaved.value = existingPlace != null
+            if (place.id != null) {
+                val existingPlace = placeDao.getPlaceById(place.id)
+                isPlaceSaved.value = existingPlace != null
+            }
         }
     }
 

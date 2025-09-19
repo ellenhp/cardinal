@@ -18,6 +18,7 @@ package earth.maps.cardinal.geocoding
 
 import android.content.Context
 import android.util.Log
+import earth.maps.cardinal.R
 import earth.maps.cardinal.data.Address
 import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.LatLng
@@ -26,7 +27,7 @@ import kotlinx.coroutines.flow.flow
 import uniffi.cardinal_geocoder.newAirmailIndex
 import java.io.File
 
-class OfflineGeocodingService(context: Context) : GeocodingService, TileProcessor {
+class OfflineGeocodingService(private val context: Context) : GeocodingService, TileProcessor {
     private val geocoderDir = File(context.filesDir, "geocoder").apply { mkdirs() }
     private val airmailIndex = newAirmailIndex("en", geocoderDir.absolutePath)
 
@@ -104,7 +105,7 @@ class OfflineGeocodingService(context: Context) : GeocodingService, TileProcesso
             houseNumber != null && road != null -> "$houseNumber $road"
             road != null -> road
             city != null -> city
-            else -> "Unnamed Location"
+            else -> context.getString(R.string.unnamed_location)
         }
     }
 

@@ -20,6 +20,7 @@ import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -29,9 +30,11 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
@@ -41,6 +44,8 @@ import androidx.navigation.compose.rememberNavController
 import com.google.gson.Gson
 import dagger.hilt.android.AndroidEntryPoint
 import earth.maps.cardinal.data.AppPreferenceRepository
+import earth.maps.cardinal.data.LatLng
+import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
 import earth.maps.cardinal.tileserver.LocalMapServerService
@@ -52,6 +57,7 @@ import earth.maps.cardinal.ui.TurnByTurnNavigationScreen
 import earth.maps.cardinal.ui.theme.AppTheme
 import earth.maps.cardinal.viewmodel.MapViewModel
 import kotlinx.coroutines.launch
+import java.lang.Double.parseDouble
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -65,6 +71,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var permissionRequestManager: PermissionRequestManager
+
+    @Inject
+    lateinit var locationRepository: LocationRepository
 
     private var localMapServerService: LocalMapServerService? = null
     private var bound by mutableStateOf(false)
@@ -134,8 +143,36 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Check for deep link destination
-        deepLinkDestination = intent?.getStringExtra(EXTRA_DEEP_LINK_DESTINATION)
+
+        val intent = getIntent()
+        if (intent != null && intent.action != null && intent.action == Intent.ACTION_VIEW) {
+            val data: Uri? = intent.data
+            if (data != null && data.scheme != null && data.scheme.equals("geo")) {
+                val poiName = data.schemeSpecificPart.split("?q=").getOrNull(1)
+                val pathComponents =
+                    data.schemeSpecificPart.split("?").first().split(',')
+                        .mapNotNull {
+                            try {
+                                parseDouble(it.trim())
+                            } catch (_: NumberFormatException) {
+                                null
+                            }
+                        }
+                if (pathComponents.size == 2) {
+                    val lat = pathComponents[0]
+                    val lng = pathComponents[1]
+                    val place =
+                        locationRepository.fromNameAndLatLng(poiName, latLng = LatLng(lat, lng))
+                    val placeJson = Uri.encode(Gson().toJson(place))
+                    deepLinkDestination = "place_card?place=$placeJson"
+                }
+            }
+
+            // Check for deep link destination
+            if (deepLinkDestination == null) {
+                deepLinkDestination = intent.getStringExtra(EXTRA_DEEP_LINK_DESTINATION)
+            }
+        }
 
         setContent {
             val contrastLevel by appPreferenceRepository.contrastLevel.collectAsState()
@@ -152,6 +189,16 @@ class MainActivity : ComponentActivity() {
                     coordinator.navigateBack()
                 }
 
+                val coroutineScope = rememberCoroutineScope()
+                LaunchedEffect(key1 = deepLinkDestination) {
+                    deepLinkDestination?.let {
+                        Log.d(TAG, "Deep link: $it")
+
+                        coroutineScope.launch {
+                            coordinator.navigateRaw(it)
+                        }
+                    }
+                }
                 NavHost(
                     navController = navController,
                     startDestination = "main"
@@ -166,7 +213,6 @@ class MainActivity : ComponentActivity() {
                             appPreferenceRepository = appPreferenceRepository,
                             navigationCoordinator = coordinator,
                             context = this@MainActivity,
-                            deepLinkDestination = deepLinkDestination
                         )
                     }
 
@@ -178,7 +224,7 @@ class MainActivity : ComponentActivity() {
                         val ferrostarRoute = ferrostarRouteJson?.let {
                             try {
                                 Gson().fromJson(it, uniffi.ferrostar.Route::class.java)
-                            } catch (e: Exception) {
+                            } catch (_: Exception) {
                                 null
                             }
                         }
@@ -186,7 +232,7 @@ class MainActivity : ComponentActivity() {
                         val routingMode = routingModeJson?.let {
                             try {
                                 Gson().fromJson(it, RoutingMode::class.java)
-                            } catch (e: Exception) {
+                            } catch (_: Exception) {
                                 RoutingMode.AUTO
                             }
                         } ?: RoutingMode.AUTO

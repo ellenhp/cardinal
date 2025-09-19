@@ -161,4 +161,5 @@
     <string name="call_to_action">If you\'re enjoying the app please consider contributing bug reports, feature requests, storage/compute resources, or sponsoring the project.</string>
     <string name="open_cardinal_maps_github_repository_in_browser">Open cardinal maps GitHub repository in browser</string>
     <string name="no_routing_profiles_configured_yet">No routing profiles configured yet.</string>
+    <string name="unnamed_location">Unnamed Location</string>
 </resources>
