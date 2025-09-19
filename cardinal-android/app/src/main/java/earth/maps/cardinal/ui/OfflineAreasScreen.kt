@@ -61,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import earth.maps.cardinal.R
+import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.data.DownloadStatus
 import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
@@ -103,7 +104,7 @@ fun OfflineAreasScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
+                .padding(bottom = dimensionResource(dimen.padding)),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -133,7 +134,7 @@ fun OfflineAreasScreen(
                 }
             }, modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp), enabled = !isDownloading
+                .padding(bottom = dimensionResource(dimen.padding)), enabled = !isDownloading
         ) {
             Icon(
                 painter = painterResource(R.drawable.cloud_download_24dp),
@@ -156,7 +157,7 @@ fun OfflineAreasScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(dimensionResource(dimen.padding))
                     .align(Alignment.CenterHorizontally)
             )
         } else {
@@ -244,7 +245,7 @@ fun OfflineAreaItem(
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(dimensionResource(dimen.padding))
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -383,7 +384,7 @@ fun DownloadAreaDialog(
                 Text(
                     text = stringResource(R.string.estimated_tiles, estimatedTileCount),
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 16.dp)
+                    modifier = Modifier.padding(top = dimensionResource(dimen.padding))
                 )
             }
         },

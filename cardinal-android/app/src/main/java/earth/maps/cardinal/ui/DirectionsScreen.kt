@@ -139,7 +139,7 @@ fun DirectionsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = dimensionResource(dimen.padding))
     ) {
         val density = androidx.compose.ui.platform.LocalDensity.current
 
@@ -221,7 +221,7 @@ fun DirectionsScreen(
                     isRouteLoading = routeState.isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = dimensionResource(dimen.padding))
                 )
 
                 // Routing mode selection
@@ -246,7 +246,7 @@ fun DirectionsScreen(
                     onModeSelected = { viewModel.updateRoutingMode(it) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = dimensionResource(dimen.padding))
                 )
 
 
@@ -267,7 +267,7 @@ fun DirectionsScreen(
                         text = stringResource(R.string.calculating_route_in_progress),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(dimensionResource(dimen.padding))
                     )
                 }
 
@@ -277,7 +277,7 @@ fun DirectionsScreen(
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(dimensionResource(dimen.padding))
                     )
                 }
 
@@ -299,7 +299,7 @@ fun DirectionsScreen(
                         text = stringResource(R.string.enter_start_and_end_locations_to_get_directions),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(dimensionResource(dimen.padding))
                     )
                 }
             }
@@ -338,7 +338,7 @@ fun DirectionsScreen(
                     text = "Searching...",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(dimensionResource(dimen.padding))
                 )
             } else if (viewModel.searchQuery.isEmpty()) {
                 // Show quick suggestions when no search query
@@ -730,13 +730,13 @@ private fun FerrostarRouteResults(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+                    .padding(bottom = dimensionResource(dimen.padding)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(dimensionResource(dimen.padding))
                 ) {
                     Text(
                         text = stringResource(R.string.route_summary),
@@ -769,7 +769,7 @@ private fun FerrostarRouteResults(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp),
+                            .padding(bottom = dimensionResource(dimen.padding)),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
@@ -787,7 +787,7 @@ private fun FerrostarRouteResults(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp),
+                            .padding(bottom = dimensionResource(dimen.padding)),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -831,7 +831,7 @@ private fun FerrostarRouteResults(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(dimensionResource(dimen.padding)),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Step number
@@ -853,7 +853,7 @@ private fun FerrostarRouteResults(
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier
                             .weight(1f)
-                            .padding(horizontal = 16.dp)
+                            .padding(horizontal = dimensionResource(dimen.padding))
                     )
 
                     // Step distance

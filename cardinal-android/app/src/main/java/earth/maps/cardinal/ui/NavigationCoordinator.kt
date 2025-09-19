@@ -131,4 +131,16 @@ class NavigationCoordinator(
             bottomSheetNavController?.navigate("profile_editor?profileId=$id")
         }
     }
+
+    fun navigateToPrivacySettings() {
+        bottomSheetNavController?.navigate(Screen.PrivacySettings.route)
+    }
+
+    fun navigateToAccessibilitySettings() {
+        bottomSheetNavController?.navigate(Screen.AccessibilitySettings.route)
+    }
+
+    fun navigateToAdvancedSettings() {
+        bottomSheetNavController?.navigate(Screen.AdvancedSettings.route)
+    }
 }

@@ -80,12 +80,16 @@ import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.ui.settings.AccessibilitySettingsScreen
+import earth.maps.cardinal.ui.settings.AdvancedSettingsScreen
+import earth.maps.cardinal.ui.settings.PrivacySettingsScreen
 import earth.maps.cardinal.viewmodel.DirectionsViewModel
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import earth.maps.cardinal.viewmodel.MapViewModel
 import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
+import earth.maps.cardinal.viewmodel.SettingsViewModel
 import io.github.dellisd.spatialk.geojson.BoundingBox
 import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
@@ -337,8 +341,64 @@ fun AppContent(
                         }
                         SettingsScreen(
                             onDismiss = { navigationCoordinator.navigateBack() },
-                            appPreferenceRepository = appPreferenceRepository,
+                            viewModel = hiltViewModel(),
                             navigationCoordinator = navigationCoordinator
+                        )
+                    }
+
+                    composable(Screen.PrivacySettings.route) {
+                        LaunchedEffect(key1 = Unit) {
+                            mapPins.clear()
+                            // Don't allow partial expansion while we're in this state.
+                            allowPartialExpansion = false
+                            sheetSwipeEnabled = false
+                            // The privacy settings screen is always fully expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.expand()
+                            }
+                        }
+                        val viewModel: SettingsViewModel = hiltViewModel()
+                        PrivacySettingsScreen(
+                            viewModel = viewModel,
+                            onDismiss = { navigationCoordinator.navigateBack() },
+                            onNavigateToOfflineAreas = { navigationCoordinator.navigateToOfflineAreas() },
+                            navigationCoordinator = navigationCoordinator
+                        )
+                    }
+
+                    composable(Screen.AccessibilitySettings.route) {
+                        LaunchedEffect(key1 = Unit) {
+                            mapPins.clear()
+                            // Don't allow partial expansion while we're in this state.
+                            allowPartialExpansion = false
+                            sheetSwipeEnabled = false
+                            // The accessibility settings screen is always fully expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.expand()
+                            }
+                        }
+                        val viewModel: SettingsViewModel = hiltViewModel()
+                        AccessibilitySettingsScreen(
+                            viewModel = viewModel,
+                            onDismiss = { navigationCoordinator.navigateBack() }
+                        )
+                    }
+
+                    composable(Screen.AdvancedSettings.route) {
+                        LaunchedEffect(key1 = Unit) {
+                            mapPins.clear()
+                            // Don't allow partial expansion while we're in this state.
+                            allowPartialExpansion = false
+                            sheetSwipeEnabled = false
+                            // The advanced settings screen is always fully expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.expand()
+                            }
+                        }
+                        val viewModel: SettingsViewModel = hiltViewModel()
+                        AdvancedSettingsScreen(
+                            viewModel = viewModel,
+                            onDismiss = { navigationCoordinator.navigateBack() }
                         )
                     }
 
@@ -522,7 +582,7 @@ fun AppContent(
                         onClick = { navigationCoordinator.navigateToSettings() },
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .padding(16.dp)
+                            .padding(dimensionResource(dimen.padding))
                             .size(64.dp)
                             .border(
                                 width = 4.dp,
@@ -541,7 +601,7 @@ fun AppContent(
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(12.dp)
+                            .padding(dimensionResource(dimen.padding_minor))
                             .size(24.dp),
                     ) {
                         Box(

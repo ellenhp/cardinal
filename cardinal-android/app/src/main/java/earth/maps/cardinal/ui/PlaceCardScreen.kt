@@ -137,7 +137,7 @@ fun PlaceCardScreen(
                 Text(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(start = 16.dp),
+                        .padding(start = dimensionResource(dimen.padding)),
                     text = displayedPlace.address.format()
                         ?: stringResource(string.address_unavailable)
                 )

@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   ~    Copyright 2025 The Cardinal Authors
   ~
   ~    Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +24,7 @@
     <string name="content_description_search">Search</string>
     <string name="content_description_clear_search">Clear search</string>
     <string name="locate_me_content_description">Locate me</string>
-    
+
     <!-- Place Card Screen -->
     <string name="content_description_back">Back</string>
     <string name="save_place">Favorite</string>
@@ -38,7 +37,7 @@
     <string name="no_saved_places_yet">No saved places yet</string>
     <string name="saved_places">Saved Places</string>
     <string name="close_button">Close</string>
-    
+
     <!-- Manage Places Dialog -->
     <string name="edit_place">Edit Place</string>
     <string name="place_name">Place Name</string>
@@ -46,23 +45,23 @@
     <string name="save_button">Save</string>
     <string name="set_as_home">Set as Home</string>
     <string name="set_as_work">Set as Work</string>
-    
+
     <!-- Offline Areas -->
-    <string name="offline_areas_title">Offline Maps</string>
+    <string name="offline_areas_title">Manage Offline Map Downloads</string>
     <string name="offline_areas_help_text">Download and manage map areas for offline use. Perfect for traveling without internet connectivity.</string>
     <string name="contrast_settings_title">Contrast</string>
     <string name="contrast_settings_help_text">Adjust the contrast level for better visibility</string>
     <string name="contrast_standard">Standard</string>
     <string name="contrast_medium">Medium</string>
     <string name="contrast_high">High</string>
-    
+
     <!-- Animation Speed Settings -->
     <string name="animation_speed_title">Map Animation Speed</string>
     <string name="animation_speed_help_text">Adjust the speed of map animations</string>
     <string name="animation_speed_slow">Slow</string>
     <string name="animation_speed_normal">Normal</string>
     <string name="animation_speed_fast">Fast</string>
-    
+
     <string name="download_new_area">Download current viewport</string>
     <string name="downloading">Downloading</string>
     <string name="downloading_area">Downloading %1$s</string>
@@ -94,20 +93,20 @@
     <string name="delete">Delete</string>
     <string name="name_required">Name is required</string>
     <string name="cardinal_maps_settings_heading">Cardinal Maps</string>
-    
+
     <!-- Offline Mode Settings -->
     <string name="offline_mode_title">Offline Mode</string>
     <string name="offline_mode_help_text">Enable offline mode to use downloaded map areas without an internet connection</string>
     <string name="enabled">Enabled</string>
     <string name="disabled">Disabled</string>
-    
+
     <!-- Tile Server URL -->
     <string name="tile_url_template">https://pmtiles.ellenhp.workers.dev/planet-250825.pmtiles/planet-250825/{z}/{x}/{y}.mvt</string>
-    
+
     <!-- Privacy and Accessibility Settings -->
-    <string name="privacy_settings_title">Privacy</string>
+    <string name="privacy_settings_title">Offline Settings</string>
     <string name="accessibility_settings_title">Accessibility</string>
-    
+
     <!-- Advanced Settings -->
     <string name="advanced_settings_title">Advanced</string>
     <string name="pelias_base_url_title">Pelias Base URL</string>
@@ -142,9 +141,9 @@
     <string name="change_profile">Change</string>
     <string name="select_routing_profile">Select Routing Profile</string>
     <string name="cancel_change_routing_profile">Cancel</string>
-    <string name="downloading_basemap_tiles">Downloading basemap tiles...</string>
-    <string name="downloading_routing_tiles">Downloading routing tiles...</string>
-    <string name="processing_downloaded_tiles">Processing downloaded tiles...</string>
+    <string name="downloading_basemap_tiles">Downloading basemap tiles…</string>
+    <string name="downloading_routing_tiles">Downloading routing tiles…</string>
+    <string name="processing_downloaded_tiles">Processing downloaded tiles…</string>
     <string name="pause">Pause</string>
     <string name="resume">Resume</string>
     <string name="paused">Paused</string>
@@ -153,6 +152,13 @@
     <string name="dropped_pin">Dropped Pin</string>
     <string name="search_result_description">Search Result</string>
     <string name="point_of_interest">Point of Interest</string>
-    <string name="create_and_manage_custom_routing_profiles">Create and manage custom routing profiles for different transportation modes</string>
+    <string name="create_and_manage_custom_routing_profiles">Create and manage custom routing profiles</string>
     <string name="routing_profiles">Routing Profiles</string>
+    <string name="privacy_settings_summary">Manage your offline maps and settings</string>
+    <string name="accessibility_settings_summary">Adjust accessibility settings for better usability</string>
+    <string name="advanced_settings_summary">Configure advanced settings for the app</string>
+    <string name="app_name_long">Cardinal Maps</string>
+    <string name="call_to_action">If you\'re enjoying the app please consider contributing bug reports, feature requests, storage/compute resources, or sponsoring the project.</string>
+    <string name="open_cardinal_maps_github_repository_in_browser">Open cardinal maps GitHub repository in browser</string>
+    <string name="no_routing_profiles_configured_yet">No routing profiles configured yet.</string>
 </resources>

@@ -60,9 +60,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.routing.AutoOptions
 import earth.maps.cardinal.routing.AutoRoutingOptions
@@ -128,7 +130,7 @@ fun ProfileEditorScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = dimensionResource(dimen.padding), vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -163,7 +165,7 @@ fun ProfileEditorScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 16.dp), // Reduced padding since we removed TopAppBar
+                    .padding(top = dimensionResource(dimen.padding)), // Reduced padding since we removed TopAppBar
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -173,10 +175,10 @@ fun ProfileEditorScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 16.dp) // Reduced padding since we removed TopAppBar
+                    .padding(top = dimensionResource(dimen.padding)) // Reduced padding since we removed TopAppBar
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(dimensionResource(dimen.padding)),
+                verticalArrangement = Arrangement.spacedBy(dimensionResource(dimen.padding))
             ) {
                 // Profile Name
                 OutlinedTextField(
@@ -731,7 +733,7 @@ private fun OptionsSection(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(dimensionResource(dimen.padding))) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
