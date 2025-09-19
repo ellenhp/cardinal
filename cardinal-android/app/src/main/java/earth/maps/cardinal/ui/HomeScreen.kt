@@ -107,7 +107,7 @@ private fun SearchPanelContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(dimensionResource(dimen.padding))
     ) {
         val density = LocalDensity.current
 

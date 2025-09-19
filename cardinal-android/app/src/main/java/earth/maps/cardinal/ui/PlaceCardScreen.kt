@@ -81,7 +81,11 @@ fun PlaceCardScreen(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(
+                start = dimensionResource(dimen.padding),
+                end = dimensionResource(dimen.padding),
+                bottom = dimensionResource(dimen.padding)
+            )
             .verticalScroll(rememberScrollState())
             .onGloballyPositioned { coordinates ->
                 val heightInDp = with(density) { coordinates.size.height.toDp() }
@@ -134,7 +138,7 @@ fun PlaceCardScreen(
             Button(
                 onClick = { onGetDirections(displayedPlace) },
                 modifier = Modifier
-                    .padding(dimensionResource(dimen.padding_minor), end = 0.dp)
+                    .padding(start = dimensionResource(dimen.padding_minor), end = 0.dp)
             ) {
                 Text(stringResource(string.get_directions))
             }
@@ -152,7 +156,7 @@ fun PlaceCardScreen(
                     }
                 },
                 modifier = Modifier
-                    .padding(dimensionResource(dimen.padding_minor))
+                    .padding(start = dimensionResource(dimen.padding_minor))
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -172,9 +176,6 @@ fun PlaceCardScreen(
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
         }
         // Inset horizontal divider
         HorizontalDivider(
