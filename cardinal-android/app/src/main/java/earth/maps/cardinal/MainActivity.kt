@@ -46,6 +46,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
+import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
 import earth.maps.cardinal.tileserver.LocalMapServerService
@@ -91,10 +92,8 @@ class MainActivity : ComponentActivity() {
     private fun requestLocationPermission() {
         requestPermissions(
             arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ),
-            LOCATION_PERMISSION_REQUEST_CODE
+                Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION
+            ), LOCATION_PERMISSION_REQUEST_CODE
         )
     }
 
@@ -144,28 +143,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
 
-        val intent = getIntent()
-        if (intent != null && intent.action != null && intent.action == Intent.ACTION_VIEW) {
+        intent?.takeIf { it.action == Intent.ACTION_VIEW }?.let { intent ->
             val data: Uri? = intent.data
             if (data != null && data.scheme != null && data.scheme.equals("geo")) {
-                val poiName = data.schemeSpecificPart.split("?q=").getOrNull(1)
-                val pathComponents =
-                    data.schemeSpecificPart.split("?").first().split(',')
-                        .mapNotNull {
-                            try {
-                                parseDouble(it.trim())
-                            } catch (_: NumberFormatException) {
-                                null
-                            }
-                        }
-                if (pathComponents.size == 2) {
-                    val lat = pathComponents[0]
-                    val lng = pathComponents[1]
-                    val place =
-                        locationRepository.fromNameAndLatLng(poiName, latLng = LatLng(lat, lng))
-                    val placeJson = Uri.encode(Gson().toJson(place))
-                    deepLinkDestination = "place_card?place=$placeJson"
-                }
+                handleGeoIntent(data)
             }
 
             // Check for deep link destination
@@ -182,8 +163,7 @@ class MainActivity : ComponentActivity() {
 
                 val innerNavController = rememberNavController()
                 val coordinator = NavigationCoordinator(
-                    mainNavController = navController,
-                    bottomSheetNavController = innerNavController
+                    mainNavController = navController, bottomSheetNavController = innerNavController
                 )
                 BackHandler {
                     coordinator.navigateBack()
@@ -200,8 +180,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 NavHost(
-                    navController = navController,
-                    startDestination = "main"
+                    navController = navController, startDestination = "main"
                 ) {
                     composable("main") {
                         AppContent(
@@ -239,15 +218,37 @@ class MainActivity : ComponentActivity() {
 
                         port?.let { port ->
                             TurnByTurnNavigationScreen(
-                                port = port,
-                                mode = routingMode,
-                                route = ferrostarRoute
+                                port = port, mode = routingMode, route = ferrostarRoute
                             )
                         }
                     }
                 }
             }
         }
+    }
+
+    private fun handleGeoIntent(data: Uri) {
+        parseGeoIntent(data)?.let { place ->
+            val placeJson = Uri.encode(Gson().toJson(place))
+            deepLinkDestination = "place_card?place=$placeJson"
+        }
+    }
+
+    private fun parseGeoIntent(data: Uri): Place? {
+        val poiName = data.schemeSpecificPart.split("?q=").getOrNull(1)
+        val pathComponents = data.schemeSpecificPart.split("?").first().split(',').mapNotNull {
+            try {
+                parseDouble(it.trim())
+            } catch (_: NumberFormatException) {
+                null
+            }
+        }
+        if (pathComponents.size == 2) {
+            val lat = pathComponents[0]
+            val lng = pathComponents[1]
+            return locationRepository.fromNameAndLatLng(poiName, latLng = LatLng(lat, lng))
+        }
+        return null
     }
 
     override fun onStart() {
@@ -285,10 +286,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String?>,
-        grantResults: IntArray,
-        deviceId: Int
+        requestCode: Int, permissions: Array<out String?>, grantResults: IntArray, deviceId: Int
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults, deviceId)
         when (requestCode) {
