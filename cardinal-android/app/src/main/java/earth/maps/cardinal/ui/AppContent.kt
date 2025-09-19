@@ -484,7 +484,6 @@ fun AppContent(
                             bottom = if (screenHeightDp > fabHeight) {
                                 screenHeightDp - fabHeight
                             } else {
-                                Log.d("AppContent", "check failed $fabHeight")
                                 0.dp
                             }
                         ),
