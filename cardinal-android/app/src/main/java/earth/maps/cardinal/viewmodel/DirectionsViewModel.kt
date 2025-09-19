@@ -1,3 +1,19 @@
+/*
+ *    Copyright 2025 The Cardinal Authors
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package earth.maps.cardinal.viewmodel
 
 import android.util.Log
@@ -28,7 +44,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -185,7 +200,10 @@ class DirectionsViewModel @Inject constructor(
 
     private fun createWaypoints(destination: Place) = listOf(
         Waypoint(
-            coordinate = GeographicCoordinate(destination.latLng.latitude, destination.latLng.longitude),
+            coordinate = GeographicCoordinate(
+                destination.latLng.latitude,
+                destination.latLng.longitude
+            ),
             kind = WaypointKind.BREAK
         )
     )
@@ -228,7 +246,10 @@ class DirectionsViewModel @Inject constructor(
                     onSuccess = { pair ->
                         pair?.let { (_, options) ->
                             // Update options on the appropriate wrapper
-                            ferrostarWrapperRepository.setOptionsForMode(selectedRoutingMode, options)
+                            ferrostarWrapperRepository.setOptionsForMode(
+                                selectedRoutingMode,
+                                options
+                            )
                         }
                     },
                     onFailure = {
@@ -250,7 +271,8 @@ class DirectionsViewModel @Inject constructor(
     /**
      * Gets available routing profiles for the current routing mode.
      */
-    fun getAvailableProfilesForCurrentMode() = routingProfileRepository.getProfilesForMode(selectedRoutingMode)
+    fun getAvailableProfilesForCurrentMode() =
+        routingProfileRepository.getProfilesForMode(selectedRoutingMode)
 
     /**
      * Gets available routing modes for display in the UI.
@@ -311,7 +333,6 @@ class DirectionsViewModel @Inject constructor(
     }
 
 
-
     fun startNavigation(navigationCoordinator: NavigationCoordinator) {
         routeState.route?.let { route ->
             navigationCoordinator.navigateToTurnByTurnWithFerrostarRoute(route, selectedRoutingMode)
@@ -343,11 +364,13 @@ class DirectionsViewModel @Inject constructor(
             isGettingLocation = true
             try {
                 val updatedOrigin = if (origin.isMyLocation) {
-                    locationRepository.getFreshCurrentLocationAsPlace()?.also { fromPlace = it } ?: origin
+                    locationRepository.getFreshCurrentLocationAsPlace()?.also { fromPlace = it }
+                        ?: origin
                 } else origin
 
                 val updatedDestination = if (destination.isMyLocation) {
-                    locationRepository.getFreshCurrentLocationAsPlace()?.also { toPlace = it } ?: destination
+                    locationRepository.getFreshCurrentLocationAsPlace()?.also { toPlace = it }
+                        ?: destination
                 } else destination
 
                 fetchRoute(updatedOrigin, updatedDestination)
@@ -401,10 +424,10 @@ class DirectionsViewModel @Inject constructor(
             context,
             android.Manifest.permission.ACCESS_FINE_LOCATION
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
-        androidx.core.content.ContextCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                androidx.core.content.ContextCompat.checkSelfPermission(
+                    context,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
     /**

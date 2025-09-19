@@ -1,3 +1,19 @@
+/*
+ *    Copyright 2025 The Cardinal Authors
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package earth.maps.cardinal.geocoding
 
 import android.util.Log
@@ -38,36 +54,37 @@ class PeliasGeocodingService(private val appPreferenceRepository: AppPreferenceR
         install(Logging)
     }
 
-    override suspend fun geocode(query: String, focusPoint: LatLng?): Flow<List<GeocodeResult>> = flow {
-        try {
-            Log.d(TAG, "Geocoding query: $query, focusPoint: $focusPoint")
-            val config = appPreferenceRepository.peliasApiConfig.value
-            val response = client.get("${config.baseUrl}/autocomplete") {
-                parameter("text", query)
-                parameter("size", "10")
-                config.apiKey?.let { parameter("api_key", it) }
-                focusPoint?.let {
-                    parameter("focus.point.lat", it.latitude.toString())
-                    parameter("focus.point.lon", it.longitude.toString())
+    override suspend fun geocode(query: String, focusPoint: LatLng?): Flow<List<GeocodeResult>> =
+        flow {
+            try {
+                Log.d(TAG, "Geocoding query: $query, focusPoint: $focusPoint")
+                val config = appPreferenceRepository.peliasApiConfig.value
+                val response = client.get("${config.baseUrl}/autocomplete") {
+                    parameter("text", query)
+                    parameter("size", "10")
+                    config.apiKey?.let { parameter("api_key", it) }
+                    focusPoint?.let {
+                        parameter("focus.point.lat", it.latitude.toString())
+                        parameter("focus.point.lon", it.longitude.toString())
+                    }
                 }
+
+                val result = response.body<JsonObject>()
+                Log.d(TAG, "Response: $result")
+                val features = result["features"]?.jsonArray ?: JsonArray(emptyList())
+                Log.d(TAG, "Number of features: ${features.size}")
+
+                val geocodeResults = features.mapNotNull { element ->
+                    parseGeocodeResult(element)
+                }
+                Log.d(TAG, "Parsed results: ${geocodeResults.size}")
+
+                emit(geocodeResults)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during geocoding", e)
+                emit(emptyList())
             }
-
-            val result = response.body<JsonObject>()
-            Log.d(TAG, "Response: $result")
-            val features = result["features"]?.jsonArray ?: JsonArray(emptyList())
-            Log.d(TAG, "Number of features: ${features.size}")
-
-            val geocodeResults = features.mapNotNull { element ->
-                parseGeocodeResult(element)
-            }
-            Log.d(TAG, "Parsed results: ${geocodeResults.size}")
-
-            emit(geocodeResults)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error during geocoding", e)
-            emit(emptyList())
         }
-    }
 
     override suspend fun reverseGeocode(
         latitude: Double,

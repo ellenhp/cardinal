@@ -1,10 +1,25 @@
+/*
+ *    Copyright 2025 The Cardinal Authors
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package earth.maps.cardinal
 
 import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -18,8 +33,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
@@ -35,7 +48,6 @@ import earth.maps.cardinal.tileserver.PermissionRequest
 import earth.maps.cardinal.tileserver.PermissionRequestManager
 import earth.maps.cardinal.ui.AppContent
 import earth.maps.cardinal.ui.NavigationCoordinator
-import earth.maps.cardinal.ui.Screen
 import earth.maps.cardinal.ui.TurnByTurnNavigationScreen
 import earth.maps.cardinal.ui.theme.AppTheme
 import earth.maps.cardinal.viewmodel.MapViewModel
@@ -70,8 +82,8 @@ class MainActivity : ComponentActivity() {
     private fun requestLocationPermission() {
         requestPermissions(
             arrayOf(
-                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
             ),
             LOCATION_PERMISSION_REQUEST_CODE
         )
@@ -159,17 +171,18 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable("turn_by_turn?ferrostarRoute={ferrostarRoute}&routingMode={routingMode}") { backStackEntry ->
-                        val ferrostarRouteJson = backStackEntry.arguments?.getString("ferrostarRoute")
+                        val ferrostarRouteJson =
+                            backStackEntry.arguments?.getString("ferrostarRoute")
                         val routingModeJson = backStackEntry.arguments?.getString("routingMode")
-                        
-                        val ferrostarRoute = ferrostarRouteJson?.let { 
+
+                        val ferrostarRoute = ferrostarRouteJson?.let {
                             try {
                                 Gson().fromJson(it, uniffi.ferrostar.Route::class.java)
                             } catch (e: Exception) {
                                 null
                             }
                         }
-                        
+
                         val routingMode = routingModeJson?.let {
                             try {
                                 Gson().fromJson(it, RoutingMode::class.java)
@@ -177,7 +190,7 @@ class MainActivity : ComponentActivity() {
                                 RoutingMode.AUTO
                             }
                         } ?: RoutingMode.AUTO
-                        
+
                         port?.let { port ->
                             TurnByTurnNavigationScreen(
                                 port = port,

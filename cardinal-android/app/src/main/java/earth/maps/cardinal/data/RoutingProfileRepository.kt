@@ -1,3 +1,19 @@
+/*
+ *    Copyright 2025 The Cardinal Authors
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package earth.maps.cardinal.data
 
 import com.google.gson.Gson
@@ -117,29 +133,31 @@ class RoutingProfileRepository @Inject constructor(
     /**
      * Gets a routing profile by ID.
      */
-    suspend fun getProfileById(profileId: String): Result<RoutingProfile?> = withContext(Dispatchers.IO) {
-        try {
-            val profile = dao.getProfileById(profileId)
-            Result.success(profile)
-        } catch (e: Exception) {
-            Result.failure(e)
+    suspend fun getProfileById(profileId: String): Result<RoutingProfile?> =
+        withContext(Dispatchers.IO) {
+            try {
+                val profile = dao.getProfileById(profileId)
+                Result.success(profile)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
-    }
 
     /**
      * Gets a routing profile by ID and deserializes its options.
      */
-    suspend fun getProfileWithOptions(profileId: String): Result<Pair<RoutingProfile, RoutingOptions>?> = withContext(Dispatchers.IO) {
-        try {
-            val profile = dao.getProfileById(profileId)
-                ?: return@withContext Result.success(null)
+    suspend fun getProfileWithOptions(profileId: String): Result<Pair<RoutingProfile, RoutingOptions>?> =
+        withContext(Dispatchers.IO) {
+            try {
+                val profile = dao.getProfileById(profileId)
+                    ?: return@withContext Result.success(null)
 
-            val options = deserializeOptions(profile.routingMode, profile.optionsJson)
-            Result.success(Pair(profile, options))
-        } catch (e: Exception) {
-            Result.failure(e)
+                val options = deserializeOptions(profile.routingMode, profile.optionsJson)
+                Result.success(Pair(profile, options))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
-    }
 
     /**
      * Gets all profiles for a specific routing mode.
@@ -151,48 +169,52 @@ class RoutingProfileRepository @Inject constructor(
     /**
      * Gets the default profile for a routing mode, or creates one if none exists.
      */
-    suspend fun getOrCreateDefaultProfile(routingMode: RoutingMode): Result<Pair<RoutingProfile, RoutingOptions>> = withContext(Dispatchers.IO) {
-        try {
-            val existingDefault = dao.getDefaultProfileForMode(routingMode.value)
-            if (existingDefault != null) {
-                val options = deserializeOptions(existingDefault.routingMode, existingDefault.optionsJson)
-                return@withContext Result.success(Pair(existingDefault, options))
-            }
-
-            // Create default profile
-            val defaultOptions = createDefaultOptionsForMode(routingMode)
-            val profileName = "Default ${routingMode.label}"
-
-            createProfile(profileName, routingMode, defaultOptions, isDefault = true).fold(
-                onSuccess = { profileId ->
-                    val profile = dao.getProfileById(profileId)!!
-                    Result.success(Pair(profile, defaultOptions))
-                },
-                onFailure = { error ->
-                    Result.failure(error)
+    suspend fun getOrCreateDefaultProfile(routingMode: RoutingMode): Result<Pair<RoutingProfile, RoutingOptions>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val existingDefault = dao.getDefaultProfileForMode(routingMode.value)
+                if (existingDefault != null) {
+                    val options =
+                        deserializeOptions(existingDefault.routingMode, existingDefault.optionsJson)
+                    return@withContext Result.success(Pair(existingDefault, options))
                 }
-            )
-        } catch (e: Exception) {
-            Result.failure(e)
+
+                // Create default profile
+                val defaultOptions = createDefaultOptionsForMode(routingMode)
+                val profileName = "Default ${routingMode.label}"
+
+                createProfile(profileName, routingMode, defaultOptions, isDefault = true).fold(
+                    onSuccess = { profileId ->
+                        val profile = dao.getProfileById(profileId)!!
+                        Result.success(Pair(profile, defaultOptions))
+                    },
+                    onFailure = { error ->
+                        Result.failure(error)
+                    }
+                )
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
-    }
 
     /**
      * Gets the default profile for a routing mode if it exists, returns null if none exists.
      */
-    suspend fun getDefaultProfile(routingMode: RoutingMode): Result<Pair<RoutingProfile, RoutingOptions>?> = withContext(Dispatchers.IO) {
-        try {
-            val existingDefault = dao.getDefaultProfileForMode(routingMode.value)
-            if (existingDefault != null) {
-                val options = deserializeOptions(existingDefault.routingMode, existingDefault.optionsJson)
-                Result.success(Pair(existingDefault, options))
-            } else {
-                Result.success(null)
+    suspend fun getDefaultProfile(routingMode: RoutingMode): Result<Pair<RoutingProfile, RoutingOptions>?> =
+        withContext(Dispatchers.IO) {
+            try {
+                val existingDefault = dao.getDefaultProfileForMode(routingMode.value)
+                if (existingDefault != null) {
+                    val options =
+                        deserializeOptions(existingDefault.routingMode, existingDefault.optionsJson)
+                    Result.success(Pair(existingDefault, options))
+                } else {
+                    Result.success(null)
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
             }
-        } catch (e: Exception) {
-            Result.failure(e)
         }
-    }
 
     /**
      * Sets a profile as the default for its routing mode, or clears the default if it's already the default.
@@ -238,7 +260,11 @@ class RoutingProfileRepository @Inject constructor(
             when (routingMode) {
                 "auto" -> gson.fromJson(optionsJson, AutoRoutingOptions::class.java)
                 "truck" -> gson.fromJson(optionsJson, TruckRoutingOptions::class.java)
-                "motor_scooter" -> gson.fromJson(optionsJson, MotorScooterRoutingOptions::class.java)
+                "motor_scooter" -> gson.fromJson(
+                    optionsJson,
+                    MotorScooterRoutingOptions::class.java
+                )
+
                 "motorcycle" -> gson.fromJson(optionsJson, MotorcycleRoutingOptions::class.java)
                 "bicycle" -> gson.fromJson(optionsJson, CyclingRoutingOptions::class.java)
                 "pedestrian" -> gson.fromJson(optionsJson, PedestrianRoutingOptions::class.java)

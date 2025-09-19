@@ -1,3 +1,19 @@
+<!--
+  ~    Copyright 2025 The Cardinal Authors
+  ~
+  ~    Licensed under the Apache License, Version 2.0 (the "License");
+  ~    you may not use this file except in compliance with the License.
+  ~    You may obtain a copy of the License at
+  ~
+  ~        http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~    Unless required by applicable law or agreed to in writing, software
+  ~    distributed under the License is distributed on an "AS IS" BASIS,
+  ~    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~    See the License for the specific language governing permissions and
+  ~    limitations under the License.
+  -->
+
 <vector xmlns:aapt="http://schemas.android.com/aapt" xmlns:android="http://schemas.android.com/apk/res/android" android:height="64dp" android:viewportHeight="383.25" android:viewportWidth="319.47" android:width="53.349197dp">
       
     <path android:fillColor="#f43101" android:pathData="m75.16,14.48 l-10.82,-11.62 8.76,11.78 -15.76,-14.65 13.21,17.03 -14.17,-15.92 13.85,18.47 -16.24,-18.78 16.4,21.97 -17.51,-13.05 13.37,14.81 -11.46,-10.03 12.42,12.73 -19.1,-11.78 16.24,12.73 -13.21,-5.57 11.3,8.91s-12.1,-4.14 -11.46,-3.66c0.64,0.48 11.14,7 11.14,7l-9.55,-3.34 9.07,6.05z"/>
