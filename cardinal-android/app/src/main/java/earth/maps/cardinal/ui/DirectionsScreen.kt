@@ -1,3 +1,19 @@
+/*
+ *    Copyright 2025 The Cardinal Authors
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package earth.maps.cardinal.ui
 
 import androidx.activity.compose.BackHandler
@@ -118,13 +134,12 @@ fun DirectionsScreen(
         }
     }
 
-    val navUnavailableSnackbarMessage =
-        stringResource(R.string.change_start_location_to_my_location)
+    stringResource(R.string.change_start_location_to_my_location)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = dimensionResource(dimen.padding))
     ) {
         val density = androidx.compose.ui.platform.LocalDensity.current
 
@@ -206,7 +221,7 @@ fun DirectionsScreen(
                     isRouteLoading = routeState.isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = dimensionResource(dimen.padding))
                 )
 
                 // Routing mode selection
@@ -217,7 +232,13 @@ fun DirectionsScreen(
                 )
 
                 val availableRoutingModes by viewModel.getAvailableRoutingModes()
-                    .collectAsState(initial = listOf(RoutingMode.AUTO, RoutingMode.PEDESTRIAN, RoutingMode.BICYCLE))
+                    .collectAsState(
+                        initial = listOf(
+                            RoutingMode.AUTO,
+                            RoutingMode.PEDESTRIAN,
+                            RoutingMode.BICYCLE
+                        )
+                    )
 
                 RoutingModeSelector(
                     availableModes = availableRoutingModes,
@@ -225,7 +246,7 @@ fun DirectionsScreen(
                     onModeSelected = { viewModel.updateRoutingMode(it) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = dimensionResource(dimen.padding))
                 )
 
 
@@ -246,7 +267,7 @@ fun DirectionsScreen(
                         text = stringResource(R.string.calculating_route_in_progress),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(dimensionResource(dimen.padding))
                     )
                 }
 
@@ -256,7 +277,7 @@ fun DirectionsScreen(
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(dimensionResource(dimen.padding))
                     )
                 }
 
@@ -278,7 +299,7 @@ fun DirectionsScreen(
                         text = stringResource(R.string.enter_start_and_end_locations_to_get_directions),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(dimensionResource(dimen.padding))
                     )
                 }
             }
@@ -317,7 +338,7 @@ fun DirectionsScreen(
                     text = "Searching...",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(dimensionResource(dimen.padding))
                 )
             } else if (viewModel.searchQuery.isEmpty()) {
                 // Show quick suggestions when no search query
@@ -709,13 +730,13 @@ private fun FerrostarRouteResults(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+                    .padding(bottom = dimensionResource(dimen.padding)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(dimensionResource(dimen.padding))
                 ) {
                     Text(
                         text = stringResource(R.string.route_summary),
@@ -748,7 +769,7 @@ private fun FerrostarRouteResults(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp),
+                            .padding(bottom = dimensionResource(dimen.padding)),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
@@ -766,7 +787,7 @@ private fun FerrostarRouteResults(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp),
+                            .padding(bottom = dimensionResource(dimen.padding)),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -787,7 +808,7 @@ private fun FerrostarRouteResults(
 
                     Button(
                         onClick = {
-                                viewModel.startNavigation(navigationCoordinator)
+                            viewModel.startNavigation(navigationCoordinator)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = true
@@ -810,7 +831,7 @@ private fun FerrostarRouteResults(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(dimensionResource(dimen.padding)),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Step number
@@ -832,7 +853,7 @@ private fun FerrostarRouteResults(
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier
                             .weight(1f)
-                            .padding(horizontal = 16.dp)
+                            .padding(horizontal = dimensionResource(dimen.padding))
                     )
 
                     // Step distance

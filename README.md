@@ -27,7 +27,7 @@ Every decision we make puts the user first:
 - **Online and offline modes** - Search and get directions anywhere in the world out of the box, with complete offline privacy just a few taps away.
 - **Self-host your maps services** - Works seamlessly with [Headway](https://github.com/headwaymaps/headway) for those who want the convenience of online maps on their own terms.
 - **Modern look and feel** - Built from the ground up in Material 3.
-- **Built with industry-standard tools** - Contributors aren't bogged down with years of legacy C++ cruft.
+- **Built with industry-standard tools** - Contributors aren't bogged down with years of cruft.
 
 ## Feature Comparison
 
@@ -35,7 +35,7 @@ Below is a comparison of Cardinal Maps with other open-source mapping applicatio
 
 | Feature | Cardinal Maps | OsmAnd | Organic Maps/CoMaps |
 |---------|---------------|--------|--------------|
-| **Privacy** | Full-featured offline mode available, and users are able to point online geocoding and routing requests to whichever backend they feel comfortable with in Advanced Settings, **including self-hosted services** like [Headway](https://github.com/headwaymaps/headway). | OsmAnd operates completely offline, meaning the only data that leaves your device is which areas of the world you download maps for. | Similar to OsmAnd, CoMaps is completely offline except for the map download step. |
+| **Privacy** | Full-featured offline mode available, and users are able to point online geocoding and routing requests to whichever backend they feel comfortable with in Advanced Settings, **including self-hosted services** like [Headway](https://github.com/headwaymaps/headway). | OsmAnd fetches online tiles by default, but is capable of operating completely offline, meaning the only data that leaves your device is which areas of the world you download maps for. | CoMaps is completely offline except for the map download step, there is no option for fetching tiles live from the internet. |
 | **Offline Maps** | Users can pre-download maps for areas of the world they live in or want to visit. The user can pick which areas to download, from a small neighborhood to a metropolitan area. | The user can choose which pre-defined map packs they want to download. | Similar to OsmAnd, map packs are pre-defined. |
 | **User Interface** | Uses platform-native UI toolkits (Material 3 on Android) and industry-standard map rendering tech ([MapLibre Native](https://github.com/maplibre/maplibre-native)) for a modern look and feel. | Written almost entirely in Java with bespoke map rendering | Written almost entirely in C++ with bespoke UI and map rendering |
 | **Navigation** | Full support using [Ferrostar](https://github.com/stadiamaps/ferrostar) for a sleek experience online and offline. | Full support | Full support |

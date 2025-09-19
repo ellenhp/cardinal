@@ -1,3 +1,19 @@
+/*
+ *    Copyright 2025 The Cardinal Authors
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package earth.maps.cardinal.ui
 
 import android.net.Uri
@@ -5,6 +21,7 @@ import androidx.navigation.NavController
 import com.google.gson.Gson
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
+import earth.maps.cardinal.data.RoutingProfile
 import uniffi.ferrostar.Route
 
 class NavigationCoordinator(
@@ -48,13 +65,13 @@ class NavigationCoordinator(
     fun navigateToPlaceCard(place: Place) {
         val placeJson = Uri.encode(Gson().toJson(place))
         bottomSheetNavController?.navigate("place_card?place=$placeJson") {
-            popUpTo("place_card") { inclusive = true }
+            popUpTo(Screen.PlaceCard.route) { inclusive = true }
         }
     }
 
     fun navigateToHome() {
-        bottomSheetNavController?.navigate("home") {
-            popUpTo("home") { inclusive = true }
+        bottomSheetNavController?.navigate(Screen.Home.route) {
+            popUpTo(Screen.Home.route) { inclusive = true }
         }
     }
 
@@ -63,7 +80,9 @@ class NavigationCoordinator(
     }
 
     fun navigateToOfflineAreas() {
-        bottomSheetNavController?.navigate(Screen.OfflineAreas.route)
+        bottomSheetNavController?.navigate(Screen.OfflineAreas.route) {
+            popUpTo(Screen.Home.route) { inclusive = false }
+        }
     }
 
     // Back navigation that knows which controller to use
@@ -86,10 +105,10 @@ class NavigationCoordinator(
     }
 
     fun isInMainApp(): Boolean {
-        return mainNavController.currentDestination?.route == "main"
+        return mainNavController.currentDestination?.route == Screen.Home.route
     }
 
-    fun isInPlaceCard() : Boolean {
+    fun isInPlaceCard(): Boolean {
         return isInMainApp() && bottomSheetNavController?.currentDestination?.route?.startsWith("place_card") == true
     }
 
@@ -99,8 +118,29 @@ class NavigationCoordinator(
         }
     }
 
-    // Get current bottom sheet route
-    fun getCurrentBottomSheetRoute(): String? {
-        return bottomSheetNavController?.currentDestination?.route
+    fun navigateToRoutingProfiles() {
+        bottomSheetNavController?.navigate(Screen.RoutingProfiles.route)
+    }
+
+    fun navigateToRoutingProfileEditor(profile: RoutingProfile? = null) {
+        val id = profile?.id
+        if (id == null) {
+            bottomSheetNavController?.navigate("profile_editor")
+
+        } else {
+            bottomSheetNavController?.navigate("profile_editor?profileId=$id")
+        }
+    }
+
+    fun navigateToPrivacySettings() {
+        bottomSheetNavController?.navigate(Screen.PrivacySettings.route)
+    }
+
+    fun navigateToAccessibilitySettings() {
+        bottomSheetNavController?.navigate(Screen.AccessibilitySettings.route)
+    }
+
+    fun navigateToAdvancedSettings() {
+        bottomSheetNavController?.navigate(Screen.AdvancedSettings.route)
     }
 }

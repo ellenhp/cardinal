@@ -1,3 +1,19 @@
+/*
+ *    Copyright 2025 The Cardinal Authors
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package earth.maps.cardinal.ui
 
 import androidx.compose.foundation.clickable
@@ -45,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import earth.maps.cardinal.R
+import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.data.DownloadStatus
 import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
@@ -60,7 +77,7 @@ fun OfflineAreasScreen(
     currentViewport: VisibleRegion,
     currentZoom: Double,
     viewModel: OfflineAreasViewModel = hiltViewModel(),
-    snackbarHostState: SnackbarHostState,
+    snackBarHostState: SnackbarHostState,
     onDismiss: () -> Unit,
     onAreaSelected: (OfflineArea) -> Unit = {}
 ) {
@@ -87,7 +104,7 @@ fun OfflineAreasScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
+                .padding(bottom = dimensionResource(dimen.padding)),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -110,14 +127,14 @@ fun OfflineAreasScreen(
             onClick = {
                 if (currentZoom < 8) {
                     coroutineScope.launch {
-                        snackbarHostState.showSnackbar(zoomInMessage)
+                        snackBarHostState.showSnackbar(zoomInMessage)
                     }
                 } else {
                     showDownloadDialog = true
                 }
             }, modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp), enabled = !isDownloading
+                .padding(bottom = dimensionResource(dimen.padding)), enabled = !isDownloading
         ) {
             Icon(
                 painter = painterResource(R.drawable.cloud_download_24dp),
@@ -140,7 +157,7 @@ fun OfflineAreasScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(dimensionResource(dimen.padding))
                     .align(Alignment.CenterHorizontally)
             )
         } else {
@@ -228,7 +245,7 @@ fun OfflineAreaItem(
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(dimensionResource(dimen.padding))
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -298,7 +315,6 @@ fun DownloadAreaDialog(
     onDownload: (name: String, boundingBox: BoundingBox) -> Unit
 ) {
     val viewModel: OfflineAreasViewModel = hiltViewModel()
-    val coroutineScope = rememberCoroutineScope()
 
     // Calculate default bounding box from current viewport
     val (north, south, east, west) = calculateBoundingBoxFromViewport(
@@ -368,7 +384,7 @@ fun DownloadAreaDialog(
                 Text(
                     text = stringResource(R.string.estimated_tiles, estimatedTileCount),
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 16.dp)
+                    modifier = Modifier.padding(top = dimensionResource(dimen.padding))
                 )
             }
         },

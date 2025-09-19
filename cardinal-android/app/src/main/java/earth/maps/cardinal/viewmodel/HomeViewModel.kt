@@ -1,3 +1,19 @@
+/*
+ *    Copyright 2025 The Cardinal Authors
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package earth.maps.cardinal.viewmodel
 
 import androidx.compose.runtime.getValue
@@ -8,8 +24,8 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.PlaceEntity
 import earth.maps.cardinal.data.PlaceDao
+import earth.maps.cardinal.data.PlaceEntity
 import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import kotlinx.coroutines.FlowPreview
@@ -31,10 +47,10 @@ class HomeViewModel @Inject constructor(
     private val geocodingService: GeocodingService,
     private val viewportRepository: ViewportRepository
 ) : ViewModel() {
-    
+
     // Saved places from database
     val savedPlaces = mutableStateOf<List<Place>>(emptyList())
-    
+
     // Search query flow for debouncing
     private val _searchQueryFlow = MutableStateFlow("")
     private val searchQueryFlow: StateFlow<String> = _searchQueryFlow.asStateFlow()
@@ -43,10 +59,10 @@ class HomeViewModel @Inject constructor(
         private set
 
     val geocodeResults = mutableStateOf<List<GeocodeResult>>(emptyList())
-    
+
     var isSearching by mutableStateOf(false)
         private set
-        
+
     var searchError by mutableStateOf<String?>(null)
         private set
 
@@ -98,14 +114,14 @@ class HomeViewModel @Inject constructor(
                 placeDao.insertPlaces(samplePlaces)
             }
         }
-        
+
         // Load saved places from database
         viewModelScope.launch {
             placeDao.getAllPlaces().collect { placeEntities ->
                 savedPlaces.value = placeEntities.map { it.toPlace() }
             }
         }
-        
+
         // Set up debounced search
         searchQueryFlow
             .debounce(300) // 300ms delay

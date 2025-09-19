@@ -1,3 +1,19 @@
+/*
+ *    Copyright 2025 The Cardinal Authors
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package earth.maps.cardinal.tileserver
 
 import android.app.Service
@@ -34,9 +50,12 @@ class LocalMapServerService : Service() {
         // Initialize the AppPreferenceRepository
         appPreferences = AppPreferences(this)
 
-        // TODO: Get an instance of MultiplexedRoutingService (via hilt?) and pass it in here.
         localMapServer =
-            LocalMapServer(this, appPreferences, multiplexedRoutingService) // Pass context and repository to LocalMapServer
+            LocalMapServer(
+                this,
+                appPreferences,
+                multiplexedRoutingService
+            ) // Pass context and repository to LocalMapServer
         localMapServer.start()
         Log.d(TAG, "Tile server service created and started")
     }

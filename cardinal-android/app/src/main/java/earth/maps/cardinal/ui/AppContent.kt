@@ -1,8 +1,23 @@
+/*
+ *    Copyright 2025 The Cardinal Authors
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package earth.maps.cardinal.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -65,12 +80,16 @@ import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.OfflineArea
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.ui.settings.AccessibilitySettingsScreen
+import earth.maps.cardinal.ui.settings.AdvancedSettingsScreen
+import earth.maps.cardinal.ui.settings.PrivacySettingsScreen
 import earth.maps.cardinal.viewmodel.DirectionsViewModel
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import earth.maps.cardinal.viewmodel.MapViewModel
 import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
+import earth.maps.cardinal.viewmodel.SettingsViewModel
 import io.github.dellisd.spatialk.geojson.BoundingBox
 import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
@@ -107,6 +126,10 @@ fun AppContent(
     var currentRoute by remember { mutableStateOf<Route?>(null) }
 
     val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
+
+    BackHandler {
+        navigationCoordinator.navigateBack()
+    }
 
     var allowPartialExpansion by remember { mutableStateOf(true) }
     val bottomSheetState =
@@ -183,8 +206,7 @@ fun AppContent(
                                     // Force the sheet to be partially expanded.
                                     scaffoldState.bottomSheetState.partialExpand()
                                 }
-                                val placeJson = Gson().toJson(place)
-                                navController.navigate("place_card?place=$placeJson")
+                                navigationCoordinator.navigateToPlaceCard(place)
                             },
                             onPeekHeightChange = { peekHeight = it },
                             isSearchFocused = isSearchFocused,
@@ -241,8 +263,7 @@ fun AppContent(
                                     navController.popBackStack()
                                 },
                                 onGetDirections = { place ->
-                                    val placeJson = Gson().toJson(place)
-                                    navController.navigate("directions?toPlace=$placeJson")
+                                    navigationCoordinator.navigateToDirections(toPlace = place)
                                 },
                                 onPeekHeightChange = { peekHeight = it })
                         }
@@ -280,8 +301,8 @@ fun AppContent(
                                 currentViewport = visibleRegion,
                                 currentZoom = cameraState.position.zoom,
                                 viewModel = viewModel,
-                                snackbarHostState = snackBarHostState,
-                                onDismiss = { navController.popBackStack() },
+                                snackBarHostState = snackBarHostState,
+                                onDismiss = { navigationCoordinator.navigateBack() },
                                 onAreaSelected = { area ->
                                     coroutineScope.launch {
                                         scaffoldState.bottomSheetState.partialExpand()
@@ -319,9 +340,65 @@ fun AppContent(
                             }
                         }
                         SettingsScreen(
-                            onDismiss = { navController.popBackStack() },
-                            appPreferenceRepository = appPreferenceRepository,
-                            navController = navController
+                            onDismiss = { navigationCoordinator.navigateBack() },
+                            viewModel = hiltViewModel(),
+                            navigationCoordinator = navigationCoordinator
+                        )
+                    }
+
+                    composable(Screen.PrivacySettings.route) {
+                        LaunchedEffect(key1 = Unit) {
+                            mapPins.clear()
+                            // Don't allow partial expansion while we're in this state.
+                            allowPartialExpansion = false
+                            sheetSwipeEnabled = false
+                            // The privacy settings screen is always fully expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.expand()
+                            }
+                        }
+                        val viewModel: SettingsViewModel = hiltViewModel()
+                        PrivacySettingsScreen(
+                            viewModel = viewModel,
+                            onDismiss = { navigationCoordinator.navigateBack() },
+                            onNavigateToOfflineAreas = { navigationCoordinator.navigateToOfflineAreas() },
+                            navigationCoordinator = navigationCoordinator
+                        )
+                    }
+
+                    composable(Screen.AccessibilitySettings.route) {
+                        LaunchedEffect(key1 = Unit) {
+                            mapPins.clear()
+                            // Don't allow partial expansion while we're in this state.
+                            allowPartialExpansion = false
+                            sheetSwipeEnabled = false
+                            // The accessibility settings screen is always fully expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.expand()
+                            }
+                        }
+                        val viewModel: SettingsViewModel = hiltViewModel()
+                        AccessibilitySettingsScreen(
+                            viewModel = viewModel,
+                            onDismiss = { navigationCoordinator.navigateBack() }
+                        )
+                    }
+
+                    composable(Screen.AdvancedSettings.route) {
+                        LaunchedEffect(key1 = Unit) {
+                            mapPins.clear()
+                            // Don't allow partial expansion while we're in this state.
+                            allowPartialExpansion = false
+                            sheetSwipeEnabled = false
+                            // The advanced settings screen is always fully expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.expand()
+                            }
+                        }
+                        val viewModel: SettingsViewModel = hiltViewModel()
+                        AdvancedSettingsScreen(
+                            viewModel = viewModel,
+                            onDismiss = { navigationCoordinator.navigateBack() }
                         )
                     }
 
@@ -336,7 +413,9 @@ fun AppContent(
                                 bottomSheetState.expand()
                             }
                         }
-                        RoutingProfilesScreen(navController = navController)
+                        RoutingProfilesScreen(
+                            navigationCoordinator = navigationCoordinator,
+                        )
                     }
 
                     composable(Screen.ProfileEditor.route) { backStackEntry ->
@@ -352,9 +431,9 @@ fun AppContent(
                         }
                         val profileId = backStackEntry.arguments?.getString("profileId")
                         ProfileEditorScreen(
-                            navController = navController,
+                            navigationCoordinator = navigationCoordinator,
                             profileId = profileId,
-                            snackbarHostState = snackBarHostState
+                            snackBarHostState = snackBarHostState
                         )
                     }
 
@@ -421,7 +500,7 @@ fun AppContent(
                             context = context,
                             viewModel = viewModel,
                             onPeekHeightChange = { peekHeight = it },
-                            onBack = { navController.popBackStack() },
+                            onBack = { navigationCoordinator.navigateBack() },
                             onFullExpansionRequired = {
                                 coroutineScope.launch {
                                     bottomSheetState.expand()
@@ -443,7 +522,7 @@ fun AppContent(
                     deepLinkDestination?.let { destination ->
                         when (destination) {
                             MainActivity.DEEP_LINK_OFFLINE_AREAS -> {
-                                navController.navigate(Screen.OfflineAreas.route)
+                                navigationCoordinator.navigateToOfflineAreas()
                             }
                         }
                     }
@@ -500,10 +579,10 @@ fun AppContent(
                 ) {
                     // Avatar icon button in top left
                     FloatingActionButton(
-                        onClick = { navController.navigate(Screen.Settings.route) },
+                        onClick = { navigationCoordinator.navigateToSettings() },
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .padding(16.dp)
+                            .padding(dimensionResource(dimen.padding))
                             .size(64.dp)
                             .border(
                                 width = 4.dp,
@@ -522,7 +601,7 @@ fun AppContent(
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(12.dp)
+                            .padding(dimensionResource(dimen.padding_minor))
                             .size(24.dp),
                     ) {
                         Box(

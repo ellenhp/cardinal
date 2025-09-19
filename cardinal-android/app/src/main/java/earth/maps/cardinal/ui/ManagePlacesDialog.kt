@@ -1,3 +1,19 @@
+/*
+ *    Copyright 2025 The Cardinal Authors
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package earth.maps.cardinal.ui
 
 import androidx.compose.foundation.clickable
@@ -81,7 +97,7 @@ fun ManagePlacesDialog(
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
-                
+
                 IconButton(onClick = {
                     scope.launch {
                         sheetState.hide()
@@ -118,7 +134,7 @@ fun ManagePlacesDialog(
                     items(places) { place ->
                         PlaceItemWithActions(
                             place = place,
-                            onPlaceSelected = { 
+                            onPlaceSelected = {
                                 viewModel.selectPlace(place)
                                 onPlaceSelected(place)
                             },
@@ -274,25 +290,25 @@ private fun EditPlaceDialog(
                     label = { Text(stringResource(R.string.place_name)) },
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding_minor)))
-                
+
                 OutlinedTextField(
                     value = type,
                     onValueChange = { type = it },
                     label = { Text(stringResource(R.string.place_description)) },
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding)))
-                
+
                 // Home/Work toggle buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     TextButton(
-                        onClick = { 
+                        onClick = {
                             isHome = true
                             isWork = false
                         },
@@ -300,11 +316,11 @@ private fun EditPlaceDialog(
                     ) {
                         Text(stringResource(R.string.set_as_home))
                     }
-                    
+
                     Spacer(modifier = Modifier.width(dimensionResource(R.dimen.padding)))
-                    
+
                     TextButton(
-                        onClick = { 
+                        onClick = {
                             isWork = true
                             isHome = false
                         },
