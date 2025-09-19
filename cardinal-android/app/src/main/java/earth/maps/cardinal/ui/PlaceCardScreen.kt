@@ -84,7 +84,6 @@ fun PlaceCardScreen(
             .padding(
                 start = dimensionResource(dimen.padding),
                 end = dimensionResource(dimen.padding),
-                bottom = dimensionResource(dimen.padding)
             )
             .verticalScroll(rememberScrollState())
             .onGloballyPositioned { coordinates ->
