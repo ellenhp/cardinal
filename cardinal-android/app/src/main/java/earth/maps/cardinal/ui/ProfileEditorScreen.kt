@@ -47,7 +47,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.routing.AutoOptions
 import earth.maps.cardinal.routing.AutoRoutingOptions
@@ -66,9 +65,9 @@ import kotlin.math.ln
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileEditorScreen(
-    navController: NavController,
+    navigationCoordinator: NavigationCoordinator,
     profileId: String? = null,
-    snackbarHostState: SnackbarHostState,
+    snackBarHostState: SnackbarHostState,
     viewModel: ProfileEditorViewModel = hiltViewModel()
 ) {
     val profileName by viewModel.profileName.collectAsState()
@@ -87,7 +86,7 @@ fun ProfileEditorScreen(
 
     LaunchedEffect(error) {
         error?.let {
-            snackbarHostState.showSnackbar(it)
+            snackBarHostState.showSnackbar(it)
             viewModel.clearError()
         }
     }
@@ -97,7 +96,7 @@ fun ProfileEditorScreen(
         if (!isNewProfile && hasUnsavedChanges) {
             showUnsavedChangesDialog = true
         } else {
-            navController.popBackStack()
+            navigationCoordinator.navigateBack()
         }
     }
 
@@ -130,7 +129,7 @@ fun ProfileEditorScreen(
                 IconButton(
                     onClick = {
                         viewModel.saveProfile {
-                            navController.popBackStack()
+                            navigationCoordinator.navigateBack()
                         }
                     }
                 ) {
@@ -229,7 +228,7 @@ fun ProfileEditorScreen(
                 Text("You have unsaved changes. What would you like to do?")
                 BackHandler {
                     showUnsavedChangesDialog = false
-                    navController.popBackStack()
+                    navigationCoordinator.navigateBack()
                 }
             },
             confirmButton = {
@@ -237,7 +236,7 @@ fun ProfileEditorScreen(
                     onClick = {
                         showUnsavedChangesDialog = false
                         viewModel.saveProfile {
-                            navController.popBackStack()
+                            navigationCoordinator.navigateBack()
                         }
                     }
                 ) {
@@ -248,7 +247,7 @@ fun ProfileEditorScreen(
                 TextButton(
                     onClick = {
                         showUnsavedChangesDialog = false
-                        navController.popBackStack()
+                        navigationCoordinator.navigateBack()
                     }
                 ) {
                     Text("Discard")
@@ -345,7 +344,11 @@ private fun <T> CommonAutoOptionsEditor(
             onValueChanged = onUseTracksChanged
         )
         BooleanOption("Avoid Unpaved", options.excludeUnpaved, onExcludeUnpavedChanged)
-        BooleanOption("Avoid Cash-only Tolls", options.excludeCashOnlyTolls, onExcludeCashOnlyTollsChanged)
+        BooleanOption(
+            "Avoid Cash-only Tolls",
+            options.excludeCashOnlyTolls,
+            onExcludeCashOnlyTollsChanged
+        )
     }
 
     OptionsSection("Penalties") {
@@ -377,7 +380,11 @@ private fun <T> CommonAutoOptionsEditor(
 
     OptionsSection("Restrictions") {
         BooleanOption("Ignore Closures", options.ignoreClosures, onIgnoreClosuresChanged)
-        BooleanOption("Ignore Restrictions", options.ignoreRestrictions, onIgnoreRestrictionsChanged)
+        BooleanOption(
+            "Ignore Restrictions",
+            options.ignoreRestrictions,
+            onIgnoreRestrictionsChanged
+        )
         BooleanOption("Ignore One-ways", options.ignoreOneWays, onIgnoreOneWaysChanged)
         BooleanOption("Ignore Access", options.ignoreAccess, onIgnoreAccessChanged)
     }
@@ -395,10 +402,22 @@ private fun AutoOptionsEditor(
         onUseLivingStreetsChanged = { value -> onOptionsChanged(options.copy(useLivingStreets = value)) },
         onUseTracksChanged = { value -> onOptionsChanged(options.copy(useTracks = value)) },
         onExcludeUnpavedChanged = { value -> onOptionsChanged(options.copy(excludeUnpaved = value)) },
-        onExcludeCashOnlyTollsChanged = { value -> onOptionsChanged(options.copy(excludeCashOnlyTolls = value)) },
+        onExcludeCashOnlyTollsChanged = { value ->
+            onOptionsChanged(
+                options.copy(
+                    excludeCashOnlyTolls = value
+                )
+            )
+        },
         onManeuverPenaltyChanged = { value -> onOptionsChanged(options.copy(maneuverPenalty = value)) },
         onGateCostChanged = { value -> onOptionsChanged(options.copy(gateCost = value)) },
-        onPrivateAccessPenaltyChanged = { value -> onOptionsChanged(options.copy(privateAccessPenalty = value)) },
+        onPrivateAccessPenaltyChanged = { value ->
+            onOptionsChanged(
+                options.copy(
+                    privateAccessPenalty = value
+                )
+            )
+        },
         onIgnoreClosuresChanged = { value -> onOptionsChanged(options.copy(ignoreClosures = value)) },
         onIgnoreRestrictionsChanged = { value -> onOptionsChanged(options.copy(ignoreRestrictions = value)) },
         onIgnoreOneWaysChanged = { value -> onOptionsChanged(options.copy(ignoreOneWays = value)) },
@@ -418,10 +437,22 @@ private fun TruckOptionsEditor(
         onUseLivingStreetsChanged = { value -> onOptionsChanged(options.copy(useLivingStreets = value)) },
         onUseTracksChanged = { value -> onOptionsChanged(options.copy(useTracks = value)) },
         onExcludeUnpavedChanged = { value -> onOptionsChanged(options.copy(excludeUnpaved = value)) },
-        onExcludeCashOnlyTollsChanged = { value -> onOptionsChanged(options.copy(excludeCashOnlyTolls = value)) },
+        onExcludeCashOnlyTollsChanged = { value ->
+            onOptionsChanged(
+                options.copy(
+                    excludeCashOnlyTolls = value
+                )
+            )
+        },
         onManeuverPenaltyChanged = { value -> onOptionsChanged(options.copy(maneuverPenalty = value)) },
         onGateCostChanged = { value -> onOptionsChanged(options.copy(gateCost = value)) },
-        onPrivateAccessPenaltyChanged = { value -> onOptionsChanged(options.copy(privateAccessPenalty = value)) },
+        onPrivateAccessPenaltyChanged = { value ->
+            onOptionsChanged(
+                options.copy(
+                    privateAccessPenalty = value
+                )
+            )
+        },
         onIgnoreClosuresChanged = { value -> onOptionsChanged(options.copy(ignoreClosures = value)) },
         onIgnoreRestrictionsChanged = { value -> onOptionsChanged(options.copy(ignoreRestrictions = value)) },
         onIgnoreOneWaysChanged = { value -> onOptionsChanged(options.copy(ignoreOneWays = value)) },
@@ -492,10 +523,22 @@ private fun MotorScooterOptionsEditor(
         onUseLivingStreetsChanged = { value -> onOptionsChanged(options.copy(useLivingStreets = value)) },
         onUseTracksChanged = { value -> onOptionsChanged(options.copy(useTracks = value)) },
         onExcludeUnpavedChanged = { value -> onOptionsChanged(options.copy(excludeUnpaved = value)) },
-        onExcludeCashOnlyTollsChanged = { value -> onOptionsChanged(options.copy(excludeCashOnlyTolls = value)) },
+        onExcludeCashOnlyTollsChanged = { value ->
+            onOptionsChanged(
+                options.copy(
+                    excludeCashOnlyTolls = value
+                )
+            )
+        },
         onManeuverPenaltyChanged = { value -> onOptionsChanged(options.copy(maneuverPenalty = value)) },
         onGateCostChanged = { value -> onOptionsChanged(options.copy(gateCost = value)) },
-        onPrivateAccessPenaltyChanged = { value -> onOptionsChanged(options.copy(privateAccessPenalty = value)) },
+        onPrivateAccessPenaltyChanged = { value ->
+            onOptionsChanged(
+                options.copy(
+                    privateAccessPenalty = value
+                )
+            )
+        },
         onIgnoreClosuresChanged = { value -> onOptionsChanged(options.copy(ignoreClosures = value)) },
         onIgnoreRestrictionsChanged = { value -> onOptionsChanged(options.copy(ignoreRestrictions = value)) },
         onIgnoreOneWaysChanged = { value -> onOptionsChanged(options.copy(ignoreOneWays = value)) },
@@ -532,10 +575,22 @@ private fun MotorcycleOptionsEditor(
         onUseLivingStreetsChanged = { value -> onOptionsChanged(options.copy(useLivingStreets = value)) },
         onUseTracksChanged = { value -> onOptionsChanged(options.copy(useTracks = value)) },
         onExcludeUnpavedChanged = { value -> onOptionsChanged(options.copy(excludeUnpaved = value)) },
-        onExcludeCashOnlyTollsChanged = { value -> onOptionsChanged(options.copy(excludeCashOnlyTolls = value)) },
+        onExcludeCashOnlyTollsChanged = { value ->
+            onOptionsChanged(
+                options.copy(
+                    excludeCashOnlyTolls = value
+                )
+            )
+        },
         onManeuverPenaltyChanged = { value -> onOptionsChanged(options.copy(maneuverPenalty = value)) },
         onGateCostChanged = { value -> onOptionsChanged(options.copy(gateCost = value)) },
-        onPrivateAccessPenaltyChanged = { value -> onOptionsChanged(options.copy(privateAccessPenalty = value)) },
+        onPrivateAccessPenaltyChanged = { value ->
+            onOptionsChanged(
+                options.copy(
+                    privateAccessPenalty = value
+                )
+            )
+        },
         onIgnoreClosuresChanged = { value -> onOptionsChanged(options.copy(ignoreClosures = value)) },
         onIgnoreRestrictionsChanged = { value -> onOptionsChanged(options.copy(ignoreRestrictions = value)) },
         onIgnoreOneWaysChanged = { value -> onOptionsChanged(options.copy(ignoreOneWays = value)) },

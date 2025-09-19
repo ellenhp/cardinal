@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -130,17 +131,20 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val mapViewModel: MapViewModel = hiltViewModel()
 
+                val innerNavController = rememberNavController()
+                val coordinator = NavigationCoordinator(
+                    mainNavController = navController,
+                    bottomSheetNavController = innerNavController
+                )
+                BackHandler {
+                    coordinator.navigateBack()
+                }
+
                 NavHost(
                     navController = navController,
                     startDestination = "main"
                 ) {
                     composable("main") {
-                        val innerNavController = rememberNavController()
-                        val coordinator = NavigationCoordinator(
-                            mainNavController = navController,
-                            bottomSheetNavController = innerNavController
-                        )
-
                         AppContent(
                             navController = innerNavController,
                             mapViewModel = mapViewModel,

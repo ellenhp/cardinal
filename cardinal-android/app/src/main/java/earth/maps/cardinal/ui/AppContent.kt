@@ -108,6 +108,10 @@ fun AppContent(
 
     val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
 
+    BackHandler {
+        navigationCoordinator.navigateBack()
+    }
+
     var allowPartialExpansion by remember { mutableStateOf(true) }
     val bottomSheetState =
         rememberStandardBottomSheetState(
@@ -183,8 +187,7 @@ fun AppContent(
                                     // Force the sheet to be partially expanded.
                                     scaffoldState.bottomSheetState.partialExpand()
                                 }
-                                val placeJson = Gson().toJson(place)
-                                navController.navigate("place_card?place=$placeJson")
+                                navigationCoordinator.navigateToPlaceCard(place)
                             },
                             onPeekHeightChange = { peekHeight = it },
                             isSearchFocused = isSearchFocused,
@@ -241,8 +244,7 @@ fun AppContent(
                                     navController.popBackStack()
                                 },
                                 onGetDirections = { place ->
-                                    val placeJson = Gson().toJson(place)
-                                    navController.navigate("directions?toPlace=$placeJson")
+                                    navigationCoordinator.navigateToDirections(toPlace = place)
                                 },
                                 onPeekHeightChange = { peekHeight = it })
                         }
@@ -280,8 +282,8 @@ fun AppContent(
                                 currentViewport = visibleRegion,
                                 currentZoom = cameraState.position.zoom,
                                 viewModel = viewModel,
-                                snackbarHostState = snackBarHostState,
-                                onDismiss = { navController.popBackStack() },
+                                snackBarHostState = snackBarHostState,
+                                onDismiss = { navigationCoordinator.navigateBack() },
                                 onAreaSelected = { area ->
                                     coroutineScope.launch {
                                         scaffoldState.bottomSheetState.partialExpand()
@@ -319,9 +321,9 @@ fun AppContent(
                             }
                         }
                         SettingsScreen(
-                            onDismiss = { navController.popBackStack() },
+                            onDismiss = { navigationCoordinator.navigateBack() },
                             appPreferenceRepository = appPreferenceRepository,
-                            navController = navController
+                            navigationCoordinator = navigationCoordinator
                         )
                     }
 
@@ -336,7 +338,9 @@ fun AppContent(
                                 bottomSheetState.expand()
                             }
                         }
-                        RoutingProfilesScreen(navController = navController)
+                        RoutingProfilesScreen(
+                            navigationCoordinator = navigationCoordinator,
+                        )
                     }
 
                     composable(Screen.ProfileEditor.route) { backStackEntry ->
@@ -352,9 +356,9 @@ fun AppContent(
                         }
                         val profileId = backStackEntry.arguments?.getString("profileId")
                         ProfileEditorScreen(
-                            navController = navController,
+                            navigationCoordinator = navigationCoordinator,
                             profileId = profileId,
-                            snackbarHostState = snackBarHostState
+                            snackBarHostState = snackBarHostState
                         )
                     }
 
@@ -421,7 +425,7 @@ fun AppContent(
                             context = context,
                             viewModel = viewModel,
                             onPeekHeightChange = { peekHeight = it },
-                            onBack = { navController.popBackStack() },
+                            onBack = { navigationCoordinator.navigateBack() },
                             onFullExpansionRequired = {
                                 coroutineScope.launch {
                                     bottomSheetState.expand()
@@ -443,7 +447,7 @@ fun AppContent(
                     deepLinkDestination?.let { destination ->
                         when (destination) {
                             MainActivity.DEEP_LINK_OFFLINE_AREAS -> {
-                                navController.navigate(Screen.OfflineAreas.route)
+                                navigationCoordinator.navigateToOfflineAreas()
                             }
                         }
                     }
@@ -500,7 +504,7 @@ fun AppContent(
                 ) {
                     // Avatar icon button in top left
                     FloatingActionButton(
-                        onClick = { navController.navigate(Screen.Settings.route) },
+                        onClick = { navigationCoordinator.navigateToSettings() },
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(16.dp)

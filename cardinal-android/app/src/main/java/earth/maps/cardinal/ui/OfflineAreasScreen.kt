@@ -60,7 +60,7 @@ fun OfflineAreasScreen(
     currentViewport: VisibleRegion,
     currentZoom: Double,
     viewModel: OfflineAreasViewModel = hiltViewModel(),
-    snackbarHostState: SnackbarHostState,
+    snackBarHostState: SnackbarHostState,
     onDismiss: () -> Unit,
     onAreaSelected: (OfflineArea) -> Unit = {}
 ) {
@@ -110,7 +110,7 @@ fun OfflineAreasScreen(
             onClick = {
                 if (currentZoom < 8) {
                     coroutineScope.launch {
-                        snackbarHostState.showSnackbar(zoomInMessage)
+                        snackBarHostState.showSnackbar(zoomInMessage)
                     }
                 } else {
                     showDownloadDialog = true
@@ -298,7 +298,6 @@ fun DownloadAreaDialog(
     onDownload: (name: String, boundingBox: BoundingBox) -> Unit
 ) {
     val viewModel: OfflineAreasViewModel = hiltViewModel()
-    val coroutineScope = rememberCoroutineScope()
 
     // Calculate default bounding box from current viewport
     val (north, south, east, west) = calculateBoundingBoxFromViewport(

@@ -117,7 +117,7 @@ private fun ExpandableSection(
 fun SettingsScreen(
     onDismiss: () -> Unit,
     appPreferenceRepository: AppPreferenceRepository,
-    navController: NavController
+    navigationCoordinator: NavigationCoordinator
 ) {
     var isPrivacyExpanded by remember { mutableStateOf(false) }
     var isAccessibilityExpanded by remember { mutableStateOf(false) }
@@ -161,7 +161,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { navController.navigate(Screen.RoutingProfiles.route) }
+                .clickable { navigationCoordinator.navigateToRoutingProfiles() }
                 .padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -169,7 +169,7 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Routing Profiles",
+                    text = stringResource(string.routing_profiles),
                     style = MaterialTheme.typography.titleMedium
                 )
                 Icon(
@@ -178,7 +178,7 @@ fun SettingsScreen(
                 )
             }
             Text(
-                text = "Create and manage custom routing profiles for different transportation modes",
+                text = stringResource(string.create_and_manage_custom_routing_profiles),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -199,7 +199,7 @@ fun SettingsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { navController.navigate(Screen.OfflineAreas.route) }
+                    .clickable { navigationCoordinator.navigateToOfflineAreas() }
                     .padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

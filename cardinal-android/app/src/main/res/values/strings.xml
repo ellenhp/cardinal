@@ -137,4 +137,6 @@
     <string name="dropped_pin">Dropped Pin</string>
     <string name="search_result_description">Search Result</string>
     <string name="point_of_interest">Point of Interest</string>
+    <string name="create_and_manage_custom_routing_profiles">Create and manage custom routing profiles for different transportation modes</string>
+    <string name="routing_profiles">Routing Profiles</string>
 </resources>

@@ -38,7 +38,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
 import earth.maps.cardinal.R
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.RoutingProfile
@@ -47,7 +46,7 @@ import earth.maps.cardinal.viewmodel.RoutingProfilesViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutingProfilesScreen(
-    navController: NavController,
+    navigationCoordinator: NavigationCoordinator,
     viewModel: RoutingProfilesViewModel = hiltViewModel()
 ) {
     val allProfiles by viewModel.allProfiles.collectAsState()
@@ -62,7 +61,7 @@ fun RoutingProfilesScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { navController.popBackStack() }) {
+                IconButton(onClick = { navigationCoordinator.navigateBack() }) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(R.string.back)
@@ -93,7 +92,7 @@ fun RoutingProfilesScreen(
                         RoutingModeSection(
                             routingMode = mode,
                             profiles = modeProfiles,
-                            navController = navController,
+                            navigationCoordinator = navigationCoordinator,
                             onSetDefault = { profile ->
                                 viewModel.setDefaultProfile(profile.id)
                             },
@@ -108,7 +107,7 @@ fun RoutingProfilesScreen(
 
         // Floating Action Button positioned at bottom right
         FloatingActionButton(
-            onClick = { navController.navigate(Screen.ProfileEditor.route) },
+            onClick = { navigationCoordinator.navigateToRoutingProfileEditor() },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
@@ -122,7 +121,7 @@ fun RoutingProfilesScreen(
 private fun RoutingModeSection(
     routingMode: RoutingMode,
     profiles: List<RoutingProfile>,
-    navController: NavController,
+    navigationCoordinator: NavigationCoordinator,
     onSetDefault: (RoutingProfile) -> Unit,
     onDelete: (RoutingProfile) -> Unit
 ) {
@@ -144,7 +143,7 @@ private fun RoutingModeSection(
             profiles.forEach { profile ->
                 ProfileCard(
                     profile = profile,
-                    onClick = { navController.navigate("profile_editor?profileId=${profile.id}") },
+                    onClick = { navigationCoordinator.navigateToRoutingProfileEditor(profile) },
                     onSetDefault = { onSetDefault(profile) },
                     onDelete = { onDelete(profile) }
                 )
