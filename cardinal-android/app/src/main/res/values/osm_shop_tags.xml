@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~    Copyright 2025 The Cardinal Authors
+  ~
+  ~    Licensed under the Apache License, Version 2.0 (the "License");
+  ~    you may not use this file except in compliance with the License.
+  ~    You may obtain a copy of the License at
+  ~
+  ~        http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~    Unless required by applicable law or agreed to in writing, software
+  ~    distributed under the License is distributed on an "AS IS" BASIS,
+  ~    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~    See the License for the specific language governing permissions and
+  ~    limitations under the License.
+  -->
+
+<resources>
+    <!-- Food, beverages -->
+    <string name="osm_shop_alcohol">Liquor store</string>
+    <string name="osm_shop_bakery">Bakery shop</string>
+    <string name="osm_shop_beverages">Beverage shop</string>
+    <string name="osm_shop_brewing_supplies">Brewing Supply shop</string>
+    <string name="osm_shop_butcher">Butcher shop</string>
+    <string name="osm_shop_cheese">Cheese shop</string>
+    <string name="osm_shop_chocolate">Chocolate shop</string>
+    <string name="osm_shop_coffee">Coffee shop</string>
+    <string name="osm_shop_confectionery">Confectionery shop</string>
+    <string name="osm_shop_convenience">Convenience shop</string>
+    <string name="osm_shop_dairy">Dairy shop</string>
+    <string name="osm_shop_deli">Deli shop</string>
+    <string name="osm_shop_farm">Farm shop</string>
+    <string name="osm_shop_food">Food shop</string>
+    <string name="osm_shop_frozen_food">Frozen food shop</string>
+    <string name="osm_shop_greengrocer">Grocer</string>
+    <string name="osm_shop_health_food">Health food shop</string>
+    <string name="osm_shop_ice_cream">Ice cream shop</string>
+    <string name="osm_shop_nuts">Nuts shop</string>
+    <string name="osm_shop_pasta">Pasta shop</string>
+    <string name="osm_shop_pastry">Pastry shop</string>
+    <string name="osm_shop_seafood">Seafood shop</string>
+    <string name="osm_shop_spices">Spice shop</string>
+    <string name="osm_shop_tea">Tea shop</string>
+    <string name="osm_shop_tortilla">Tortilla shop</string>
+    <string name="osm_shop_water">Water shop</string>
+    <string name="osm_shop_wine">Wine shop</string>
+
+    <!-- General store, department store, mall -->
+    <string name="osm_shop_department_store">Department store</string>
+    <string name="osm_shop_general">General store</string>
+    <string name="osm_shop_kiosk">Kiosk shop</string>
+    <string name="osm_shop_mall">Mall shop</string>
+    <string name="osm_shop_supermarket">Supermarket</string>
+    <string name="osm_shop_wholesale">Wholesale store</string>
+
+    <!-- Clothing, shoes, accessories -->
+    <string name="osm_shop_baby_goods">Baby goods shop</string>
+    <string name="osm_shop_bag">Bag shop</string>
+    <string name="osm_shop_boutique">Boutique shop</string>
+    <string name="osm_shop_clothes">Clothing shop</string>
+    <string name="osm_shop_fabric">Fabric shop</string>
+    <string name="osm_shop_fashion">Fashion shop</string>
+    <string name="osm_shop_fashion_accessories">Fashion accessories shop</string>
+    <string name="osm_shop_jewelry">Jewelry shop</string>
+    <string name="osm_shop_leather">Leather shop</string>
+    <string name="osm_shop_sewing">Sewing shop</string>
+    <string name="osm_shop_shoes">Shoe shop</string>
+    <string name="osm_shop_shoe_repair">Shoe Repair shop</string>
+    <string name="osm_shop_tailor">Tailor shop</string>
+    <string name="osm_shop_watches">Watch shop</string>
+    <string name="osm_shop_wool">Wool shop</string>
+
+    <!-- Discount store, charity -->
+    <string name="osm_shop_charity">Charity store</string>
+    <string name="osm_shop_second_hand">Secondhand store</string>
+    <string name="osm_shop_variety_store">Variety store</string>
+
+    <!-- Health and beauty -->
+    <string name="osm_shop_beauty">Beauty shop</string>
+    <string name="osm_shop_chemist">Pharmacy</string>
+    <string name="osm_shop_cosmetics">Cosmetics shop</string>
+    <string name="osm_shop_erotic">Sex shop</string>
+    <string name="osm_shop_hairdresser">Hairdresser shop</string>
+    <string name="osm_shop_hairdresser_supply">Hairdresser Supply shop</string>
+    <string name="osm_shop_hearing_aids">Hearing aids shop</string>
+    <string name="osm_shop_herbalist">Herbalist shop</string>
+    <string name="osm_shop_massage">Massage shop</string>
+    <string name="osm_shop_medical_supply">Medical supply shop</string>
+    <string name="osm_shop_nutrition_supplements">Nutrition supplements shop</string>
+    <string name="osm_shop_optician">Optician shop</string>
+    <string name="osm_shop_perfumery">Perfumery shop</string>
+    <string name="osm_shop_tattoo">Tattoo shop</string>
+
+    <!-- Do-it-yourself, household, building materials, gardening -->
+    <string name="osm_shop_agrarian">Agrarian shop</string>
+    <string name="osm_shop_appliance">Appliance shop</string>
+    <string name="osm_shop_bathroom_furnishing">Bathroom furnishing shop</string>
+    <string name="osm_shop_country_store">Country store</string>
+    <string name="osm_shop_doityourself">Do-It-Yourself store</string>
+    <string name="osm_shop_electrical">Electrical shop</string>
+    <string name="osm_shop_energy">Energy shop</string>
+    <string name="osm_shop_fireplace">Fireplace shop</string>
+    <string name="osm_shop_florist">Florist shop</string>
+    <string name="osm_shop_garden_centre">Garden center</string>
+    <string name="osm_shop_garden_furniture">Garden furniture store</string>
+    <string name="osm_shop_gas">Gas shop</string>
+    <string name="osm_shop_glaziery">Glaziery shop</string>
+    <string name="osm_shop_groundskeeping">Groundskeeping shop</string>
+    <string name="osm_shop_hardware">Hardware store</string>
+    <string name="osm_shop_houseware">Houseware store</string>
+    <string name="osm_shop_locksmith">Locksmith</string>
+    <string name="osm_shop_paint">Paint shop</string>
+    <string name="osm_shop_pottery">Pottery store</string>
+    <string name="osm_shop_security">Security store</string>
+    <string name="osm_shop_tool_hire">Tool hire</string>
+    <string name="osm_shop_trade">Trade shop</string>
+
+    <!-- Furniture and interior -->
+    <string name="osm_shop_antiques">Antiques shop</string>
+    <string name="osm_shop_bed">Bed shop</string>
+    <string name="osm_shop_candles">Candle shop</string>
+    <string name="osm_shop_carpet">Carpet shop</string>
+    <string name="osm_shop_curtain">Curtain shop</string>
+    <string name="osm_shop_doors">Door shop</string>
+    <string name="osm_shop_flooring">Flooring shop</string>
+    <string name="osm_shop_furniture">Furniture shop</string>
+    <string name="osm_shop_household_linen">Household linen shop</string>
+    <string name="osm_shop_interior_decoration">Interior decoration shop</string>
+    <string name="osm_shop_kitchen">Kitchen store</string>
+    <string name="osm_shop_lighting">Lighting shop</string>
+    <string name="osm_shop_tiles">Tile shop</string>
+    <string name="osm_shop_window_blind">Window blind shop</string>
+
+    <!-- Electronics -->
+    <string name="osm_shop_computer">Computer shop</string>
+    <string name="osm_shop_electronics">Electronics shop</string>
+    <string name="osm_shop_hifi">HiFi shop</string>
+    <string name="osm_shop_mobile_phone">Mobile phone shop</string>
+    <string name="osm_shop_printer_ink">Printer ink shop</string>
+    <string name="osm_shop_radiotechnics">Radiotechnics shop</string>
+    <string name="osm_shop_telecommunication">Telecommunication shop</string>
+    <string name="osm_shop_vacuum_cleaner">Vacuum cleaner shop</string>
+
+    <!-- Outdoors and sport, vehicles -->
+    <string name="osm_shop_atv">ATV shop</string>
+    <string name="osm_shop_bicycle">Bicycle shop</string>
+    <string name="osm_shop_boat">Boat shop</string>
+    <string name="osm_shop_car">Car dealer</string>
+    <string name="osm_shop_car_parts">Car parts shop</string>
+    <string name="osm_shop_car_repair">Car repair shop</string>
+    <string name="osm_shop_caravan">Caravan shop</string>
+    <string name="osm_shop_fishing">Fishing shop</string>
+    <string name="osm_shop_fuel">Fuel shop</string>
+    <string name="osm_shop_golf">Golf shop</string>
+    <string name="osm_shop_hunting">Hunting shop</string>
+    <string name="osm_shop_military_surplus">Military surplus store</string>
+    <string name="osm_shop_motorcycle">Motorcycle dealer</string>
+    <string name="osm_shop_motorcycle_repair">Motorcycle repair shop</string>
+    <string name="osm_shop_outdoor">Outdoor shop</string>
+    <string name="osm_shop_running">Running shop</string>
+    <string name="osm_shop_scooter">Scooter shop</string>
+    <string name="osm_shop_scuba_diving">Scuba diving shop</string>
+    <string name="osm_shop_ski">Ski shop</string>
+    <string name="osm_shop_snowmobile">Snowmobile shop</string>
+    <string name="osm_shop_sports">Sports shop</string>
+    <string name="osm_shop_surf">Surf shop</string>
+    <string name="osm_shop_swimming_pool">Pool store</string>
+    <string name="osm_shop_trailer">Trailer shop</string>
+    <string name="osm_shop_truck">Truck shop</string>
+    <string name="osm_shop_tyres">Tire shop</string>
+
+    <!-- Art, music, hobbies -->
+    <string name="osm_shop_art">Art store</string>
+    <string name="osm_shop_camera">Camera store</string>
+    <string name="osm_shop_collector">Collector shop</string>
+    <string name="osm_shop_craft">Craft shop</string>
+    <string name="osm_shop_frame">Frame shop</string>
+    <string name="osm_shop_games">Game store</string>
+    <string name="osm_shop_model">Model store</string>
+    <string name="osm_shop_music">Music store</string>
+    <string name="osm_shop_musical_instrument">Musical instrument store</string>
+    <string name="osm_shop_photo">Photo store</string>
+    <string name="osm_shop_trophy">Trophy shop</string>
+    <string name="osm_shop_video">Video store</string>
+    <string name="osm_shop_video_games">Video game store</string>
+
+    <!-- Stationery, gifts, books, newspapers -->
+    <string name="osm_shop_anime">Anime shop</string>
+    <string name="osm_shop_books">Book shop</string>
+    <string name="osm_shop_gift">Gift shop</string>
+    <string name="osm_shop_lottery">Lottery</string>
+    <string name="osm_shop_newsagent">Newsagent</string>
+    <string name="osm_shop_stationery">Stationery store</string>
+    <string name="osm_shop_ticket">Ticket vendor</string>
+
+    <!-- Others -->
+    <string name="osm_shop_bookmaker">Bookmaker shop</string>
+    <string name="osm_shop_cannabis">Cannabis dispensary</string>
+    <string name="osm_shop_copyshop">Copy shop</string>
+    <string name="osm_shop_dry_cleaning">Dry cleaners</string>
+    <string name="osm_shop_e_cigarette">E-Cigarette shop</string>
+    <string name="osm_shop_funeral_directors">Funeral directors</string>
+    <string name="osm_shop_laundry">Laundry shop</string>
+    <string name="osm_shop_money_lender">Money lender</string>
+    <string name="osm_shop_outpost">Outpost shop</string>
+    <string name="osm_shop_party">Party shop</string>
+    <string name="osm_shop_pawnbroker">Pawnbroker</string>
+    <string name="osm_shop_pest_control">Pest control shop</string>
+    <string name="osm_shop_pet">Pet shop</string>
+    <string name="osm_shop_pet_grooming">Pet grooming shop</string>
+    <string name="osm_shop_pyrotechnics">Pyrotechnics shop</string>
+    <string name="osm_shop_religion">Religion shop</string>
+    <string name="osm_shop_rental">Rental shop</string>
+    <string name="osm_shop_storage_rental">Storage rental</string>
+    <string name="osm_shop_tobacco">Tobacco shop</string>
+    <string name="osm_shop_toys">Toy store</string>
+    <string name="osm_shop_travel_agency">Travel Agency</string>
+    <string name="osm_shop_vacant">Vacant shop</string>
+    <string name="osm_shop_weapons">Weapon shop</string>
+    <string name="osm_shop_unknown">Shop</string>
+</resources>

@@ -92,7 +92,8 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
             displayName = displayName,
             latitude = latitude,
             longitude = longitude,
-            address = address
+            address = address,
+            properties = tags,
         )
     }
 

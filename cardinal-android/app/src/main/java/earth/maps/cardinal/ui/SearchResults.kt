@@ -40,41 +40,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.data.GeocodeResult
-import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.viewmodel.SearchResultsViewModel
 
 @Composable
 fun SearchResults(
+    viewModel: SearchResultsViewModel,
     geocodeResults: List<GeocodeResult>,
     onPlaceSelected: (Place) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(modifier = modifier) {
         items(geocodeResults) { result ->
-            SearchResultItem(result = result, onPlaceSelected = onPlaceSelected)
+            val place = viewModel.generatePlace(result)
+            SearchResultItem(place = place, onPlaceSelected = onPlaceSelected)
         }
     }
 }
 
 @Composable
-fun SearchResultItem(result: GeocodeResult, onPlaceSelected: (Place) -> Unit) {
+fun SearchResultItem(place: Place, onPlaceSelected: (Place) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = dimensionResource(dimen.padding))
             .clickable {
                 // Convert GeocodeResult to Place with a unique ID based on properties
-                val place = Place(
-                    id = generatePlaceId(result),
-                    name = result.displayName,
-                    type = "Search Result",
-                    icon = "search",
-                    latLng = LatLng(
-                        latitude = result.latitude,
-                        longitude = result.longitude,
-                    ),
-                    address = result.address
-                )
                 onPlaceSelected(place)
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -106,11 +97,11 @@ fun SearchResultItem(result: GeocodeResult, onPlaceSelected: (Place) -> Unit) {
                     .padding(start = dimensionResource(dimen.padding))
             ) {
                 Text(
-                    text = result.displayName,
+                    text = place.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                result.address?.format()?.let { address ->
+                place.address?.format()?.let { address ->
                     Text(
                         text = address.trim().replace("\n", ", "),
                         style = MaterialTheme.typography.bodySmall,
