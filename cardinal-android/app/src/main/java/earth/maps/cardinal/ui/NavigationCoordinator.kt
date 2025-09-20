@@ -98,7 +98,12 @@ class NavigationCoordinator(
             // Otherwise try bottom sheet controller first
             bottomSheetNavController.popBackStack() -> true
             // Fall back to main controller
-            else -> mainNavController.popBackStack()
+            else -> {
+                mainNavController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.Home.route)
+                }
+                true
+            }
         }
     }
 
