@@ -18,6 +18,8 @@ package earth.maps.cardinal.transit
 
 import android.util.Log
 import earth.maps.cardinal.data.AppPreferenceRepository
+import earth.maps.cardinal.data.LatLng
+import earth.maps.cardinal.data.StringUtils
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.android.Android
@@ -47,7 +49,8 @@ class TransitousService(private val appPreferenceRepository: AppPreferenceReposi
         install(Logging)
     }
 
-    suspend fun reverseGeocode(
+    fun reverseGeocode(
+        name: String,
         latitude: Double,
         longitude: Double,
         type: String = "STOP"
@@ -60,7 +63,12 @@ class TransitousService(private val appPreferenceRepository: AppPreferenceReposi
                 parameter("type", type)
             }
 
-            val result = response.body<List<TransitStop>>()
+            val result = response.body<List<TransitStop>>().sortedBy {
+                val editDistanceHeuristic = StringUtils.levenshteinDistance(it.name, name) * 10.0
+                editDistanceHeuristic + LatLng(it.lat, it.lon).distanceTo(
+                    LatLng(latitude, longitude)
+                )
+            }
             Log.d(TAG, "Reverse geocode response: ${result.size} stops")
 
             emit(result)
@@ -70,7 +78,7 @@ class TransitousService(private val appPreferenceRepository: AppPreferenceReposi
         }
     }
 
-    suspend fun getStopTimes(stopId: String, n: Int = 10): Flow<StopTimesResponse> = flow {
+    fun getStopTimes(stopId: String, n: Int = 10): Flow<StopTimesResponse> = flow {
         try {
             Log.d(TAG, "Fetching stop times for stop: $stopId, count: $n")
 

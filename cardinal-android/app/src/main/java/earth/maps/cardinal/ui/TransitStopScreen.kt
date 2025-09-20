@@ -21,8 +21,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -68,6 +68,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
@@ -295,8 +296,12 @@ fun TransitStopScreen(
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             } else {
+                val maxDeparturesPerHeadsign = 5
                 // List of departures grouped by route and headsign
-                RouteDepartures(stopTimes = viewModel.departures.value)
+                RouteDepartures(
+                    stopTimes = viewModel.departures.value,
+                    maxDepartures = maxDeparturesPerHeadsign
+                )
             }
         }
     }
@@ -344,7 +349,7 @@ fun TransitStopScreen(
 
 @OptIn(ExperimentalTime::class, ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun RouteDepartures(stopTimes: List<StopTime>) {
+fun RouteDepartures(stopTimes: List<StopTime>, maxDepartures: Int) {
     // Group departures by route name
     val departuresByRoute = stopTimes.groupBy { it.routeShortName }
 
@@ -358,7 +363,9 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
         val onRouteColor = routeColor.contrastColor()
 
         // Group departures by headsign within each route
-        val departuresByHeadsign = departures.groupBy { it.headsign }
+        val departuresByHeadsign = departures.groupBy { it.headsign }.map { (key, value) ->
+            (key to value.take(maxDepartures))
+        }.toMap()
         val headsigns = departuresByHeadsign.keys.toList().sorted()
 
         Card(
@@ -384,6 +391,7 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
                 // Carousel for headsigns if there are multiple headsigns
                 if (headsigns.size > 1) {
                     val pagerState = rememberPagerState(pageCount = { headsigns.size })
+                    val scrollScope = rememberCoroutineScope()
 
                     // Display headsign tabs for navigation
                     TabRow(
@@ -394,7 +402,11 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
                         headsigns.forEachIndexed { index, headsign ->
                             Tab(
                                 selected = pagerState.currentPage == index,
-                                onClick = { /* Scroll to page */ },
+                                onClick = {
+                                    scrollScope.launch {
+                                        pagerState.scrollToPage(index)
+                                    }
+                                },
                                 text = {
                                     Text(
                                         text = headsign,
@@ -404,7 +416,7 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
                                 },
                                 selectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                                 unselectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(
-                                    alpha = 0.7f
+                                    alpha = 0.5f
                                 )
                             )
                         }
@@ -420,7 +432,7 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
                     )
                 } else {
                     // If there's only one headsign, display departures normally
-                    departures.forEachIndexed { index, stopTime ->
+                    departures.take(maxDepartures).forEachIndexed { index, stopTime ->
                         DepartureRow(
                             stopTime = stopTime,
                             isFirst = index == 0,
@@ -493,30 +505,34 @@ fun DepartureRow(
         // Headsign at the beginning.
         if (isFirst) {
             ElevatedCard(
+                modifier = Modifier.fillMaxWidth(0.6f),
                 colors = CardDefaults.cardColors(containerColor = routeColor)
             ) {
                 Text(
                     modifier = Modifier.padding(dimensionResource(dimen.padding)),
                     text = stopTime.headsign,
+                    textAlign = TextAlign.Center,
                     color = onRouteColor,
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }
-        Spacer(
-            modifier = Modifier.weight(1f)
-        )
 
         val stopTimeStyle = if (isFirst) {
             MaterialTheme.typography.bodyLarge
         } else {
             MaterialTheme.typography.bodyMedium
         }
-        Column(modifier = Modifier.padding(horizontal = dimensionResource(dimen.padding))) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = dimensionResource(dimen.padding))
+                .fillMaxWidth()
+        ) {
             // Departure time at the bottom
             val timeUntilDeparture =
                 bestDepartureInstant?.toKotlinInstant()?.minus(Clock.System.now())
             Text(
+                modifier = Modifier.align(Alignment.End),
                 text = if (timeUntilDeparture != null && timeUntilDeparture > 30.minutes) {
                     bestDepartureTime ?: stringResource(string.unknown_departure)
                 } else if (timeUntilDeparture != null) {
@@ -524,6 +540,7 @@ fun DepartureRow(
                 } else {
                     bestDepartureTime ?: stringResource(string.unknown_departure)
                 },
+                textAlign = TextAlign.End,
                 style = stopTimeStyle,
                 color = textColor,
                 fontWeight = if (stopTime.realTime) FontWeight.Medium else FontWeight.Normal
@@ -537,9 +554,10 @@ fun DepartureRow(
 
             Text(
                 text = isLiveIndicatorString,
+                textAlign = TextAlign.End,
                 style = MaterialTheme.typography.bodySmall,
                 color = textColor,
-                modifier = Modifier.padding(end = 8.dp)
+                modifier = Modifier.align(Alignment.End)
             )
         }
     }
@@ -554,30 +572,35 @@ fun FixedHeightHorizontalPager(
     routeColor: Color,
     onRouteColor: Color,
 ) {
-    // Calculate the maximum height needed for all pages
-    val maxHeight = remember(departuresByHeadsign) {
-        headsigns.maxOfOrNull { headsign ->
-            val departures = departuresByHeadsign[headsign] ?: emptyList()
-            // This is a simplified calculation - in a real implementation,
-            // you would measure the actual content height
-            departures.size * 40 // Approximate height per departure row
-        } ?: 0
+    val topPadding = dimensionResource(
+        dimen.padding_minor
+    )
+    val maxChildHeight = remember(key1 = departuresByHeadsign) {
+        mutableStateOf(0.dp)
     }
+    val density = LocalDensity.current
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(maxHeight.dp)
+        modifier = Modifier.fillMaxWidth()
     ) {
         HorizontalPager(
-            state = state, modifier = Modifier.fillMaxWidth()
+            state = state,
+            modifier = Modifier.fillMaxWidth(),
         ) { page ->
             val selectedHeadsign = headsigns[page]
             val departuresForSelectedHeadsign =
                 departuresByHeadsign[selectedHeadsign] ?: emptyList()
 
             Column(
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier
+                    .padding(top = topPadding)
+                    .defaultMinSize(minHeight = maxChildHeight.value)
+                    .onGloballyPositioned({ coordinates ->
+                        val heightDp = with(density) { coordinates.size.height.toDp() }
+                        if (heightDp > maxChildHeight.value) {
+                            maxChildHeight.value = heightDp
+                        }
+                    })
             ) {
                 departuresForSelectedHeadsign.forEachIndexed { index, stopTime ->
                     DepartureRow(
@@ -597,9 +620,6 @@ fun FixedHeightHorizontalPager(
                         )
                     }
                 }
-                // This ensures that the column takes up all the space available to it, which
-                // increases the size of the swipe touch target
-                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }

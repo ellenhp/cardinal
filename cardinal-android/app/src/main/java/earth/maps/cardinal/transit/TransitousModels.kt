@@ -27,7 +27,7 @@ data class TransitStop(
     val id: String,
     val lat: Double,
     val lon: Double,
-    val level: Double,
+    val level: Double? = null,
     val tz: String,
     val areas: List<Area>,
     val score: Double

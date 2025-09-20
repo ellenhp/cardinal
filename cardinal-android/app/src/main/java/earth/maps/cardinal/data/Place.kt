@@ -29,4 +29,8 @@ data class Place(
 data class LatLng(
     val latitude: Double,
     val longitude: Double,
-)
+) {
+    fun distanceTo(other: LatLng): Double {
+        return DistanceUtils.haversineDistance(this, other)
+    }
+}

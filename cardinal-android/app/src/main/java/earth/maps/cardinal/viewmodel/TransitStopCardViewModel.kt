@@ -85,9 +85,13 @@ class TransitStopCardViewModel @Inject constructor(
         _isLoading.value = true
         try {
             transitousService.reverseGeocode(
-                latitude = place.latLng.latitude, longitude = place.latLng.longitude, type = "STOP"
+                name = place.name,
+                latitude = place.latLng.latitude,
+                longitude = place.latLng.longitude,
+                type = "STOP"
             ).collectLatest { stops ->
                 reverseGeocodedStop.value = stops.firstOrNull()
+                Log.d(TAG, "$reverseGeocodedStop")
                 // Update the place with the reverse-geocoded name if available
                 reverseGeocodedStop.value?.let { stop ->
                     this@TransitStopCardViewModel.stop.value = place.copy(
