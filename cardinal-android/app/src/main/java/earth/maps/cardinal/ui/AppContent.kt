@@ -17,7 +17,7 @@
 package earth.maps.cardinal.ui
 
 import android.annotation.SuppressLint
-import android.content.Context
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -107,7 +107,6 @@ fun AppContent(
     hasLocationPermission: Boolean,
     appPreferenceRepository: AppPreferenceRepository,
     navigationCoordinator: NavigationCoordinator,
-    context: Context,
 ) {
     val mapPins = remember { mutableStateListOf<Position>() }
     val cameraState = rememberCameraState()
@@ -493,7 +492,6 @@ fun AppContent(
                         }
 
                         DirectionsScreen(
-                            context = context,
                             viewModel = viewModel,
                             onPeekHeightChange = { peekHeight = it },
                             onBack = { navigationCoordinator.navigateBack() },
@@ -505,8 +503,7 @@ fun AppContent(
                             navigationCoordinator = navigationCoordinator,
                             hasLocationPermission = hasLocationPermission,
                             onRequestLocationPermission = onRequestLocationPermission,
-                            appPreferences = appPreferenceRepository,
-                            snackbarHostState = snackBarHostState
+                            appPreferences = appPreferenceRepository
                         )
                     }
                 }
@@ -517,7 +514,7 @@ fun AppContent(
         content = {
             val droppedPinName = stringResource(R.string.dropped_pin)
             Box(modifier = Modifier.fillMaxSize()) {
-                port?.let { port ->
+                if (port != null && port != -1) {
                     MapView(
                         port = port,
                         mapViewModel = mapViewModel,
@@ -556,6 +553,10 @@ fun AppContent(
                         selectedOfflineArea = selectedOfflineArea,
                         currentRoute = currentRoute
                     )
+                } else {
+                    LaunchedEffect(key1 = port) {
+                        Log.d("AppContent", "Tileserver port is $port, can't display a map!")
+                    }
                 }
 
                 Box(

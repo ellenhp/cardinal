@@ -191,7 +191,6 @@ class MainActivity : ComponentActivity() {
                             hasLocationPermission = hasLocationPermission,
                             appPreferenceRepository = appPreferenceRepository,
                             navigationCoordinator = coordinator,
-                            context = this@MainActivity,
                         )
                     }
 

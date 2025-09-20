@@ -43,6 +43,7 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.zIndex
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
@@ -63,7 +64,9 @@ import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraState
 import org.maplibre.compose.expressions.dsl.const
 import org.maplibre.compose.expressions.dsl.image
+import org.maplibre.compose.expressions.dsl.offset
 import org.maplibre.compose.expressions.dsl.rgbColor
+import org.maplibre.compose.expressions.value.SymbolAnchor
 import org.maplibre.compose.layers.LineLayer
 import org.maplibre.compose.layers.SymbolLayer
 import org.maplibre.compose.map.MapOptions
@@ -130,8 +133,7 @@ fun MapView(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = Modifier.fillMaxSize()
     ) {
         // Validate port before using it in URL
         if (port > 0 && port < 65536) {
@@ -141,26 +143,41 @@ fun MapView(
                 baseStyle = BaseStyle.Uri("http://127.0.0.1:$port/style_$styleVariant.json"),
                 styleState = styleState,
                 options = MapOptions(
-                    ornamentOptions = OrnamentOptions.AllDisabled,
-                    renderOptions = RenderOptions()
+                    ornamentOptions = OrnamentOptions.AllDisabled, renderOptions = RenderOptions()
                 ),
                 onMapClick = { position, dpOffset ->
                     Log.d("MapView", "Logged tap at location $position")
                     mapViewModel.handleMapTap(
-                        cameraState,
-                        dpOffset,
-                        onMapPoiClick,
-                        onMapInteraction
+                        cameraState, dpOffset, onMapPoiClick, onMapInteraction
                     )
                     ClickResult.Consume
                 },
                 onMapLongClick = { position, dpOffset ->
                     onDropPin(LatLng(position.latitude, position.longitude))
                     ClickResult.Consume
-                }
-            ) {
+                }) {
                 val location by mapViewModel.locationFlow.collectAsState()
+                val savedPlaces by mapViewModel.savedPlacesFlow.collectAsState(FeatureCollection())
                 location?.let { LocationPuck(it) }
+
+                // Show user favorites
+                SymbolLayer(
+                    id = "user_favorites",
+                    source = rememberGeoJsonSource(GeoJsonData.Features(savedPlaces)),
+                    iconImage = image(
+                        if (isSystemInDarkTheme()) {
+                            painterResource(drawable.ic_stars_dark)
+                        } else {
+                            painterResource(drawable.ic_stars_light)
+                        }
+                    ),
+                    iconSize = const(0.8f),
+                    textField = org.maplibre.compose.expressions.dsl.Feature["name"].cast(),
+                    textSize = const(0.8.em),
+                    textAnchor = const(SymbolAnchor.Top),
+                    textOffset = offset(0.em, 0.8.em),
+                    textOptional = const(true),
+                )
 
                 // Show offline download bounds if an area is selected
                 selectedOfflineArea?.let { area ->
@@ -206,20 +223,16 @@ fun MapView(
 
                     val polylineColor = colorResource(earth.maps.cardinal.R.color.polyline_color)
                     LineLayer(
-                        id = "route_line",
-                        source = routeSource,
-                        color = rgbColor(
+                        id = "route_line", source = routeSource, color = rgbColor(
                             const((polylineColor.red * 255.0).toInt()), // Blue color
                             const((polylineColor.green * 255.0).toInt()),
                             const((polylineColor.blue * 255.0).toInt())
-                        ),
-                        width = const(6.dp),
-                        opacity = const(0.8f)
+                        ), width = const(6.dp), opacity = const(0.8f)
                     )
                 }
 
                 SymbolLayer(
-                    id = "map-pins",
+                    id = "map_pins",
                     source = rememberGeoJsonSource(GeoJsonData.Features(FeatureCollection(features = pinFeatures))),
                     iconImage = image(
                         if (isSystemInDarkTheme()) {
@@ -288,8 +301,7 @@ private fun MapControls(
             FloatingActionButton(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .padding(bottom = dimensionResource(dimen.padding_minor)),
-                onClick = {
+                    .padding(bottom = dimensionResource(dimen.padding_minor)), onClick = {
                     // Request location permissions if we don't have them
                     if (!hasLocationPermission) {
                         mapViewModel.markLocationRequestPending()
@@ -306,8 +318,7 @@ private fun MapControls(
                                 }
                         }
                     }
-                }
-            ) {
+                }) {
                 if (isLocating || hasPendingLocationRequest) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
