@@ -17,6 +17,7 @@
 package earth.maps.cardinal.data
 
 import androidx.room.TypeConverter
+import earth.maps.cardinal.data.room.DownloadStatus
 
 /**
  * TypeConverter for DownloadStatus enum to work with Room database

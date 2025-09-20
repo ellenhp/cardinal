@@ -21,7 +21,7 @@ import androidx.navigation.NavController
 import com.google.gson.Gson
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
-import earth.maps.cardinal.data.RoutingProfile
+import earth.maps.cardinal.data.room.RoutingProfile
 import uniffi.ferrostar.Route
 
 class NavigationCoordinator(

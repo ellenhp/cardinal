@@ -14,10 +14,11 @@
  *    limitations under the License.
  */
 
-package earth.maps.cardinal.data
+package earth.maps.cardinal.data.room
 
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
+import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.routing.AutoRoutingOptions
 import earth.maps.cardinal.routing.CyclingRoutingOptions
 import earth.maps.cardinal.routing.MotorScooterRoutingOptions

@@ -22,9 +22,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import earth.maps.cardinal.data.DownloadedTileDao
-import earth.maps.cardinal.data.OfflineAreaDao
-import earth.maps.cardinal.data.OfflineAreaRepository
+import earth.maps.cardinal.data.room.DownloadedTileDao
+import earth.maps.cardinal.data.room.OfflineAreaDao
+import earth.maps.cardinal.data.room.OfflineAreaRepository
 import earth.maps.cardinal.geocoding.TileProcessor
 import earth.maps.cardinal.tileserver.TileDownloadManager
 import javax.inject.Singleton

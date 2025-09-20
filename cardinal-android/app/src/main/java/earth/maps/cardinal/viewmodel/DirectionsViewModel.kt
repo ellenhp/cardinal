@@ -27,10 +27,10 @@ import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.PlaceDao
+import earth.maps.cardinal.data.room.PlaceDao
 import earth.maps.cardinal.data.RoutingMode
-import earth.maps.cardinal.data.RoutingProfile
-import earth.maps.cardinal.data.RoutingProfileRepository
+import earth.maps.cardinal.data.room.RoutingProfile
+import earth.maps.cardinal.data.room.RoutingProfileRepository
 import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import earth.maps.cardinal.routing.FerrostarWrapperRepository

@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package earth.maps.cardinal.data
+package earth.maps.cardinal.data.room
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -25,25 +25,25 @@ import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface PlaceDao {
-    @Query("SELECT * FROM places")
-    fun getAllPlaces(): Flow<List<PlaceEntity>>
+interface OfflineAreaDao {
+    @Query("SELECT * FROM offline_areas")
+    fun getAllOfflineAreas(): Flow<List<OfflineArea>>
 
-    @Query("SELECT * FROM places WHERE id = :id")
-    suspend fun getPlaceById(id: Int): PlaceEntity?
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertPlace(place: PlaceEntity)
+    @Query("SELECT * FROM offline_areas WHERE id = :id")
+    suspend fun getOfflineAreaById(id: String): OfflineArea?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertPlaces(places: List<PlaceEntity>)
+    suspend fun insertOfflineArea(offlineArea: OfflineArea)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOfflineAreas(offlineAreas: List<OfflineArea>)
 
     @Update
-    suspend fun updatePlace(place: PlaceEntity)
+    suspend fun updateOfflineArea(offlineArea: OfflineArea)
 
     @Delete
-    suspend fun deletePlace(place: PlaceEntity)
+    suspend fun deleteOfflineArea(offlineArea: OfflineArea)
 
-    @Query("DELETE FROM places")
-    suspend fun deleteAllPlaces()
+    @Query("DELETE FROM offline_areas")
+    suspend fun deleteAllOfflineAreas()
 }

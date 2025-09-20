@@ -26,7 +26,7 @@ import com.stadiamaps.ferrostar.core.service.FerrostarForegroundServiceManager
 import com.stadiamaps.ferrostar.core.service.ForegroundServiceManager
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.RoutingMode
-import earth.maps.cardinal.data.RoutingProfileRepository
+import earth.maps.cardinal.data.room.RoutingProfileRepository
 import okhttp3.OkHttpClient
 import uniffi.ferrostar.CourseFiltering
 import uniffi.ferrostar.NavigationControllerConfig

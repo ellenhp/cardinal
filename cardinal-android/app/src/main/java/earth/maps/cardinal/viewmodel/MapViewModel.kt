@@ -31,7 +31,7 @@ import earth.maps.cardinal.R
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.PlaceDao
+import earth.maps.cardinal.data.room.PlaceDao
 import earth.maps.cardinal.data.ViewportPreferences
 import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.OfflineGeocodingService

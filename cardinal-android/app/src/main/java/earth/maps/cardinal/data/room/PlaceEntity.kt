@@ -14,10 +14,13 @@
  *    limitations under the License.
  */
 
-package earth.maps.cardinal.data
+package earth.maps.cardinal.data.room
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import earth.maps.cardinal.data.Address
+import earth.maps.cardinal.data.LatLng
+import earth.maps.cardinal.data.Place
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 

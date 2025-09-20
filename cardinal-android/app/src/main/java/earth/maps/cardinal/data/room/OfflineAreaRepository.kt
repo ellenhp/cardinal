@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package earth.maps.cardinal.data
+package earth.maps.cardinal.data.room
 
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject

@@ -74,6 +74,7 @@ import earth.maps.cardinal.data.DistanceUtils
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.deduplicateSearchResults
+import earth.maps.cardinal.data.room.RoutingProfile
 import earth.maps.cardinal.viewmodel.DirectionsViewModel
 import io.github.dellisd.spatialk.geojson.BoundingBox
 import kotlinx.coroutines.Job
@@ -720,7 +721,7 @@ private fun FerrostarRouteResults(
     modifier: Modifier = Modifier,
     navigationCoordinator: NavigationCoordinator,
     distanceUnit: Int,
-    availableProfiles: List<earth.maps.cardinal.data.RoutingProfile>
+    availableProfiles: List<RoutingProfile>
 ) {
     var showProfileDialog by remember { mutableStateOf(false) }
     val selectedProfile = viewModel.selectedRoutingProfile

@@ -20,7 +20,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.RoutingMode
-import earth.maps.cardinal.data.RoutingProfileRepository
+import earth.maps.cardinal.data.room.RoutingProfileRepository
 import earth.maps.cardinal.routing.AutoRoutingOptions
 import earth.maps.cardinal.routing.CyclingRoutingOptions
 import earth.maps.cardinal.routing.MotorScooterRoutingOptions

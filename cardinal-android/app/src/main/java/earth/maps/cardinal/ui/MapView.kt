@@ -50,7 +50,7 @@ import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.LatLng
-import earth.maps.cardinal.data.OfflineArea
+import earth.maps.cardinal.data.room.OfflineArea
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.ui.map.LocationPuck
 import earth.maps.cardinal.viewmodel.MapViewModel
