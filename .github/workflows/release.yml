@@ -180,7 +180,7 @@ jobs:
         tag_name: ${{ steps.version.outputs.tag }}
         name: Cardinal Maps ${{ steps.version.outputs.version }}
         draft: false
-        prerelease: false
+        prerelease: true
         generate_release_notes: true
         body: |
           ## Cardinal Maps ${{ steps.version.outputs.version }}
