@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -134,7 +136,6 @@ fun TransitStopScreen(
     val coroutineScope = rememberCoroutineScope()
 
     Column {
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -241,9 +242,11 @@ fun TransitStopScreen(
             )
         }
 
+        val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(scrollState)
                 .padding(
                     start = dimensionResource(dimen.padding),
                     end = dimensionResource(dimen.padding),
@@ -288,6 +291,13 @@ fun TransitStopScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
+                )
+            } else if (didLoadingFail.value) {
+                Text(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    text = stringResource(string.failed_to_load_departures)
                 )
             } else if (viewModel.departures.value.isEmpty()) {
                 Text(
@@ -382,7 +392,7 @@ fun RouteDepartures(stopTimes: List<StopTime>, maxDepartures: Int) {
                 // Route name header
                 Text(
                     text = routeName,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -519,7 +529,7 @@ fun DepartureRow(
         }
 
         val stopTimeStyle = if (isFirst) {
-            MaterialTheme.typography.bodyLarge
+            MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
         } else {
             MaterialTheme.typography.bodyMedium
         }

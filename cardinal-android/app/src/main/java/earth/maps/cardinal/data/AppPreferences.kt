@@ -33,6 +33,7 @@ class AppPreferences(context: Context) {
         private const val KEY_ANIMATION_SPEED = "animation_speed"
         private const val KEY_OFFLINE_MODE = "offline_mode"
         private const val KEY_DISTANCE_UNIT = "distance_unit"
+        private const val KEY_ALLOW_TRANSIT_IN_OFFLINE_MODE = "allow_transit_in_offline_mode"
 
         // API configuration keys
         private const val KEY_PELIAS_BASE_URL = "pelias_base_url"
@@ -165,6 +166,32 @@ class AppPreferences(context: Context) {
     fun clearDistanceUnit() {
         prefs.edit {
             remove(KEY_DISTANCE_UNIT)
+        }
+    }
+
+    /**
+     * Saves the allow transit in offline mode preference.
+     */
+    fun saveAllowTransitInOfflineMode(allowTransitInOfflineMode: Boolean) {
+        prefs.edit {
+            putBoolean(KEY_ALLOW_TRANSIT_IN_OFFLINE_MODE, allowTransitInOfflineMode)
+        }
+    }
+
+    /**
+     * Loads the saved allow transit in offline mode preference.
+     * Returns false as default.
+     */
+    fun loadAllowTransitInOfflineMode(): Boolean {
+        return prefs.getBoolean(KEY_ALLOW_TRANSIT_IN_OFFLINE_MODE, true)
+    }
+
+    /**
+     * Clears the saved allow transit in offline mode preference.
+     */
+    fun clearAllowTransitInOfflineMode() {
+        prefs.edit {
+            remove(KEY_ALLOW_TRANSIT_IN_OFFLINE_MODE)
         }
     }
 

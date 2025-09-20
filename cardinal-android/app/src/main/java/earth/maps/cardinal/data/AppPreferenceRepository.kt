@@ -54,6 +54,9 @@ class AppPreferenceRepository @Inject constructor(
     private val _distanceUnit = MutableStateFlow(AppPreferences.DISTANCE_UNIT_METRIC)
     val distanceUnit: StateFlow<Int> = _distanceUnit.asStateFlow()
 
+    private val _allowTransitInOfflineMode = MutableStateFlow(true)
+    val allowTransitInOfflineMode: StateFlow<Boolean> = _allowTransitInOfflineMode.asStateFlow()
+
     // Pelias API configuration
     private val _peliasApiConfig = MutableStateFlow(
         ApiConfiguration(
@@ -77,6 +80,7 @@ class AppPreferenceRepository @Inject constructor(
         loadAnimationSpeed()
         loadOfflineMode()
         loadDistanceUnit()
+        loadAllowTransitInOfflineMode()
         loadApiConfigurations()
     }
 
@@ -126,6 +130,18 @@ class AppPreferenceRepository @Inject constructor(
     private fun loadDistanceUnit() {
         val distanceUnit = appPreferences.loadDistanceUnit()
         _distanceUnit.value = distanceUnit
+    }
+
+    private fun loadAllowTransitInOfflineMode() {
+        val allowTransitInOfflineMode = appPreferences.loadAllowTransitInOfflineMode()
+        _allowTransitInOfflineMode.value = allowTransitInOfflineMode
+    }
+
+    fun setAllowTransitInOfflineMode(allowTransitInOfflineMode: Boolean) {
+        _allowTransitInOfflineMode.value = allowTransitInOfflineMode
+        viewModelScope.launch {
+            appPreferences.saveAllowTransitInOfflineMode(allowTransitInOfflineMode)
+        }
     }
 
     private fun loadApiConfigurations() {

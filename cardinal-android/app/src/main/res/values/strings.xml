@@ -97,6 +97,8 @@
     <!-- Offline Mode Settings -->
     <string name="offline_mode_title">Offline Mode</string>
     <string name="offline_mode_help_text">Enable offline mode to use downloaded map areas without an internet connection</string>
+    <string name="allow_transit_in_offline_mode_title">Transit Information in Offline Mode</string>
+    <string name="allow_transit_in_offline_mode_help_text">Allow fetching of transit information even while offline</string>
     <string name="enabled">Enabled</string>
     <string name="disabled">Disabled</string>
 
@@ -167,9 +169,10 @@
     <string name="transit_cancelled">Cancelled</string>
     <string name="transit_unknown_status">Unknown status</string>
     <string name="next_departures">Next departures:</string>
-    <string name="no_upcoming_departures">No upcoming departures</string>
+    <string name="no_upcoming_departures">No upcoming departures. Maybe check your internet connection?</string>
     <string name="live_indicator">● Live</string>
     <string name="scheduled_indicator">Scheduled</string>
     <string name="refresh_departures">Refresh departures</string>
     <string name="loading_departures">Loading departures…</string>
+    <string name="failed_to_load_departures">Failed to load departures for this stop.</string>
 </resources>

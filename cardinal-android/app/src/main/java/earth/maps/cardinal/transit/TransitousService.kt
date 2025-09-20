@@ -32,9 +32,10 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
+import javax.inject.Inject
 
 
-class TransitousService(private val appPreferenceRepository: AppPreferenceRepository) {
+class TransitousService @Inject constructor(private val appPreferenceRepository: AppPreferenceRepository) {
 
     private val client = HttpClient(Android) {
         install(UserAgent) {
@@ -55,6 +56,9 @@ class TransitousService(private val appPreferenceRepository: AppPreferenceReposi
         longitude: Double,
         type: String = "STOP"
     ): Flow<List<TransitStop>> = flow {
+        if (!appPreferenceRepository.allowTransitInOfflineMode.value) {
+            return@flow
+        }
         try {
             Log.d(TAG, "Reverse geocoding: $latitude, $longitude, type: $type")
 
@@ -78,7 +82,10 @@ class TransitousService(private val appPreferenceRepository: AppPreferenceReposi
         }
     }
 
-    fun getStopTimes(stopId: String, n: Int = 10): Flow<StopTimesResponse> = flow {
+    fun getStopTimes(stopId: String, n: Int = 50): Flow<StopTimesResponse> = flow {
+        if (!appPreferenceRepository.allowTransitInOfflineMode.value) {
+            return@flow
+        }
         try {
             Log.d(TAG, "Fetching stop times for stop: $stopId, count: $n")
 

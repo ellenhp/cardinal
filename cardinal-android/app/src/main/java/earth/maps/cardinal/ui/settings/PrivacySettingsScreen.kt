@@ -174,6 +174,50 @@ fun PrivacySettingsScreen(
                         viewModel.setOfflineMode(newValue)
                     })
             }
+
+            // Allow transit in offline mode toggle
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            ) {
+                Text(
+                    text = stringResource(string.allow_transit_in_offline_mode_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = stringResource(string.allow_transit_in_offline_mode_help_text),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                val currentAllowTransitInOfflineMode by viewModel.allowTransitInOfflineMode.collectAsState()
+                var isAllowTransitInOfflineModeEnabled by remember { mutableStateOf(currentAllowTransitInOfflineMode) }
+
+                // Update selected state when preference changes from outside
+                LaunchedEffect(currentAllowTransitInOfflineMode) {
+                    isAllowTransitInOfflineModeEnabled = currentAllowTransitInOfflineMode
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isAllowTransitInOfflineModeEnabled) stringResource(string.enabled) else stringResource(
+                            string.disabled
+                        ), style = MaterialTheme.typography.bodyMedium
+                    )
+                    Switch(
+                        checked = isAllowTransitInOfflineModeEnabled, onCheckedChange = { newValue ->
+                            isAllowTransitInOfflineModeEnabled = newValue
+                            viewModel.setAllowTransitInOfflineMode(newValue)
+                        })
+                }
+            }
         }
     }
 }

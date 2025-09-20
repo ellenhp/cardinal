@@ -110,7 +110,7 @@ class TransitStopCardViewModel @Inject constructor(
             // We need to get the stop ID from the reverse geocoded result
             reverseGeocodedStop.value?.id?.let { stopId ->
                 if (stopId.isNotEmpty()) {
-                    transitousService.getStopTimes(stopId, 10).collectLatest { response ->
+                    transitousService.getStopTimes(stopId).collectLatest { response ->
                         departures.value = response.stopTimes
                     }
                 }
