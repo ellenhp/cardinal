@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   ~    Copyright 2025 The Cardinal Authors
   ~
   ~    Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,5 +24,5 @@
     <color name="white">#FFFFFFFF</color>
 
     <color name="polyline_color">#3B81DE</color>
-
+    <color name="polyline_casing_color">#1A4C90</color>
 </resources>

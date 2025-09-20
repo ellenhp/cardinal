@@ -66,6 +66,8 @@ import org.maplibre.compose.expressions.dsl.const
 import org.maplibre.compose.expressions.dsl.image
 import org.maplibre.compose.expressions.dsl.offset
 import org.maplibre.compose.expressions.dsl.rgbColor
+import org.maplibre.compose.expressions.value.LineCap
+import org.maplibre.compose.expressions.value.LineJoin
 import org.maplibre.compose.expressions.value.SymbolAnchor
 import org.maplibre.compose.layers.LineLayer
 import org.maplibre.compose.layers.SymbolLayer
@@ -161,6 +163,7 @@ fun MapView(
                 location?.let { LocationPuck(it) }
 
                 // Show user favorites
+                val textColor = MaterialTheme.colorScheme.onSurface
                 SymbolLayer(
                     id = "user_favorites",
                     source = rememberGeoJsonSource(GeoJsonData.Features(savedPlaces)),
@@ -174,6 +177,11 @@ fun MapView(
                     iconSize = const(0.8f),
                     textField = org.maplibre.compose.expressions.dsl.Feature["name"].cast(),
                     textSize = const(0.8.em),
+                    textColor = rgbColor(
+                        const((textColor.red * 255.0f).toInt()),
+                        const((textColor.green * 255.0f).toInt()),
+                        const((textColor.blue * 255.0f).toInt()),
+                    ),
                     textAnchor = const(SymbolAnchor.Top),
                     textOffset = offset(0.em, 0.8.em),
                     textOptional = const(true),
@@ -222,12 +230,32 @@ fun MapView(
                     )
 
                     val polylineColor = colorResource(earth.maps.cardinal.R.color.polyline_color)
+                    val polylineCasingColor =
+                        colorResource(earth.maps.cardinal.R.color.polyline_casing_color)
+
                     LineLayer(
-                        id = "route_line", source = routeSource, color = rgbColor(
+                        id = "route_line_casing", source = routeSource,
+                        color = rgbColor(
+                            const((polylineCasingColor.red * 255.0).toInt()), // Blue color
+                            const((polylineCasingColor.green * 255.0).toInt()),
+                            const((polylineCasingColor.blue * 255.0).toInt())
+                        ),
+                        width = const(8.dp),
+                        opacity = const(1f),
+                        cap = const(LineCap.Round),
+                        join = const(LineJoin.Round),
+                    )
+                    LineLayer(
+                        id = "route_line", source = routeSource,
+                        color = rgbColor(
                             const((polylineColor.red * 255.0).toInt()), // Blue color
                             const((polylineColor.green * 255.0).toInt()),
                             const((polylineColor.blue * 255.0).toInt())
-                        ), width = const(6.dp), opacity = const(0.8f)
+                        ),
+                        width = const(6.dp),
+                        opacity = const(1f),
+                        cap = const(LineCap.Round),
+                        join = const(LineJoin.Round),
                     )
                 }
 

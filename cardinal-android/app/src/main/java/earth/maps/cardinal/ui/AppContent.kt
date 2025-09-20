@@ -122,10 +122,6 @@ fun AppContent(
 
     val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
 
-    BackHandler {
-        navigationCoordinator.navigateBack()
-    }
-
     var allowPartialExpansion by remember { mutableStateOf(true) }
     val bottomSheetState =
         rememberStandardBottomSheetState(
