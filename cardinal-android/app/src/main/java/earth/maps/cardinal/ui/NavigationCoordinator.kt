@@ -21,7 +21,7 @@ import androidx.navigation.NavController
 import com.google.gson.Gson
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
-import earth.maps.cardinal.data.RoutingProfile
+import earth.maps.cardinal.data.room.RoutingProfile
 import uniffi.ferrostar.Route
 
 class NavigationCoordinator(
@@ -74,7 +74,7 @@ class NavigationCoordinator(
     fun navigateToPlaceCard(place: Place) {
         val placeJson = Uri.encode(Gson().toJson(place))
         bottomSheetNavController.navigate("place_card?place=$placeJson") {
-            popUpTo(Screen.PlaceCard.route) { inclusive = true }
+            popUpTo(Screen.Home.route) { inclusive = false }
         }
     }
 
@@ -145,5 +145,12 @@ class NavigationCoordinator(
 
     fun navigateToAdvancedSettings() {
         bottomSheetNavController.navigate(Screen.AdvancedSettings.route)
+    }
+
+    fun navigateToTransitStopCard(stop: Place) {
+        val stopJson = Uri.encode(Gson().toJson(stop))
+        bottomSheetNavController.navigate("transit_card?stop=$stopJson") {
+            popUpTo(Screen.Home.route) { inclusive = false }
+        }
     }
 }

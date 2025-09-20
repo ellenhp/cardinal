@@ -14,22 +14,19 @@
  *    limitations under the License.
  */
 
-package earth.maps.cardinal.data
+package earth.maps.cardinal.data.room
 
-import androidx.room.TypeConverter
-import earth.maps.cardinal.data.room.DownloadStatus
+import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
 
-/**
- * TypeConverter for DownloadStatus enum to work with Room database
- */
-class DownloadStatusConverter {
-    @TypeConverter
-    fun fromDownloadStatus(status: DownloadStatus): String {
-        return status.name
+class OfflineAreaRepository @Inject constructor(
+    private val offlineAreaDao: OfflineAreaDao
+) {
+    fun getAllOfflineAreas(): Flow<List<OfflineArea>> {
+        return offlineAreaDao.getAllOfflineAreas()
     }
 
-    @TypeConverter
-    fun toDownloadStatus(status: String): DownloadStatus {
-        return DownloadStatus.valueOf(status)
+    suspend fun deleteOfflineArea(offlineArea: OfflineArea) {
+        offlineAreaDao.deleteOfflineArea(offlineArea)
     }
 }

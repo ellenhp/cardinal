@@ -62,8 +62,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
-import earth.maps.cardinal.data.DownloadStatus
-import earth.maps.cardinal.data.OfflineArea
+import earth.maps.cardinal.data.room.DownloadStatus
+import earth.maps.cardinal.data.room.OfflineArea
 import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
 import kotlinx.coroutines.launch
 import org.maplibre.compose.util.VisibleRegion

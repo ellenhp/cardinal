@@ -19,6 +19,7 @@ package earth.maps.cardinal.ui
 sealed class Screen(val route: String) {
     object Home : Screen("home")
     object PlaceCard : Screen("place_card?place={place}")
+    object TransitStopCard : Screen("transit_card?stop={stop}")
     object OfflineAreas : Screen("offline_areas")
     object Settings : Screen("settings")
     object PrivacySettings : Screen("privacy_settings")

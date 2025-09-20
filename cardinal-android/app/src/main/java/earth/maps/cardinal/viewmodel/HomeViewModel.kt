@@ -25,8 +25,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.PlaceDao
-import earth.maps.cardinal.data.PlaceEntity
+import earth.maps.cardinal.data.room.PlaceDao
+import earth.maps.cardinal.data.room.PlaceEntity
 import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import kotlinx.coroutines.FlowPreview

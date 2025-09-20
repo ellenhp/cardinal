@@ -14,19 +14,23 @@
  *    limitations under the License.
  */
 
-package earth.maps.cardinal.data
+package earth.maps.cardinal.di
 
-import kotlinx.coroutines.flow.Flow
-import javax.inject.Inject
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import earth.maps.cardinal.data.AppPreferenceRepository
+import earth.maps.cardinal.transit.TransitousService
+import javax.inject.Singleton
 
-class OfflineAreaRepository @Inject constructor(
-    private val offlineAreaDao: OfflineAreaDao
-) {
-    fun getAllOfflineAreas(): Flow<List<OfflineArea>> {
-        return offlineAreaDao.getAllOfflineAreas()
-    }
+@Module
+@InstallIn(SingletonComponent::class)
+object TransitModule {
 
-    suspend fun deleteOfflineArea(offlineArea: OfflineArea) {
-        offlineAreaDao.deleteOfflineArea(offlineArea)
+    @Provides
+    @Singleton
+    fun provideTransitousService(appPreferenceRepository: AppPreferenceRepository): TransitousService {
+        return TransitousService(appPreferenceRepository)
     }
 }

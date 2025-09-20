@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package earth.maps.cardinal.data
+package earth.maps.cardinal.data.room
 
 import android.content.Context
 import androidx.room.Database
@@ -23,6 +23,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import earth.maps.cardinal.data.DownloadStatusConverter
 
 @Database(
     entities = [PlaceEntity::class, OfflineArea::class, RoutingProfile::class, DownloadedTile::class],
