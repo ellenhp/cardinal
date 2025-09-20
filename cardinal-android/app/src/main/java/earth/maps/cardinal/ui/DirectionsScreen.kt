@@ -44,7 +44,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
@@ -95,11 +94,9 @@ fun DirectionsScreen(
     onBack: () -> Unit,
     onFullExpansionRequired: () -> Job,
     navigationCoordinator: NavigationCoordinator,
-    context: android.content.Context,
     hasLocationPermission: Boolean,
     onRequestLocationPermission: () -> Unit,
-    appPreferences: AppPreferenceRepository,
-    snackbarHostState: SnackbarHostState
+    appPreferences: AppPreferenceRepository
 ) {
     var fieldFocusState by remember { mutableStateOf(FieldFocusState.NONE) }
     val isAnyFieldFocused = fieldFocusState != FieldFocusState.NONE
@@ -481,6 +478,7 @@ private fun PlaceField(
         ) {
             OutlinedTextField(
                 value = textFieldValue,
+                singleLine = true,
                 onValueChange = { newValue ->
                     textFieldValue = newValue
                     onTextChange(newValue)

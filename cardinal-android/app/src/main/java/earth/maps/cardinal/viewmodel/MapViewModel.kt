@@ -16,7 +16,6 @@
 
 package earth.maps.cardinal.viewmodel
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
 import android.location.LocationListener
@@ -32,24 +31,27 @@ import earth.maps.cardinal.R
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.PlaceDao
 import earth.maps.cardinal.data.ViewportPreferences
 import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.OfflineGeocodingService
 import earth.maps.cardinal.ui.generatePlaceId
 import io.github.dellisd.spatialk.geojson.Feature
+import io.github.dellisd.spatialk.geojson.FeatureCollection
 import io.github.dellisd.spatialk.geojson.Point
 import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json.Default.parseToJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.CameraState
+import java.lang.Integer.parseInt
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
@@ -58,12 +60,12 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class MapViewModel @Inject constructor(
-    @param:ApplicationContext
-    private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val viewportPreferences: ViewportPreferences,
     private val viewportRepository: ViewportRepository,
     private val locationRepository: LocationRepository,
     private val offlineGeocodingService: OfflineGeocodingService,
+    private val placeDao: PlaceDao,
 ) : ViewModel() {
 
     private companion object {
@@ -76,7 +78,6 @@ class MapViewModel @Inject constructor(
 
     // Location caching with thread safety
     private var lastRequestedLocation: Location? = null
-    private val locationMutex = Mutex()
     private val locationLock = Any()
 
     // State flows for UI components - delegate to repository
@@ -93,6 +94,24 @@ class MapViewModel @Inject constructor(
 
     // Permission tracking
     private val previousPermissionState = AtomicBoolean(false)
+
+    val savedPlacesFlow: Flow<FeatureCollection> = placeDao.getAllPlaces().map { placeList ->
+        FeatureCollection(placeList.map {
+            Feature(
+                geometry = Point(Position(latitude = it.latitude, longitude = it.longitude)),
+                properties = mapOf(
+                    "name" to parseToJsonElement(
+                        "\"${
+                            // Best-effort.
+                            it.name.replace(
+                                "\"", "\\\""
+                            )
+                        }\""
+                    ), "saved_poi_id" to parseToJsonElement("${it.id}")
+                )
+            )
+        })
+    }
 
     /**
      * Saves the current viewport to preferences.
@@ -133,23 +152,23 @@ class MapViewModel @Inject constructor(
     ) {
         val features = cameraState.projection?.queryRenderedFeatures(
             dpOffset,
-            layerIds = setOf("poi_z14", "poi_z15", "poi_z16", "poi_transit")
+            layerIds = setOf("user_favorites", "poi_z14", "poi_z15", "poi_z16", "poi_transit")
         )
         Log.d(TAG, "${features?.count()} features available at tap location")
         val filteredFeatures = features?.filter {
             it.geometry is Point
         }
+        val savedFeatures = filteredFeatures?.filter { it.properties.contains("saved_poi_id") }
         val namedFeatures = filteredFeatures?.filter { it.properties.contains("name") }
-        val feature =
-            namedFeatures?.firstOrNull() ?: filteredFeatures?.firstOrNull()
+        val feature = savedFeatures?.firstOrNull() ?: namedFeatures?.firstOrNull()
+        ?: filteredFeatures?.firstOrNull()
         if (feature != null) {
             val properties =
                 feature.properties.map { (key, value) -> key to value.jsonPrimitive.content }
                     .toMap()
             onMapPoiClick(
                 convertFeatureToPlace(
-                    feature,
-                    description = locationRepository.mapOsmTagsToDescription(properties)
+                    feature, description = locationRepository.mapOsmTagsToDescription(properties)
                 )
             )
         } else {
@@ -168,11 +187,16 @@ class MapViewModel @Inject constructor(
         val coordinates = point.coordinates
         val longitude = coordinates.longitude
         val latitude = coordinates.latitude
+        val savedPoiId = try {
+            tags["saved_poi_id"]?.let { parseInt(it) }
+        } catch (_: NumberFormatException) {
+            null
+        }
 
         val result =
             offlineGeocodingService.buildResult(tags, latitude = latitude, longitude = longitude)
         return Place(
-            id = generatePlaceId(result),
+            id = savedPoiId ?: generatePlaceId(result),
             name = result.displayName,
             type = description ?: context.getString(R.string.search_result_description),
             icon = "search",
@@ -192,9 +216,7 @@ class MapViewModel @Inject constructor(
      * @param context Android context for location services
      */
     suspend fun handlePermissionStateChange(
-        hasPermission: Boolean,
-        cameraState: CameraState,
-        context: Context
+        hasPermission: Boolean, cameraState: CameraState, context: Context
     ) {
         val previousState = previousPermissionState.getAndSet(hasPermission)
         // Check if permissions changed from denied to granted and we have a pending request
@@ -220,100 +242,8 @@ class MapViewModel @Inject constructor(
      */
     private fun createCameraPosition(location: Location): CameraPosition {
         return CameraPosition(
-            target = Position(location.longitude, location.latitude),
-            zoom = 15.0
+            target = Position(location.longitude, location.latitude), zoom = 15.0
         )
-    }
-
-    /**
-     * Checks if a location is recent (less than LOCATION_REQUEST_INTERVAL_MS old).
-     */
-    private fun isLocationRecent(location: Location, currentTime: Long): Boolean {
-        return currentTime - location.time < LOCATION_REQUEST_INTERVAL_MS
-    }
-
-    /**
-     * Gets the LocationManager system service.
-     */
-    private fun getLocationManager(context: Context): LocationManager {
-        return try {
-            context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        } catch (e: Exception) {
-            // Handle exceptions during service retrieval
-            throw IllegalStateException("Failed to get LocationManager", e)
-        }
-    }
-
-    /**
-     * Gets the most recent last known location from all available providers.
-     */
-    @SuppressLint("MissingPermission")
-    private fun getLastKnownLocation(locationManager: LocationManager): Location? {
-        return try {
-            var lastKnownLocation: Location? = null
-            val providers = locationManager.getProviders(true)
-
-            for (provider in providers) {
-                val location = locationManager.getLastKnownLocation(provider)
-                if (location != null && (lastKnownLocation == null || location.time > lastKnownLocation.time)) {
-                    lastKnownLocation = location
-                }
-            }
-
-            lastKnownLocation
-        } catch (_: Exception) {
-            // Handle exceptions during location retrieval
-            null
-        }
-    }
-
-    /**
-     * Requests a fresh location from the location manager.
-     */
-    @SuppressLint("MissingPermission")
-    private suspend fun requestFreshLocation(locationManager: LocationManager): CameraPosition? {
-        return withContext(Dispatchers.Main) {
-            val locationDeferred = CompletableDeferred<Location?>()
-
-            val locationListener = createLocationListener(locationManager, locationDeferred)
-
-            try {
-                // Request location updates from the best provider
-                @Suppress("DEPRECATION") val bestProvider = locationManager.getBestProvider(
-                    android.location.Criteria().apply {
-                        accuracy = android.location.Criteria.ACCURACY_FINE
-                    }, true
-                )
-
-                bestProvider?.let { provider ->
-                    locationManager.requestLocationUpdates(
-                        provider,
-                        0, // min time in ms
-                        0f, // min distance in meters
-                        locationListener
-                    )
-
-                    // Set a timeout for location request
-                    setupLocationRequestTimeout(locationManager, locationListener, locationDeferred)
-                } ?: run {
-                    // If no provider is available, complete immediately
-                    locationDeferred.complete(null)
-                }
-
-                // Wait for location or timeout
-                val location = locationDeferred.await()
-                location?.let { createCameraPosition(it) }
-            } catch (_: Exception) {
-                // Ensure cleanup in case of exceptions
-                try {
-                    locationManager.removeUpdates(locationListener)
-                } catch (_: Exception) {
-                    // Ignore cleanup exceptions
-                }
-                locationDeferred.complete(null)
-                null
-            }
-        }
     }
 
 
@@ -347,8 +277,7 @@ class MapViewModel @Inject constructor(
      * Creates a location listener that handles location updates and provider events.
      */
     private fun createLocationListener(
-        locationManager: LocationManager,
-        locationDeferred: CompletableDeferred<Location?>
+        locationManager: LocationManager, locationDeferred: CompletableDeferred<Location?>
     ): LocationListener {
         return object : LocationListener {
             override fun onLocationChanged(location: Location) {
@@ -406,5 +335,4 @@ class MapViewModel @Inject constructor(
             }
         }
     }
-
 }
