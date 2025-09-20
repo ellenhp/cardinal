@@ -169,5 +169,7 @@
     <string name="next_departures">Next departures:</string>
     <string name="no_upcoming_departures">No upcoming departures</string>
     <string name="live_indicator">● Live</string>
+    <string name="scheduled_indicator">Scheduled</string>
     <string name="refresh_departures">Refresh departures</string>
+    <string name="loading_departures">Loading departures…</string>
 </resources>

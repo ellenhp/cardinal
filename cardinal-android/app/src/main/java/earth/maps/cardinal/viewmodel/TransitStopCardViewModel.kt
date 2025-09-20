@@ -16,6 +16,7 @@
 
 package earth.maps.cardinal.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -26,21 +27,43 @@ import earth.maps.cardinal.data.room.PlaceEntity
 import earth.maps.cardinal.transit.StopTime
 import earth.maps.cardinal.transit.TransitStop
 import earth.maps.cardinal.transit.TransitousService
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class TransitStopCardViewModel @Inject constructor(
-    private val placeDao: PlaceDao,
-    private val transitousService: TransitousService
+    private val placeDao: PlaceDao, private val transitousService: TransitousService
 ) : ViewModel() {
 
     val isPlaceSaved = mutableStateOf(false)
     val stop = mutableStateOf<Place?>(null)
     val reverseGeocodedStop = mutableStateOf<TransitStop?>(null)
     val departures = mutableStateOf<List<StopTime>>(emptyList())
-    val isLoading = mutableStateOf(false)
+
+    private val _didLoadingFail = MutableStateFlow(false)
+
+    /**
+     * Whether the viewmodel is initially loading transit departures for the provided stop.
+     */
+    val didLoadingFail: StateFlow<Boolean> = _didLoadingFail
+
+    private val _isLoading = MutableStateFlow(false)
+
+    /**
+     * Whether the viewmodel is initially loading transit departures for the provided stop.
+     */
+    val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _isRefreshingDepartures = MutableStateFlow(false)
+
+    /**
+     * Whether the viewmodel is refreshing departures for the provided stop.
+     */
+    val isRefreshingDepartures: StateFlow<Boolean> = _isRefreshingDepartures
+
 
     suspend fun setStop(place: Place) {
         this.stop.value = place
@@ -59,12 +82,10 @@ class TransitStopCardViewModel @Inject constructor(
     }
 
     private suspend fun reverseGeocodeStop(place: Place) {
-        isLoading.value = true
+        _isLoading.value = true
         try {
             transitousService.reverseGeocode(
-                latitude = place.latLng.latitude,
-                longitude = place.latLng.longitude,
-                type = "STOP"
+                latitude = place.latLng.latitude, longitude = place.latLng.longitude, type = "STOP"
             ).collectLatest { stops ->
                 reverseGeocodedStop.value = stops.firstOrNull()
                 // Update the place with the reverse-geocoded name if available
@@ -75,14 +96,12 @@ class TransitStopCardViewModel @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            // Handle error silently or log it
-            e.printStackTrace()
-        } finally {
-            isLoading.value = false
+            Log.e(TAG, "Failed to reverse geocode stop $place", e)
         }
     }
 
     private suspend fun fetchDepartures() {
+        _isRefreshingDepartures.value = true
         try {
             // We need to get the stop ID from the reverse geocoded result
             reverseGeocodedStop.value?.id?.let { stopId ->
@@ -92,15 +111,25 @@ class TransitStopCardViewModel @Inject constructor(
                     }
                 }
             }
+            _didLoadingFail.value = false
         } catch (e: Exception) {
-            // Handle error silently or log it
-            e.printStackTrace()
+            Log.e(TAG, "Failed to fetch departures for $reverseGeocodedStop", e)
+            _didLoadingFail.value = true
+        } finally {
+            _isRefreshingDepartures.value = false
+            // Initial loading is guaranteed to be over now, as fetching departures is the last step.
+            _isLoading.value = false
         }
     }
 
     suspend fun refreshDepartures() {
-        stop.value?.let { place ->
-            fetchDepartures()
+        _isRefreshingDepartures.value = true
+        try {
+            stop.value?.let { place ->
+                fetchDepartures()
+            }
+        } finally {
+            _isRefreshingDepartures.value = false
         }
     }
 
@@ -116,5 +145,9 @@ class TransitStopCardViewModel @Inject constructor(
             placeDao.deletePlace(PlaceEntity.fromPlace(place))
             isPlaceSaved.value = false
         }
+    }
+
+    companion object {
+        private const val TAG = "TransitStopViewModel"
     }
 }

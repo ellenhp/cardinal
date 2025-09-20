@@ -275,8 +275,6 @@ fun AppContent(
                         val stopJson = backStackEntry.arguments?.getString("stop")
                         val stop = stopJson?.let { Gson().fromJson(it, Place::class.java) }
                         stop?.let { stop ->
-                            viewModel.setStop(stop)
-
                             LaunchedEffect(stop) {
                                 mapPins.clear()
                                 val position =
@@ -301,6 +299,7 @@ fun AppContent(
                                         )
                                     }
                                 }
+                                viewModel.setStop(stop)
                             }
 
                             TransitStopScreen(

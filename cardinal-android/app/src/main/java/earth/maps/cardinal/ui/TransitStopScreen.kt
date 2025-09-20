@@ -38,11 +38,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Tab
@@ -51,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -121,6 +125,10 @@ fun TransitStopScreen(
 
     // Temporary place to save (used in dialog)
     var stopToSave by remember { mutableStateOf(stop) }
+
+    val isRefreshingDepartures = viewModel.isRefreshingDepartures.collectAsState()
+    val isInitiallyLoading = viewModel.isLoading.collectAsState()
+    val didLoadingFail = viewModel.didLoadingFail.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -254,21 +262,40 @@ fun TransitStopScreen(
                 )
                 // Refresh button for departures
                 IconButton(onClick = { coroutineScope.launch { viewModel.refreshDepartures() } }) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = stringResource(string.refresh_departures)
-                    )
+                    if (isRefreshingDepartures.value) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp), strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = stringResource(string.refresh_departures)
+                        )
+                    }
                 }
             }
 
-            // List of departures grouped by route
-            if (viewModel.departures.value.isEmpty()) {
+            if (isInitiallyLoading.value) {
+                Text(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    text = stringResource(string.loading_departures)
+                )
+                // Show indeterminate progress bar while loading
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+            } else if (viewModel.departures.value.isEmpty()) {
                 Text(
                     text = stringResource(string.no_upcoming_departures),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             } else {
+                // List of departures grouped by route and headsign
                 RouteDepartures(stopTimes = viewModel.departures.value)
             }
         }
@@ -328,7 +355,7 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
             )
         } ?: MaterialTheme.colorScheme.surfaceVariant
 
-        val textColor = routeColor.contrastColor()
+        val onRouteColor = routeColor.contrastColor()
 
         // Group departures by headsign within each route
         val departuresByHeadsign = departures.groupBy { it.headsign }
@@ -339,7 +366,7 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
                 .fillMaxWidth()
                 .padding(vertical = 4.dp),
             colors = CardDefaults.cardColors(
-                containerColor = routeColor
+                containerColor = MaterialTheme.colorScheme.primaryContainer
             )
         ) {
             Column(
@@ -350,7 +377,7 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
                     text = routeName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = textColor,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
@@ -361,10 +388,9 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
                     // Display headsign tabs for navigation
                     TabRow(
                         selectedTabIndex = pagerState.currentPage,
-                        containerColor = routeColor,
-                        contentColor = textColor,
-                        divider = {}
-                    ) {
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        divider = {}) {
                         headsigns.forEachIndexed { index, headsign ->
                             Tab(
                                 selected = pagerState.currentPage == index,
@@ -372,12 +398,14 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
                                 text = {
                                     Text(
                                         text = headsign,
-                                        color = textColor,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                                         maxLines = 1
                                     )
                                 },
-                                selectedContentColor = textColor,
-                                unselectedContentColor = textColor.copy(alpha = 0.7f)
+                                selectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                unselectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                                    alpha = 0.7f
+                                )
                             )
                         }
                     }
@@ -387,12 +415,18 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
                         state = pagerState,
                         departuresByHeadsign = departuresByHeadsign,
                         headsigns = headsigns,
-                        textColor = textColor
+                        routeColor = routeColor,
+                        onRouteColor = onRouteColor,
                     )
                 } else {
                     // If there's only one headsign, display departures normally
                     departures.forEachIndexed { index, stopTime ->
-                        DepartureRow(stopTime = stopTime, textColor = textColor)
+                        DepartureRow(
+                            stopTime = stopTime,
+                            isFirst = index == 0,
+                            routeColor = routeColor,
+                            onRouteColor = onRouteColor
+                        )
                         // Add divider between departure rows, but not after the last one
                         if (index < departures.size - 1) {
                             HorizontalDivider(
@@ -400,7 +434,7 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp),
                                 thickness = DividerDefaults.Thickness / 2,
-                                color = textColor.copy(alpha = 0.3f)
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
                             )
                         }
                     }
@@ -412,9 +446,12 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
 
 @OptIn(ExperimentalTime::class)
 @Composable
-fun DepartureRow(stopTime: StopTime, textColor: Color = MaterialTheme.colorScheme.onSurface) {
+fun DepartureRow(
+    stopTime: StopTime, isFirst: Boolean, routeColor: Color, onRouteColor: Color,
+) {
     val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val isoFormatter = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.systemDefault())
+    val textColor = MaterialTheme.colorScheme.onSurface
 
     val scheduledDepartureInstant = stopTime.place.scheduledDeparture?.let {
         try {
@@ -453,38 +490,58 @@ fun DepartureRow(stopTime: StopTime, textColor: Color = MaterialTheme.colorSchem
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Headsign at the beginning
-        Text(
-            text = stopTime.headsign,
-            style = MaterialTheme.typography.bodyMedium,
-            color = textColor,
+        // Headsign at the beginning.
+        if (isFirst) {
+            ElevatedCard(
+                colors = CardDefaults.cardColors(containerColor = routeColor)
+            ) {
+                Text(
+                    modifier = Modifier.padding(dimensionResource(dimen.padding)),
+                    text = stopTime.headsign,
+                    color = onRouteColor,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        Spacer(
             modifier = Modifier.weight(1f)
         )
 
-        // Real-time indicator with text
-        if (stopTime.realTime) {
+        val stopTimeStyle = if (isFirst) {
+            MaterialTheme.typography.bodyLarge
+        } else {
+            MaterialTheme.typography.bodyMedium
+        }
+        Column(modifier = Modifier.padding(horizontal = dimensionResource(dimen.padding))) {
+            // Departure time at the bottom
+            val timeUntilDeparture =
+                bestDepartureInstant?.toKotlinInstant()?.minus(Clock.System.now())
             Text(
-                text = stringResource(string.live_indicator),
+                text = if (timeUntilDeparture != null && timeUntilDeparture > 30.minutes) {
+                    bestDepartureTime ?: stringResource(string.unknown_departure)
+                } else if (timeUntilDeparture != null) {
+                    "${timeUntilDeparture.inWholeMinutes} min"
+                } else {
+                    bestDepartureTime ?: stringResource(string.unknown_departure)
+                },
+                style = stopTimeStyle,
+                color = textColor,
+                fontWeight = if (stopTime.realTime) FontWeight.Medium else FontWeight.Normal
+            )
+            // Real-time or scheduled indicator
+            val isLiveIndicatorString = if (stopTime.realTime) {
+                stringResource(string.live_indicator)
+            } else {
+                stringResource(string.scheduled_indicator)
+            }
+
+            Text(
+                text = isLiveIndicatorString,
                 style = MaterialTheme.typography.bodySmall,
                 color = textColor,
                 modifier = Modifier.padding(end = 8.dp)
             )
         }
-
-        // Departure time at the end
-        val timeUntilDeparture = bestDepartureInstant?.toKotlinInstant()?.minus(Clock.System.now())
-        Text(
-            text = if (timeUntilDeparture != null && timeUntilDeparture > 30.minutes) {
-                bestDepartureTime ?: stringResource(string.unknown_departure)
-            } else if (timeUntilDeparture != null) {
-                "${timeUntilDeparture.inWholeMinutes} min"
-            } else {
-                bestDepartureTime ?: stringResource(string.unknown_departure)
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = textColor,
-            fontWeight = if (stopTime.realTime) FontWeight.Medium else FontWeight.Normal
-        )
     }
 }
 
@@ -494,7 +551,8 @@ fun FixedHeightHorizontalPager(
     state: PagerState,
     departuresByHeadsign: Map<String, List<StopTime>>,
     headsigns: List<String>,
-    textColor: Color
+    routeColor: Color,
+    onRouteColor: Color,
 ) {
     // Calculate the maximum height needed for all pages
     val maxHeight = remember(departuresByHeadsign) {
@@ -512,8 +570,7 @@ fun FixedHeightHorizontalPager(
             .height(maxHeight.dp)
     ) {
         HorizontalPager(
-            state = state,
-            modifier = Modifier.fillMaxWidth()
+            state = state, modifier = Modifier.fillMaxWidth()
         ) { page ->
             val selectedHeadsign = headsigns[page]
             val departuresForSelectedHeadsign =
@@ -523,7 +580,12 @@ fun FixedHeightHorizontalPager(
                 modifier = Modifier.padding(top = 8.dp)
             ) {
                 departuresForSelectedHeadsign.forEachIndexed { index, stopTime ->
-                    DepartureRow(stopTime = stopTime, textColor = textColor)
+                    DepartureRow(
+                        stopTime = stopTime,
+                        isFirst = index == 0,
+                        routeColor = routeColor,
+                        onRouteColor = onRouteColor
+                    )
                     // Add divider between departure rows, but not after the last one
                     if (index < departuresForSelectedHeadsign.size - 1) {
                         HorizontalDivider(
@@ -531,7 +593,7 @@ fun FixedHeightHorizontalPager(
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
                             thickness = DividerDefaults.Thickness / 2,
-                            color = textColor.copy(alpha = 0.3f)
+                            color = onRouteColor.copy(alpha = 0.3f)
                         )
                     }
                 }
