@@ -718,6 +718,59 @@ class LocationRepository @Inject constructor(
             }
         }
 
+        // Check for leisure tags
+        properties["leisure"]?.let { leisure ->
+            return when (leisure) {
+                "adult_gaming_centre" -> context.getString(R.string.osm_leisure_adult_gaming_centre)
+                "amusement_arcade" -> context.getString(R.string.osm_leisure_amusement_arcade)
+                "bandstand" -> context.getString(R.string.osm_leisure_bandstand)
+                "bathing_place" -> context.getString(R.string.osm_leisure_bathing_place)
+                "beach_resort" -> context.getString(R.string.osm_leisure_beach_resort)
+                "bird_hide" -> context.getString(R.string.osm_leisure_bird_hide)
+                "bleachers" -> context.getString(R.string.osm_leisure_bleachers)
+                "bowling_alley" -> context.getString(R.string.osm_leisure_bowling_alley)
+                "common" -> context.getString(R.string.osm_leisure_common)
+                "dance" -> context.getString(R.string.osm_leisure_dance)
+                "disc_golf_course" -> context.getString(R.string.osm_leisure_disc_golf_course)
+                "dog_park" -> context.getString(R.string.osm_leisure_dog_park)
+                "escape_game" -> context.getString(R.string.osm_leisure_escape_game)
+                "firepit" -> context.getString(R.string.osm_leisure_firepit)
+                "fishing" -> context.getString(R.string.osm_leisure_fishing)
+                "fitness_centre" -> context.getString(R.string.osm_leisure_fitness_centre)
+                "fitness_station" -> context.getString(R.string.osm_leisure_fitness_station)
+                "garden" -> context.getString(R.string.osm_leisure_garden)
+                "golf_course" -> context.getString(R.string.osm_leisure_golf_course)
+                "hackerspace" -> context.getString(R.string.osm_leisure_hackerspace)
+                "high_ropes_course" -> context.getString(R.string.osm_leisure_high_ropes_course)
+                "horse_riding" -> context.getString(R.string.osm_leisure_horse_riding)
+                "ice_rink" -> context.getString(R.string.osm_leisure_ice_rink)
+                "marina" -> context.getString(R.string.osm_leisure_marina)
+                "miniature_golf" -> context.getString(R.string.osm_leisure_miniature_golf)
+                "nature_reserve" -> context.getString(R.string.osm_leisure_nature_reserve)
+                "outdoor_seating" -> context.getString(R.string.osm_leisure_outdoor_seating)
+                "park" -> context.getString(R.string.osm_leisure_park)
+                "picnic_table" -> context.getString(R.string.osm_leisure_picnic_table)
+                "pitch" -> context.getString(R.string.osm_leisure_pitch)
+                "playground" -> context.getString(R.string.osm_leisure_playground)
+                "resort" -> context.getString(R.string.osm_leisure_resort)
+                "sauna" -> context.getString(R.string.osm_leisure_sauna)
+                "slipway" -> context.getString(R.string.osm_leisure_slipway)
+                "sports_centre" -> context.getString(R.string.osm_leisure_sports_centre)
+                "sports_hall" -> context.getString(R.string.osm_leisure_sports_hall)
+                "stadium" -> context.getString(R.string.osm_leisure_stadium)
+                "summer_camp" -> context.getString(R.string.osm_leisure_summer_camp)
+                "sunbathing" -> context.getString(R.string.osm_leisure_sunbathing)
+                "swimming_area" -> context.getString(R.string.osm_leisure_swimming_area)
+                "swimming_pool" -> context.getString(R.string.osm_leisure_swimming_pool)
+                "tanning_salon" -> context.getString(R.string.osm_leisure_tanning_salon)
+                "track" -> context.getString(R.string.osm_leisure_track)
+                "trampoline_park" -> context.getString(R.string.osm_leisure_trampoline_park)
+                "water_park" -> context.getString(R.string.osm_leisure_water_park)
+                "wildlife_hide" -> context.getString(R.string.osm_leisure_wildlife_hide)
+                else -> "leisure=$leisure"
+            }
+        }
+
         // Default case - return empty string or a generic description
         return context.getString(R.string.point_of_interest)
     }

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~    Copyright 2025 The Cardinal Authors
+  ~
+  ~    Licensed under the Apache License, Version 2.0 (the "License");
+  ~    you may not use this file except in compliance with the License.
+  ~    You may obtain a copy of the License at
+  ~
+  ~        http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~    Unless required by applicable law or agreed to in writing, software
+  ~    distributed under the License is distributed on an "AS IS" BASIS,
+  ~    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~    See the License for the specific language governing permissions and
+  ~    limitations under the License.
+  -->
+
+<resources>
+    <string name="osm_leisure_adult_gaming_centre">Adult gaming centre</string>
+    <string name="osm_leisure_amusement_arcade">Amusement arcade</string>
+    <string name="osm_leisure_bandstand">Bandstand</string>
+    <string name="osm_leisure_bathing_place">Bathing place</string>
+    <string name="osm_leisure_beach_resort">Beach resort</string>
+    <string name="osm_leisure_bird_hide">Bird hide</string>
+    <string name="osm_leisure_bleachers">Bleachers</string>
+    <string name="osm_leisure_bowling_alley">Bowling alley</string>
+    <string name="osm_leisure_common">Common</string>
+    <string name="osm_leisure_dance">Dance</string>
+    <string name="osm_leisure_disc_golf_course">Disc golf course</string>
+    <string name="osm_leisure_dog_park">Dog park</string>
+    <string name="osm_leisure_escape_game">Escape game</string>
+    <string name="osm_leisure_firepit">Firepit</string>
+    <string name="osm_leisure_fishing">Fishing</string>
+    <string name="osm_leisure_fitness_centre">Fitness centre</string>
+    <string name="osm_leisure_fitness_station">Fitness station</string>
+    <string name="osm_leisure_garden">Garden</string>
+    <string name="osm_leisure_golf_course">Golf course</string>
+    <string name="osm_leisure_hackerspace">Hackerspace</string>
+    <string name="osm_leisure_high_ropes_course">High ropes course</string>
+    <string name="osm_leisure_horse_riding">Horseback riding</string>
+    <string name="osm_leisure_ice_rink">Ice rink</string>
+    <string name="osm_leisure_marina">Marina</string>
+    <string name="osm_leisure_miniature_golf">Miniature golf</string>
+    <string name="osm_leisure_nature_reserve">Nature reserve</string>
+    <string name="osm_leisure_outdoor_seating">Outdoor seating</string>
+    <string name="osm_leisure_park">Park</string>
+    <string name="osm_leisure_picnic_table">Picnic table</string>
+    <string name="osm_leisure_pitch">Pitch</string>
+    <string name="osm_leisure_playground">Playground</string>
+    <string name="osm_leisure_resort">Resort</string>
+    <string name="osm_leisure_sauna">Sauna</string>
+    <string name="osm_leisure_slipway">Slipway</string>
+    <string name="osm_leisure_sports_centre">Sports centre</string>
+    <string name="osm_leisure_sports_hall">Sports hall</string>
+    <string name="osm_leisure_stadium">Stadium</string>
+    <string name="osm_leisure_summer_camp">Summer camp</string>
+    <string name="osm_leisure_sunbathing">Sunbathing</string>
+    <string name="osm_leisure_swimming_area">Swimming area</string>
+    <string name="osm_leisure_swimming_pool">Swimming pool</string>
+    <string name="osm_leisure_tanning_salon">Tanning salon</string>
+    <string name="osm_leisure_track">Track</string>
+    <string name="osm_leisure_trampoline_park">Trampoline park</string>
+    <string name="osm_leisure_water_park">Water park</string>
+    <string name="osm_leisure_wildlife_hide">Wildlife hide</string>
+</resources>
