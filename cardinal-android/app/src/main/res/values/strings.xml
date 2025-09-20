@@ -163,7 +163,6 @@
     <string name="no_routing_profiles_configured_yet">No routing profiles configured yet.</string>
     <string name="unnamed_location">Unnamed Location</string>
     <string name="transit_stop">Transit stop</string>
-    <string name="departures_heading">Departures:</string>
     <string name="unknown_departure">Unknown departure time</string>
     <string name="transit_cancelled">Cancelled</string>
     <string name="transit_unknown_status">Unknown status</string>

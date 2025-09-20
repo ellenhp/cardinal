@@ -17,13 +17,18 @@
 package earth.maps.cardinal.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -34,11 +39,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -229,14 +237,6 @@ fun TransitStopScreen(
                 )
         ) {
             // Departures section
-            Text(
-                text = stringResource(string.departures_heading),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 16.dp)
-            )
-
-            // Refresh button for departures
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -248,6 +248,7 @@ fun TransitStopScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f)
                 )
+                // Refresh button for departures
                 IconButton(onClick = { viewModel.refreshDepartures() }) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
@@ -310,7 +311,7 @@ fun TransitStopScreen(
     }
 }
 
-@OptIn(ExperimentalTime::class)
+@OptIn(ExperimentalTime::class, ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun RouteDepartures(stopTimes: List<StopTime>) {
     // Group departures by route name
@@ -324,6 +325,10 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
         } ?: MaterialTheme.colorScheme.surfaceVariant
 
         val textColor = routeColor.contrastColor()
+
+        // Group departures by headsign within each route
+        val departuresByHeadsign = departures.groupBy { it.headsign }
+        val headsigns = departuresByHeadsign.keys.toList().sorted()
 
         Card(
             modifier = Modifier
@@ -345,18 +350,55 @@ fun RouteDepartures(stopTimes: List<StopTime>) {
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                // List departures for this route
-                departures.forEachIndexed { index, stopTime ->
-                    DepartureRow(stopTime = stopTime, textColor = textColor)
-                    // Add divider between departure rows, but not after the last one
-                    if (index < departures.size - 1) {
-                        HorizontalDivider(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            thickness = DividerDefaults.Thickness / 2,
-                            color = textColor.copy(alpha = 0.3f)
-                        )
+                // Carousel for headsigns if there are multiple headsigns
+                if (headsigns.size > 1) {
+                    val pagerState = rememberPagerState(pageCount = { headsigns.size })
+
+                    // Display headsign tabs for navigation
+                    TabRow(
+                        selectedTabIndex = pagerState.currentPage,
+                        containerColor = routeColor,
+                        contentColor = textColor,
+                        divider = {}
+                    ) {
+                        headsigns.forEachIndexed { index, headsign ->
+                            Tab(
+                                selected = pagerState.currentPage == index,
+                                onClick = { /* Scroll to page */ },
+                                text = {
+                                    Text(
+                                        text = headsign,
+                                        color = textColor,
+                                        maxLines = 1
+                                    )
+                                },
+                                selectedContentColor = textColor,
+                                unselectedContentColor = textColor.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+
+                    // Swipeable pager for headsigns with fixed height
+                    FixedHeightHorizontalPager(
+                        state = pagerState,
+                        departuresByHeadsign = departuresByHeadsign,
+                        headsigns = headsigns,
+                        textColor = textColor
+                    )
+                } else {
+                    // If there's only one headsign, display departures normally
+                    departures.forEachIndexed { index, stopTime ->
+                        DepartureRow(stopTime = stopTime, textColor = textColor)
+                        // Add divider between departure rows, but not after the last one
+                        if (index < departures.size - 1) {
+                            HorizontalDivider(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                thickness = DividerDefaults.Thickness / 2,
+                                color = textColor.copy(alpha = 0.3f)
+                            )
+                        }
                     }
                 }
             }
@@ -441,6 +483,62 @@ fun DepartureRow(stopTime: StopTime, textColor: Color = MaterialTheme.colorSchem
         )
     }
 }
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun FixedHeightHorizontalPager(
+    state: PagerState,
+    departuresByHeadsign: Map<String, List<StopTime>>,
+    headsigns: List<String>,
+    textColor: Color
+) {
+    // Calculate the maximum height needed for all pages
+    val maxHeight = remember(departuresByHeadsign) {
+        headsigns.maxOfOrNull { headsign ->
+            val departures = departuresByHeadsign[headsign] ?: emptyList()
+            // This is a simplified calculation - in a real implementation,
+            // you would measure the actual content height
+            departures.size * 40 // Approximate height per departure row
+        } ?: 0
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(maxHeight.dp)
+    ) {
+        HorizontalPager(
+            state = state,
+            modifier = Modifier.fillMaxWidth()
+        ) { page ->
+            val selectedHeadsign = headsigns[page]
+            val departuresForSelectedHeadsign =
+                departuresByHeadsign[selectedHeadsign] ?: emptyList()
+
+            Column(
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                departuresForSelectedHeadsign.forEachIndexed { index, stopTime ->
+                    DepartureRow(stopTime = stopTime, textColor = textColor)
+                    // Add divider between departure rows, but not after the last one
+                    if (index < departuresForSelectedHeadsign.size - 1) {
+                        HorizontalDivider(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            thickness = DividerDefaults.Thickness / 2,
+                            color = textColor.copy(alpha = 0.3f)
+                        )
+                    }
+                }
+                // This ensures that the column takes up all the space available to it, which
+                // increases the size of the swipe touch target
+                Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
 
 @Composable
 fun SaveTransitStopDialog(
