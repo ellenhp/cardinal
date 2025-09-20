@@ -16,11 +16,15 @@
 
 package earth.maps.cardinal.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 
 private val lightScheme = lightColorScheme(
     primary = primaryLight,
@@ -256,23 +260,21 @@ fun AppTheme(
     contrastLevel: Int = 0, // 0 = standard, 1 = medium, 2 = high
     content: @Composable() () -> Unit
 ) {
-    val colorScheme = when (darkTheme) {
-        true -> when (contrastLevel) {
-            0 -> darkScheme
-            1 -> mediumContrastDarkColorScheme
-            else -> highContrastDarkColorScheme
+    val dynamicPreferred = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (darkTheme) {
+            dynamicDarkColorScheme(LocalContext.current)
+        } else {
+            dynamicLightColorScheme(LocalContext.current)
         }
-
-        else -> when (contrastLevel) {
-            0 -> lightScheme
-            1 -> mediumContrastLightColorScheme
-            else -> highContrastLightColorScheme
-        }
+    } else {
+        if (darkTheme) darkScheme else lightScheme
     }
-
+    val colorScheme = when (contrastLevel) {
+        0 -> dynamicPreferred
+        1 -> if (darkTheme) mediumContrastDarkColorScheme else mediumContrastLightColorScheme
+        else -> if (darkTheme) highContrastDarkColorScheme else highContrastLightColorScheme
+    }
     MaterialTheme(
-        colorScheme = colorScheme,
-        typography = AppTypography,
-        content = content
+        colorScheme = colorScheme, typography = AppTypography, content = content
     )
 }
