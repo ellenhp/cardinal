@@ -26,7 +26,8 @@ data class GeocodeResult(
     val latitude: Double,
     val longitude: Double,
     val displayName: String,
-    val address: Address? = null
+    val properties: Map<String, String>,
+    val address: Address? = null,
 )
 
 data class Address(

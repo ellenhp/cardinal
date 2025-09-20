@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~    Copyright 2025 The Cardinal Authors
+  ~
+  ~    Licensed under the Apache License, Version 2.0 (the "License");
+  ~    you may not use this file except in compliance with the License.
+  ~    You may obtain a copy of the License at
+  ~
+  ~        http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~    Unless required by applicable law or agreed to in writing, software
+  ~    distributed under the License is distributed on an "AS IS" BASIS,
+  ~    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~    See the License for the specific language governing permissions and
+  ~    limitations under the License.
+  -->
+
+<resources>
+    <!-- Sustenance -->
+    <string name="osm_amenity_bar">Bar</string>
+    <string name="osm_amenity_biergarten">Biergarten</string>
+    <string name="osm_amenity_cafe">Cafe</string>
+    <string name="osm_amenity_fast_food">Fast Food</string>
+    <string name="osm_amenity_food_court">Food Court</string>
+    <string name="osm_amenity_ice_cream">Ice Cream</string>
+    <string name="osm_amenity_pub">Pub</string>
+    <string name="osm_amenity_restaurant">Restaurant</string>
+
+    <!-- Education -->
+    <string name="osm_amenity_college">College</string>
+    <string name="osm_amenity_dancing_school">Dancing School</string>
+    <string name="osm_amenity_driving_school">Driving School</string>
+    <string name="osm_amenity_first_aid_school">First Aid School</string>
+    <string name="osm_amenity_kindergarten">Kindergarten</string>
+    <string name="osm_amenity_language_school">Language School</string>
+    <string name="osm_amenity_library">Library</string>
+    <string name="osm_amenity_surf_school">Surf School</string>
+    <string name="osm_amenity_toy_library">Toy Library</string>
+    <string name="osm_amenity_research_institute">Research Institute</string>
+    <string name="osm_amenity_training">Training</string>
+    <string name="osm_amenity_music_school">Music School</string>
+    <string name="osm_amenity_school">School</string>
+    <string name="osm_amenity_traffic_park">Traffic Park</string>
+    <string name="osm_amenity_university">University</string>
+
+    <!-- Transportation -->
+    <string name="osm_amenity_bicycle_parking">Bicycle Parking</string>
+    <string name="osm_amenity_bicycle_repair_station">Bicycle Repair Station</string>
+    <string name="osm_amenity_bicycle_rental">Bicycle Rental</string>
+    <string name="osm_amenity_bicycle_wash">Bicycle Wash</string>
+    <string name="osm_amenity_boat_rental">Boat Rental</string>
+    <string name="osm_amenity_boat_sharing">Boat Sharing</string>
+    <string name="osm_amenity_bus_station">Bus Station</string>
+    <string name="osm_amenity_car_rental">Car Rental</string>
+    <string name="osm_amenity_car_sharing">Car Sharing</string>
+    <string name="osm_amenity_car_wash">Car Wash</string>
+    <string name="osm_amenity_compressed_air">Compressed Air</string>
+    <string name="osm_amenity_vehicle_inspection">Vehicle Inspection</string>
+    <string name="osm_amenity_charging_station">Charging Station</string>
+    <string name="osm_amenity_driver_training">Driver Training</string>
+    <string name="osm_amenity_ferry_terminal">Ferry Terminal</string>
+    <string name="osm_amenity_fuel">Fuel</string>
+    <string name="osm_amenity_grit_bin">Grit Bin</string>
+    <string name="osm_amenity_motorcycle_parking">Motorcycle Parking</string>
+    <string name="osm_amenity_parking">Parking</string>
+    <string name="osm_amenity_parking_entrance">Parking Entrance</string>
+    <string name="osm_amenity_parking_space">Parking Space</string>
+    <string name="osm_amenity_taxi">Taxi</string>
+    <string name="osm_amenity_weighbridge">Weighbridge</string>
+
+    <!-- Financial -->
+    <string name="osm_amenity_atm">ATM</string>
+    <string name="osm_amenity_payment_terminal">Payment Terminal</string>
+    <string name="osm_amenity_bank">Bank</string>
+    <string name="osm_amenity_bureau_de_change">Bureau de Change</string>
+    <string name="osm_amenity_money_transfer">Money Transfer</string>
+    <string name="osm_amenity_payment_centre">Payment Centre</string>
+
+    <!-- Healthcare -->
+    <string name="osm_amenity_baby_hatch">Baby Hatch</string>
+    <string name="osm_amenity_clinic">Clinic</string>
+    <string name="osm_amenity_dentist">Dentist</string>
+    <string name="osm_amenity_doctors">Doctors</string>
+    <string name="osm_amenity_hospital">Hospital</string>
+    <string name="osm_amenity_nursing_home">Nursing Home</string>
+    <string name="osm_amenity_pharmacy">Pharmacy</string>
+    <string name="osm_amenity_social_facility">Social Facility</string>
+    <string name="osm_amenity_veterinary">Veterinary</string>
+
+    <!-- Entertainment, Arts & Culture -->
+    <string name="osm_amenity_arts_centre">Arts Centre</string>
+    <string name="osm_amenity_brothel">Brothel</string>
+    <string name="osm_amenity_casino">Casino</string>
+    <string name="osm_amenity_cinema">Cinema</string>
+    <string name="osm_amenity_community_centre">Community Centre</string>
+    <string name="osm_amenity_conference_centre">Conference Centre</string>
+    <string name="osm_amenity_events_venue">Events Venue</string>
+    <string name="osm_amenity_exhibition_centre">Exhibition Centre</string>
+    <string name="osm_amenity_fountain">Fountain</string>
+    <string name="osm_amenity_gambling">Gambling</string>
+    <string name="osm_amenity_love_hotel">Love Hotel</string>
+    <string name="osm_amenity_music_venue">Music Venue</string>
+    <string name="osm_amenity_nightclub">Nightclub</string>
+    <string name="osm_amenity_planetarium">Planetarium</string>
+    <string name="osm_amenity_public_bookcase">Public Bookcase</string>
+    <string name="osm_amenity_social_centre">Social Centre</string>
+    <string name="osm_amenity_stage">Stage</string>
+    <string name="osm_amenity_stripclub">Stripclub</string>
+    <string name="osm_amenity_studio">Studio</string>
+    <string name="osm_amenity_swingerclub">Swingerclub</string>
+    <string name="osm_amenity_theatre">Theatre</string>
+
+    <!-- Public Service -->
+    <string name="osm_amenity_courthouse">Courthouse</string>
+    <string name="osm_amenity_fire_station">Fire Station</string>
+    <string name="osm_amenity_police">Police</string>
+    <string name="osm_amenity_post_box">Post Box</string>
+    <string name="osm_amenity_post_depot">Post Depot</string>
+    <string name="osm_amenity_post_office">Post Office</string>
+    <string name="osm_amenity_prison">Prison</string>
+    <string name="osm_amenity_ranger_station">Ranger Station</string>
+    <string name="osm_amenity_townhall">Townhall</string>
+
+    <!-- Facilities -->
+    <string name="osm_amenity_bbq">BBQ</string>
+    <string name="osm_amenity_bench">Bench</string>
+    <string name="osm_amenity_dog_toilet">Dog Toilet</string>
+    <string name="osm_amenity_dressing_room">Dressing Room</string>
+    <string name="osm_amenity_drinking_water">Drinking Water</string>
+    <string name="osm_amenity_give_box">Give Box</string>
+    <string name="osm_amenity_lounge">Lounge</string>
+    <string name="osm_amenity_mailroom">Mailroom</string>
+    <string name="osm_amenity_parcel_locker">Parcel Locker</string>
+    <string name="osm_amenity_shelter">Shelter</string>
+    <string name="osm_amenity_shower">Shower</string>
+    <string name="osm_amenity_telephone">Telephone</string>
+    <string name="osm_amenity_toilets">Toilets</string>
+    <string name="osm_amenity_water_point">Water Point</string>
+    <string name="osm_amenity_watering_place">Watering Place</string>
+
+    <!-- Waste Management -->
+    <string name="osm_amenity_sanitary_dump_station">Sanitary Dump Station</string>
+    <string name="osm_amenity_recycling">Recycling</string>
+    <string name="osm_amenity_waste_basket">Waste Basket</string>
+    <string name="osm_amenity_waste_disposal">Waste Disposal</string>
+    <string name="osm_amenity_waste_transfer_station">Waste Transfer Station</string>
+
+    <!-- Others -->
+    <string name="osm_amenity_animal_boarding">Animal Boarding</string>
+    <string name="osm_amenity_animal_breeding">Animal Breeding</string>
+    <string name="osm_amenity_animal_shelter">Animal Shelter</string>
+    <string name="osm_amenity_animal_training">Animal Training</string>
+    <string name="osm_amenity_baking_oven">Baking Oven</string>
+    <string name="osm_amenity_clock">Clock</string>
+    <string name="osm_amenity_crematorium">Crematorium</string>
+    <string name="osm_amenity_dive_centre">Dive Centre</string>
+    <string name="osm_amenity_funeral_hall">Funeral Hall</string>
+    <string name="osm_amenity_grave_yard">Grave Yard</string>
+    <string name="osm_amenity_hunting_stand">Hunting Stand</string>
+    <string name="osm_amenity_internet_cafe">Internet Cafe</string>
+    <string name="osm_amenity_kitchen">Kitchen</string>
+    <string name="osm_amenity_lounger">Lounger</string>
+    <string name="osm_amenity_marketplace">Marketplace</string>
+    <string name="osm_amenity_monastery">Monastery</string>
+    <string name="osm_amenity_mortuary">Mortuary</string>
+    <string name="osm_amenity_photo_booth">Photo Booth</string>
+    <string name="osm_amenity_place_of_mourning">Place of Mourning</string>
+    <string name="osm_amenity_place_of_worship">Place of Worship</string>
+    <string name="osm_amenity_public_bath">Public Bath</string>
+    <string name="osm_amenity_public_building">Public Building</string>
+    <string name="osm_amenity_refugee_site">Refugee Site</string>
+    <string name="osm_amenity_vending_machine">Vending Machine</string>
+</resources>

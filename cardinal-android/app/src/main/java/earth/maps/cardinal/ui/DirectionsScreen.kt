@@ -66,6 +66,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.data.AppPreferenceRepository
@@ -383,6 +384,7 @@ fun DirectionsScreen(
             } else {
                 // Show search results when there's a query
                 SearchResults(
+                    viewModel = hiltViewModel(),
                     geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value),
                     onPlaceSelected = { place ->
                         // Update the appropriate place based on which field is focused

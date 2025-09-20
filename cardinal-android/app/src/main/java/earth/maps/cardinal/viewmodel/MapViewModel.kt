@@ -163,9 +163,12 @@ class MapViewModel @Inject constructor(
         val feature = savedFeatures?.firstOrNull() ?: namedFeatures?.firstOrNull()
         ?: filteredFeatures?.firstOrNull()
         if (feature != null) {
+            val properties =
+                feature.properties.map { (key, value) -> key to value.jsonPrimitive.content }
+                    .toMap()
             onMapPoiClick(
                 convertFeatureToPlace(
-                    feature, description = context.getString(R.string.point_of_interest)
+                    feature, description = locationRepository.mapOsmTagsToDescription(properties)
                 )
             )
         } else {

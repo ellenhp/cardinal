@@ -91,6 +91,7 @@ fun HomeScreen(
 
     Column {
         SearchPanelContent(
+            viewModel = viewModel,
             searchQuery = searchQuery,
             onSearchQueryChange = { query ->
                 viewModel.updateSearchQuery(query)
@@ -109,6 +110,7 @@ fun HomeScreen(
 
 @Composable
 private fun SearchPanelContent(
+    viewModel: HomeViewModel,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     isSearchFocused: Boolean,
@@ -250,7 +252,10 @@ private fun SearchPanelContent(
                     }
                 } else {
                     items(geocodeResults) { result ->
-                        SearchResultItem(result = result, onPlaceSelected = onPlaceSelected)
+                        SearchResultItem(
+                            place = viewModel.geocodeResultToPlace(result),
+                            onPlaceSelected = onPlaceSelected
+                        )
                     }
                 }
             } else {

@@ -128,6 +128,10 @@ class PeliasGeocodingService(private val appPreferenceRepository: AppPreferenceR
 
             val properties = obj["properties"]?.jsonObject
             val displayName = properties?.get("label")?.jsonPrimitive?.content ?: ""
+            val osmAddendum =
+                properties?.get("addendum")?.jsonObject?.get("osm")?.jsonObject?.toMap()
+            val tags =
+                osmAddendum?.map { (key, value) -> key to value.jsonPrimitive.content }?.toMap()
 
             if (lat != null && lon != null) {
                 val address = if (properties != null) {
@@ -148,7 +152,8 @@ class PeliasGeocodingService(private val appPreferenceRepository: AppPreferenceR
                     latitude = lat,
                     longitude = lon,
                     displayName = displayName,
-                    address = address
+                    address = address,
+                    properties = tags ?: mapOf()
                 )
             } else {
                 null

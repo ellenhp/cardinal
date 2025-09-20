@@ -23,6 +23,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.GeocodeResult
+import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.PlaceDao
 import earth.maps.cardinal.data.PlaceEntity
@@ -45,7 +46,8 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val placeDao: PlaceDao,
     private val geocodingService: GeocodingService,
-    private val viewportRepository: ViewportRepository
+    private val viewportRepository: ViewportRepository,
+    private val locationRepository: LocationRepository,
 ) : ViewModel() {
 
     // Saved places from database
@@ -141,6 +143,10 @@ class HomeViewModel @Inject constructor(
     fun updateSearchQuery(query: String) {
         searchQuery = query
         _searchQueryFlow.value = query
+    }
+
+    fun geocodeResultToPlace(result: GeocodeResult): Place {
+        return locationRepository.createSearchResultPlace(result)
     }
 
     private fun performSearch(query: String) {
