@@ -162,7 +162,6 @@ dependencies {
     implementation(libs.ktor.client.logging)
     implementation(libs.valhalla.mobile)
     implementation(libs.valhalla.config)
-    implementation(libs.valhalla.models)
     implementation(libs.ferrostar.core)
     implementation(libs.ferrostar.maplibreui)
     implementation(libs.ferrostar.composeui)

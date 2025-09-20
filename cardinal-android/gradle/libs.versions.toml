@@ -64,8 +64,7 @@ hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 valhalla-mobile = { group = "io.github.rallista", name = "valhalla-mobile", version.ref = "valhallaMobile" }
-valhalla-config = { group = "io.github.rallista", name = "valhalla-models", version.ref = "valhallaMobileConfig" }
-valhalla-models = { group = "io.github.rallista", name = "valhalla-models-config", version.ref = "valhallaMobileConfig" }
+valhalla-config = { group = "io.github.rallista", name = "valhalla-models-config", version.ref = "valhallaMobileConfig" }
 ferrostar-core = { group = "com.stadiamaps.ferrostar", name = "core", version.ref = "ferrostar" }
 ferrostar-maplibreui = { group = "com.stadiamaps.ferrostar", name = "maplibreui", version.ref = "ferrostar" }
 ferrostar-composeui = { group = "com.stadiamaps.ferrostar", name = "composeui", version.ref = "ferrostar" }
