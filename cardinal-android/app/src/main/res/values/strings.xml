@@ -166,4 +166,8 @@
     <string name="unknown_departure">Unknown departure time</string>
     <string name="transit_cancelled">Cancelled</string>
     <string name="transit_unknown_status">Unknown status</string>
+    <string name="next_departures">Next departures:</string>
+    <string name="no_upcoming_departures">No upcoming departures</string>
+    <string name="live_indicator">● Live</string>
+    <string name="refresh_departures">Refresh departures</string>
 </resources>

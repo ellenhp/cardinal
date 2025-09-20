@@ -42,11 +42,11 @@ class TransitStopCardViewModel @Inject constructor(
     val departures = mutableStateOf<List<StopTime>>(emptyList())
     val isLoading = mutableStateOf(false)
 
-    fun setStop(place: Place) {
+    suspend fun setStop(place: Place) {
         this.stop.value = place
         checkIfPlaceIsSaved(place)
         reverseGeocodeStop(place)
-        fetchDepartures(place)
+        fetchDepartures()
     }
 
     fun checkIfPlaceIsSaved(place: Place) {
@@ -58,53 +58,49 @@ class TransitStopCardViewModel @Inject constructor(
         }
     }
 
-    private fun reverseGeocodeStop(place: Place) {
-        viewModelScope.launch {
-            isLoading.value = true
-            try {
-                transitousService.reverseGeocode(
-                    latitude = place.latLng.latitude,
-                    longitude = place.latLng.longitude,
-                    type = "STOP"
-                ).collectLatest { stops ->
-                    reverseGeocodedStop.value = stops.firstOrNull()
-                    // Update the place with the reverse-geocoded name if available
-                    reverseGeocodedStop.value?.let { stop ->
-                        this@TransitStopCardViewModel.stop.value = place.copy(
-                            name = stop.name
-                        )
-                    }
+    private suspend fun reverseGeocodeStop(place: Place) {
+        isLoading.value = true
+        try {
+            transitousService.reverseGeocode(
+                latitude = place.latLng.latitude,
+                longitude = place.latLng.longitude,
+                type = "STOP"
+            ).collectLatest { stops ->
+                reverseGeocodedStop.value = stops.firstOrNull()
+                // Update the place with the reverse-geocoded name if available
+                reverseGeocodedStop.value?.let { stop ->
+                    this@TransitStopCardViewModel.stop.value = place.copy(
+                        name = stop.name
+                    )
                 }
-            } catch (e: Exception) {
-                // Handle error silently or log it
-                e.printStackTrace()
-            } finally {
-                isLoading.value = false
             }
+        } catch (e: Exception) {
+            // Handle error silently or log it
+            e.printStackTrace()
+        } finally {
+            isLoading.value = false
         }
     }
 
-    private fun fetchDepartures(place: Place) {
-        viewModelScope.launch {
-            try {
-                // We need to get the stop ID from the reverse geocoded result
-                reverseGeocodedStop.value?.id?.let { stopId ->
-                    if (stopId.isNotEmpty()) {
-                        transitousService.getStopTimes(stopId, 10).collectLatest { response ->
-                            departures.value = response.stopTimes
-                        }
+    private suspend fun fetchDepartures() {
+        try {
+            // We need to get the stop ID from the reverse geocoded result
+            reverseGeocodedStop.value?.id?.let { stopId ->
+                if (stopId.isNotEmpty()) {
+                    transitousService.getStopTimes(stopId, 10).collectLatest { response ->
+                        departures.value = response.stopTimes
                     }
                 }
-            } catch (e: Exception) {
-                // Handle error silently or log it
-                e.printStackTrace()
             }
+        } catch (e: Exception) {
+            // Handle error silently or log it
+            e.printStackTrace()
         }
     }
 
-    fun refreshDepartures() {
+    suspend fun refreshDepartures() {
         stop.value?.let { place ->
-            fetchDepartures(place)
+            fetchDepartures()
         }
     }
 

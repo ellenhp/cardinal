@@ -54,6 +54,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,6 +72,7 @@ import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.transit.StopTime
 import earth.maps.cardinal.viewmodel.TransitStopCardViewModel
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -119,6 +121,8 @@ fun TransitStopScreen(
 
     // Temporary place to save (used in dialog)
     var stopToSave by remember { mutableStateOf(stop) }
+
+    val coroutineScope = rememberCoroutineScope()
 
     Column {
 
@@ -244,15 +248,15 @@ fun TransitStopScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Next departures:",
+                    text = stringResource(string.next_departures),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f)
                 )
                 // Refresh button for departures
-                IconButton(onClick = { viewModel.refreshDepartures() }) {
+                IconButton(onClick = { coroutineScope.launch { viewModel.refreshDepartures() } }) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh departures"
+                        contentDescription = stringResource(string.refresh_departures)
                     )
                 }
             }
@@ -260,7 +264,7 @@ fun TransitStopScreen(
             // List of departures grouped by route
             if (viewModel.departures.value.isEmpty()) {
                 Text(
-                    text = "No upcoming departures",
+                    text = stringResource(string.no_upcoming_departures),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
@@ -460,7 +464,7 @@ fun DepartureRow(stopTime: StopTime, textColor: Color = MaterialTheme.colorSchem
         // Real-time indicator with text
         if (stopTime.realTime) {
             Text(
-                text = "● Live",
+                text = stringResource(string.live_indicator),
                 style = MaterialTheme.typography.bodySmall,
                 color = textColor,
                 modifier = Modifier.padding(end = 8.dp)
