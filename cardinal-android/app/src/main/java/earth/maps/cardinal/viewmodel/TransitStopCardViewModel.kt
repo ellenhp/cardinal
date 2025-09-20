@@ -22,8 +22,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.room.PlaceDao
-import earth.maps.cardinal.data.room.PlaceEntity
+import earth.maps.cardinal.data.room.SavedPlace
+import earth.maps.cardinal.data.room.SavedPlaceDao
 import earth.maps.cardinal.transit.StopTime
 import earth.maps.cardinal.transit.TransitStop
 import earth.maps.cardinal.transit.TransitousService
@@ -35,7 +35,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class TransitStopCardViewModel @Inject constructor(
-    private val placeDao: PlaceDao, private val transitousService: TransitousService
+    private val placeDao: SavedPlaceDao, private val transitousService: TransitousService
 ) : ViewModel() {
 
     val isPlaceSaved = mutableStateOf(false)
@@ -75,7 +75,7 @@ class TransitStopCardViewModel @Inject constructor(
     fun checkIfPlaceIsSaved(place: Place) {
         viewModelScope.launch {
             if (place.id != null) {
-                val existingPlace = placeDao.getPlaceById(place.id)
+                val existingPlace = placeDao.getPlace(place.id)
                 isPlaceSaved.value = existingPlace != null
             }
         }
@@ -139,14 +139,14 @@ class TransitStopCardViewModel @Inject constructor(
 
     fun savePlace(place: Place) {
         viewModelScope.launch {
-            placeDao.insertPlace(PlaceEntity.fromPlace(place))
+            placeDao.insertPlace(SavedPlace.fromPlace(place))
             isPlaceSaved.value = true
         }
     }
 
     fun unsavePlace(place: Place) {
         viewModelScope.launch {
-            placeDao.deletePlace(PlaceEntity.fromPlace(place))
+            placeDao.deletePlace(SavedPlace.fromPlace(place))
             isPlaceSaved.value = false
         }
     }

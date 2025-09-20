@@ -28,14 +28,12 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import earth.maps.cardinal.R
-import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.ViewportPreferences
 import earth.maps.cardinal.data.ViewportRepository
-import earth.maps.cardinal.data.room.PlaceDao
+import earth.maps.cardinal.data.room.SavedPlaceDao
 import earth.maps.cardinal.geocoding.OfflineGeocodingService
-import earth.maps.cardinal.ui.generatePlaceId
 import io.github.dellisd.spatialk.geojson.Feature
 import io.github.dellisd.spatialk.geojson.FeatureCollection
 import io.github.dellisd.spatialk.geojson.Point
@@ -65,7 +63,7 @@ class MapViewModel @Inject constructor(
     private val viewportRepository: ViewportRepository,
     private val locationRepository: LocationRepository,
     private val offlineGeocodingService: OfflineGeocodingService,
-    private val placeDao: PlaceDao,
+    private val placeDao: SavedPlaceDao,
 ) : ViewModel() {
 
     private companion object {
@@ -107,7 +105,7 @@ class MapViewModel @Inject constructor(
                                 "\"", "\\\""
                             )
                         }\""
-                    ), "saved_poi_id" to parseToJsonElement("${it.id}")
+                    ), "saved_poi_id" to parseToJsonElement(it.id)
                 )
             )
         })
@@ -208,18 +206,7 @@ class MapViewModel @Inject constructor(
 
         val result =
             offlineGeocodingService.buildResult(tags, latitude = latitude, longitude = longitude)
-        return Place(
-            id = savedPoiId ?: generatePlaceId(result),
-            name = result.displayName,
-            type = description ?: context.getString(R.string.search_result_description),
-            icon = "search",
-            latLng = LatLng(
-                latitude = result.latitude,
-                longitude = result.longitude,
-            ),
-            address = result.address,
-            isTransitStop = tags["class"] == "bus",
-        )
+        return locationRepository.createSearchResultPlace(result)
     }
 
     /**

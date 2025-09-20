@@ -21,39 +21,48 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.room.PlaceDao
-import earth.maps.cardinal.data.room.PlaceEntity
+import earth.maps.cardinal.data.room.SavedPlace
+import earth.maps.cardinal.data.room.SavedPlaceDao
+import earth.maps.cardinal.data.room.SavedPlaceRepository
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class ManagePlacesViewModel @Inject constructor(
-    private val placeDao: PlaceDao
+    private val placeDao: SavedPlaceDao,
+    private val savedPlaceRepository: SavedPlaceRepository,
 ) : ViewModel() {
 
-    val places = mutableStateOf<List<Place>>(emptyList())
-    val selectedPlace = mutableStateOf<Place?>(null)
+    val places = mutableStateOf<List<SavedPlace>>(emptyList())
+    val selectedPlace = mutableStateOf<SavedPlace?>(null)
     val isEditingPlace = mutableStateOf(false)
-    val placeToEdit = mutableStateOf<Place?>(null)
-    val placeToDelete = mutableStateOf<Place?>(null)
+    val placeToEdit = mutableStateOf<SavedPlace?>(null)
+    val placeToDelete = mutableStateOf<SavedPlace?>(null)
+    private val listId = mutableStateOf<String?>(null)
 
-    init {
-        loadPlaces()
+    private fun setListId(id: String) {
+        listId.value = id
     }
 
     private fun loadPlaces() {
-        viewModelScope.launch {
-            placeDao.getAllPlaces().collect { placeEntities ->
-                places.value = placeEntities.map { it.toPlace() }
+        listId.value?.let { listId ->
+            viewModelScope.launch {
+                placeDao.getPlacesInList(listId).collect { placeEntities ->
+                    places.value = placeEntities
+                }
             }
         }
     }
 
-    fun selectPlace(place: Place) {
+    fun selectPlace(place: SavedPlace) {
         selectedPlace.value = place
     }
 
-    fun startEditingPlace(place: Place) {
+    fun convertToPlace(savedPlace: SavedPlace): Place {
+        return savedPlaceRepository.toPlace(savedPlace)
+    }
+
+    fun startEditingPlace(place: SavedPlace) {
         placeToEdit.value = place
         isEditingPlace.value = true
     }
@@ -63,9 +72,9 @@ class ManagePlacesViewModel @Inject constructor(
         placeToEdit.value = null
     }
 
-    fun editPlace(updatedPlace: Place) {
+    fun editPlace(updatedPlace: SavedPlace) {
         viewModelScope.launch {
-            placeDao.updatePlace(PlaceEntity.fromPlace(updatedPlace))
+            placeDao.updatePlace(updatedPlace)
             isEditingPlace.value = false
             placeToEdit.value = null
             // Reload places to reflect changes
@@ -73,7 +82,7 @@ class ManagePlacesViewModel @Inject constructor(
         }
     }
 
-    fun startDeletingPlace(place: Place) {
+    fun startDeletingPlace(place: SavedPlace) {
         placeToDelete.value = place
     }
 
@@ -81,9 +90,9 @@ class ManagePlacesViewModel @Inject constructor(
         placeToDelete.value = null
     }
 
-    fun deletePlace(place: Place) {
+    fun deletePlace(place: SavedPlace) {
         viewModelScope.launch {
-            placeDao.deletePlace(PlaceEntity.fromPlace(place))
+            placeDao.deletePlace(place)
             placeToDelete.value = null
             // Reload places to reflect changes
             loadPlaces()

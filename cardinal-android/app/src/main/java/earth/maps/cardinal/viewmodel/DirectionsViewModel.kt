@@ -27,11 +27,11 @@ import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.room.PlaceDao
 import earth.maps.cardinal.data.RoutingMode
+import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.data.room.RoutingProfile
 import earth.maps.cardinal.data.room.RoutingProfileRepository
-import earth.maps.cardinal.data.ViewportRepository
+import earth.maps.cardinal.data.room.SavedPlaceDao
 import earth.maps.cardinal.geocoding.GeocodingService
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
 import earth.maps.cardinal.ui.NavigationCoordinator
@@ -67,7 +67,7 @@ class DirectionsViewModel @Inject constructor(
     private val geocodingService: GeocodingService,
     private val ferrostarWrapperRepository: FerrostarWrapperRepository,
     private val viewportRepository: ViewportRepository,
-    private val placeDao: PlaceDao,
+    private val placeDao: SavedPlaceDao,
     private val locationRepository: LocationRepository,
     private val routingProfileRepository: RoutingProfileRepository
 ) : ViewModel() {
@@ -125,13 +125,6 @@ class DirectionsViewModel @Inject constructor(
                 }
             }
             .launchIn(viewModelScope)
-
-        // Load saved places
-        viewModelScope.launch {
-            placeDao.getAllPlaces().collect { placeEntities ->
-                savedPlaces.value = placeEntities.map { it.toPlace() }
-            }
-        }
 
         // Initialize with the default profile for the current routing mode
         initializeDefaultProfileForMode(selectedRoutingMode)

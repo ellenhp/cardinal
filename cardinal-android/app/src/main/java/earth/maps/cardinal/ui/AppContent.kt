@@ -564,7 +564,7 @@ fun AppContent(
                         onDropPin = {
                             val place = Place(
                                 name = droppedPinName,
-                                type = "",
+                                description = "",
                                 icon = "place",
                                 latLng = it,
                                 address = null,

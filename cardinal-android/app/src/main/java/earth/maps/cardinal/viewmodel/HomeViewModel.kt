@@ -25,14 +25,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.room.PlaceDao
-import earth.maps.cardinal.data.room.PlaceEntity
 import earth.maps.cardinal.data.ViewportRepository
+import earth.maps.cardinal.data.room.SavedPlaceDao
 import earth.maps.cardinal.geocoding.GeocodingService
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.all
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -44,7 +42,7 @@ import javax.inject.Inject
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val placeDao: PlaceDao,
+    private val placeDao: SavedPlaceDao,
     private val geocodingService: GeocodingService,
     private val viewportRepository: ViewportRepository,
     private val locationRepository: LocationRepository,
@@ -69,61 +67,6 @@ class HomeViewModel @Inject constructor(
         private set
 
     init {
-        // Add sample data to database if it's empty
-        viewModelScope.launch {
-            if (placeDao.getAllPlaces().all { it.isEmpty() }) {
-                val samplePlaces = listOf(
-                    PlaceEntity(
-                        id = 1,
-                        name = "Home",
-                        type = "Residence",
-                        icon = "home",
-                        latitude = 37.7749,
-                        longitude = -122.4194,
-                        road = "Main Street",
-                        city = "San Francisco",
-                        state = "CA",
-                        postcode = "94105",
-                        country = "USA"
-                    ),
-                    PlaceEntity(
-                        id = 2,
-                        name = "Work",
-                        type = "Office",
-                        icon = "work",
-                        latitude = 37.7849,
-                        longitude = -122.4094,
-                        road = "Market Street",
-                        city = "San Francisco",
-                        state = "CA",
-                        postcode = "94103",
-                        country = "USA"
-                    ),
-                    PlaceEntity(
-                        id = 3,
-                        name = "Coffee Shop",
-                        type = "Cafe",
-                        icon = "coffee",
-                        latitude = 37.7793,
-                        longitude = -122.4035,
-                        road = "Howard Street",
-                        city = "San Francisco",
-                        state = "CA",
-                        postcode = "94103",
-                        country = "USA"
-                    )
-                )
-                placeDao.insertPlaces(samplePlaces)
-            }
-        }
-
-        // Load saved places from database
-        viewModelScope.launch {
-            placeDao.getAllPlaces().collect { placeEntities ->
-                savedPlaces.value = placeEntities.map { it.toPlace() }
-            }
-        }
-
         // Set up debounced search
         searchQueryFlow
             .debounce(300) // 300ms delay
