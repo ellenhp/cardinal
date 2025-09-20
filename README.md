@@ -10,36 +10,21 @@
 
 Cardinal Maps is a mapping application for Android designed to get out of your way and be there when you need it. We believe maps should be fast, private, and focused on what matters most—helping you navigate the world around you.
 
-## User-Focused Design
+## Key Features
 
 Every decision we make puts the user first:
+
 - **No ads** - Clean interface without distractions
 - **No tracking or analytics** - Your data stays yours
-- **Offline mode** - Navigate even when you need maximum privacy
-- **Snappy performance** - Optimized for quick loading and smooth interaction
+- **Online and offline modes** - Search and get directions anywhere in the world out of the box, with complete offline privacy just a few taps away.
+- **Self-host your maps services** - Works seamlessly with [Headway](https://github.com/headwaymaps/headway) for those who want the convenience of online maps on their own terms.
+- **Modern look and feel** - Built from the ground up with Material 3 components.
+- **Smooth performance** - Using MapLibre for map rendering means Cardinal Maps is fast—much faster than you may be used if you're a FOSS maps enjoyer.
+- **Transit support (work in progress)** - Tap on any bus stop to see upcoming departures, and favorite it for easy access in your saved places.
 
 ## Screenshots
 
 <img src="assets/screenshot_basemap.png" width="33%" alt="Basemap view" style="padding: 0; margin: 0;"><img src="assets/screenshot_place_card.png" width="33%" alt="Place card view" style="padding: 0; margin: 0;"><img src="assets/screenshot_directions.png" width="33%" alt="Directions view" style="padding: 0; margin: 0;">
-
-## Key Features
-
-- **Online and offline modes** - Search and get directions anywhere in the world out of the box, with complete offline privacy just a few taps away.
-- **Self-host your maps services** - Works seamlessly with [Headway](https://github.com/headwaymaps/headway) for those who want the convenience of online maps on their own terms.
-- **Modern look and feel** - Built from the ground up in Material 3.
-- **Built with industry-standard tools** - Contributors aren't bogged down with years of cruft.
-
-## Feature Comparison
-
-Below is a comparison of Cardinal Maps with other open-source mapping applications:
-
-| Feature | Cardinal Maps | OsmAnd | Organic Maps/CoMaps |
-|---------|---------------|--------|--------------|
-| **Privacy** | Full-featured offline mode available, and users are able to point online geocoding and routing requests to whichever backend they feel comfortable with in Advanced Settings, **including self-hosted services** like [Headway](https://github.com/headwaymaps/headway). | OsmAnd fetches online tiles by default, but is capable of operating completely offline, meaning the only data that leaves your device is which areas of the world you download maps for. | CoMaps is completely offline except for the map download step, there is no option for fetching tiles live from the internet. |
-| **Offline Maps** | Users can pre-download maps for areas of the world they live in or want to visit. The user can pick which areas to download, from a small neighborhood to a metropolitan area. | The user can choose which pre-defined map packs they want to download. | Similar to OsmAnd, map packs are pre-defined. |
-| **User Interface** | Uses platform-native UI toolkits (Material 3 on Android) and industry-standard map rendering tech ([MapLibre Native](https://github.com/maplibre/maplibre-native)) for a modern look and feel. | Written almost entirely in Java with bespoke map rendering | Written almost entirely in C++ with bespoke UI and map rendering |
-| **Navigation** | Full support using [Ferrostar](https://github.com/stadiamaps/ferrostar) for a sleek experience online and offline. | Full support | Full support |
-| **Performance** | Subjectively, quite good. Map pans and flings are smooth. | Choppy at times. | Choppy at times. |
 
 ## Support the project
 
