@@ -217,7 +217,8 @@ class MapViewModel @Inject constructor(
                 latitude = result.latitude,
                 longitude = result.longitude,
             ),
-            address = result.address
+            address = result.address,
+            isTransitStop = tags["class"] == "bus",
         )
     }
 

@@ -24,6 +24,7 @@ data class Place(
     val latLng: LatLng,
     val address: Address? = null,
     val isMyLocation: Boolean = false,
+    val isTransitStop: Boolean = false,
 )
 
 data class LatLng(

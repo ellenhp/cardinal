@@ -124,22 +124,19 @@ fun AppContent(
     val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
 
     var allowPartialExpansion by remember { mutableStateOf(true) }
-    val bottomSheetState =
-        rememberStandardBottomSheetState(
-            initialValue = SheetValue.PartiallyExpanded,
-            confirmValueChange = { newState ->
-                when (newState) {
-                    SheetValue.Hidden -> false // Always false!
-                    SheetValue.Expanded -> true // Always true!
-                    SheetValue.PartiallyExpanded -> allowPartialExpansion // Allow composables to control this
-                }
-            })
+    val bottomSheetState = rememberStandardBottomSheetState(
+        initialValue = SheetValue.PartiallyExpanded, confirmValueChange = { newState ->
+            when (newState) {
+                SheetValue.Hidden -> false // Always false!
+                SheetValue.Expanded -> true // Always true!
+                SheetValue.PartiallyExpanded -> allowPartialExpansion // Allow composables to control this
+            }
+        })
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState)
     val snackBarHostState = remember { SnackbarHostState() }
-    val bottomInset =
-        with(density) {
-            WindowInsets.safeDrawing.getBottom(density).toDp()
-        }
+    val bottomInset = with(density) {
+        WindowInsets.safeDrawing.getBottom(density).toDp()
+    }
     var screenHeightDp by remember { mutableStateOf(0.dp) }
     var screenWidthDp by remember { mutableStateOf(0.dp) }
 
@@ -198,7 +195,11 @@ fun AppContent(
                                     // Force the sheet to be partially expanded.
                                     scaffoldState.bottomSheetState.partialExpand()
                                 }
-                                navigationCoordinator.navigateToPlaceCard(place)
+                                if (place.isTransitStop) {
+                                    navigationCoordinator.navigateToTransitStopCard(place)
+                                } else {
+                                    navigationCoordinator.navigateToPlaceCard(place)
+                                }
                             },
                             onPeekHeightChange = { peekHeight = it },
                             isSearchFocused = isSearchFocused,
@@ -248,16 +249,11 @@ fun AppContent(
                                 }
                             }
 
-                            PlaceCardScreen(
-                                place = place,
-                                viewModel = viewModel,
-                                onBack = {
-                                    navController.popBackStack()
-                                },
-                                onGetDirections = { place ->
-                                    navigationCoordinator.navigateToDirections(toPlace = place)
-                                },
-                                onPeekHeightChange = { peekHeight = it })
+                            PlaceCardScreen(place = place, viewModel = viewModel, onBack = {
+                                navController.popBackStack()
+                            }, onGetDirections = { place ->
+                                navigationCoordinator.navigateToDirections(toPlace = place)
+                            }, onPeekHeightChange = { peekHeight = it })
                         }
                     }
 
@@ -277,8 +273,7 @@ fun AppContent(
                         stop?.let { stop ->
                             LaunchedEffect(stop) {
                                 mapPins.clear()
-                                val position =
-                                    Position(stop.latLng.longitude, stop.latLng.latitude)
+                                val position = Position(stop.latLng.longitude, stop.latLng.latitude)
                                 // Clear any existing pins and add the new one to ensure only one pin is shown at a time
                                 mapPins.clear()
                                 mapPins.add(position)
@@ -302,16 +297,11 @@ fun AppContent(
                                 viewModel.setStop(stop)
                             }
 
-                            TransitStopScreen(
-                                stop = stop,
-                                viewModel = viewModel,
-                                onBack = {
-                                    navController.popBackStack()
-                                },
-                                onGetDirections = { place ->
-                                    navigationCoordinator.navigateToDirections(toPlace = place)
-                                },
-                                onPeekHeightChange = { peekHeight = it })
+                            TransitStopScreen(stop = stop, viewModel = viewModel, onBack = {
+                                navController.popBackStack()
+                            }, onGetDirections = { place ->
+                                navigationCoordinator.navigateToDirections(toPlace = place)
+                            }, onPeekHeightChange = { peekHeight = it })
                         }
                     }
 
@@ -354,10 +344,7 @@ fun AppContent(
                                         scaffoldState.bottomSheetState.partialExpand()
                                         cameraState.animateTo(
                                             boundingBox = BoundingBox(
-                                                area.west,
-                                                area.south,
-                                                area.east,
-                                                area.north
+                                                area.west, area.south, area.east, area.north
                                             ),
                                             padding = PaddingValues(
                                                 screenWidthDp / 4,
@@ -369,8 +356,7 @@ fun AppContent(
                                         )
                                     }
                                     selectedOfflineArea = area
-                                }
-                            )
+                                })
                         }
                     }
 
@@ -426,8 +412,7 @@ fun AppContent(
                         val viewModel: SettingsViewModel = hiltViewModel()
                         AccessibilitySettingsScreen(
                             viewModel = viewModel,
-                            onDismiss = { navigationCoordinator.navigateBack() }
-                        )
+                            onDismiss = { navigationCoordinator.navigateBack() })
                     }
 
                     composable(Screen.AdvancedSettings.route) {
@@ -444,8 +429,7 @@ fun AppContent(
                         val viewModel: SettingsViewModel = hiltViewModel()
                         AdvancedSettingsScreen(
                             viewModel = viewModel,
-                            onDismiss = { navigationCoordinator.navigateBack() }
-                        )
+                            onDismiss = { navigationCoordinator.navigateBack() })
                     }
 
                     composable(Screen.RoutingProfiles.route) {
@@ -534,8 +518,7 @@ fun AppContent(
                             cameraState = cameraState,
                             appPreferences = appPreferenceRepository,
                             padding = polylinePadding,
-                            onRouteUpdate = { route -> currentRoute = route }
-                        )
+                            onRouteUpdate = { route -> currentRoute = route })
                         DisposableEffect(key1 = Unit) {
                             onDispose {
                                 currentRoute = null

@@ -38,7 +38,8 @@ data class PlaceEntity(
     val state: String? = null,
     val postcode: String? = null,
     val country: String? = null,
-    val countryCode: String? = null
+    val countryCode: String? = null,
+    val isTransitStop: Boolean = false,
 ) {
     fun toPlace(): Place {
         return Place(
@@ -62,7 +63,8 @@ data class PlaceEntity(
                 )
             } else {
                 null
-            }
+            },
+            isTransitStop = isTransitStop,
         )
     }
 
@@ -81,7 +83,8 @@ data class PlaceEntity(
                 state = place.address?.state,
                 postcode = place.address?.postcode,
                 country = place.address?.country,
-                countryCode = place.address?.countryCode
+                countryCode = place.address?.countryCode,
+                isTransitStop = place.isTransitStop,
             )
         }
     }
