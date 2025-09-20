@@ -74,7 +74,7 @@ class NavigationCoordinator(
     fun navigateToPlaceCard(place: Place) {
         val placeJson = Uri.encode(Gson().toJson(place))
         bottomSheetNavController.navigate("place_card?place=$placeJson") {
-            popUpTo(Screen.PlaceCard.route) { inclusive = true }
+            popUpTo(Screen.Home.route) { inclusive = false }
         }
     }
 
@@ -150,7 +150,7 @@ class NavigationCoordinator(
     fun navigateToTransitStopCard(stop: Place) {
         val stopJson = Uri.encode(Gson().toJson(stop))
         bottomSheetNavController.navigate("transit_card?stop=$stopJson") {
-            popUpTo(Screen.PlaceCard.route) { inclusive = true }
+            popUpTo(Screen.Home.route) { inclusive = false }
         }
     }
 }

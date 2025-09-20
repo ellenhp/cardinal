@@ -24,8 +24,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -33,6 +31,8 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -49,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
@@ -56,6 +57,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.Place
@@ -71,6 +73,13 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.ExperimentalTime
 import kotlin.time.toKotlinInstant
+
+fun Color.contrastColor(): Color {
+    // Calculate luminance using the standard formula
+    val luminance = (this.red * 0.299f + this.green * 0.587f + this.blue * 0.114f)
+    // Return black for light backgrounds and white for dark backgrounds
+    return if (luminance > 0.5f) Color.Black else Color.White
+}
 
 @Composable
 fun TransitStopScreen(
@@ -106,10 +115,16 @@ fun TransitStopScreen(
     Column {
 
         Column(
-            modifier = Modifier.onGloballyPositioned { coordinates ->
-                val heightInDp = with(density) { coordinates.size.height.toDp() }
-                onPeekHeightChange(heightInDp)
-            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = dimensionResource(dimen.padding),
+                    end = dimensionResource(dimen.padding),
+                )
+                .onGloballyPositioned { coordinates ->
+                    val heightInDp = with(density) { coordinates.size.height.toDp() }
+                    onPeekHeightChange(heightInDp)
+                },
 
             ) {
             // Place name and type
@@ -205,7 +220,7 @@ fun TransitStopScreen(
             )
         }
 
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
@@ -213,138 +228,43 @@ fun TransitStopScreen(
                     end = dimensionResource(dimen.padding),
                 )
         ) {
-
-            item {
-                // Departures section
-                Text(
-                    text = "Departures",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-            }
-
-            item {
-                // Refresh button for departures
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(string.departures_heading),
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = { viewModel.refreshDepartures() }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh departures"
-                        )
-                    }
-                }
-            }
-
-            item {
-                if (viewModel.departures.value.isEmpty()) {
-                    Text(
-                        text = "No upcoming departures",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
-            }
-
-            // List of departures
-            items(viewModel.departures.value) { stopTime ->
-                DepartureItem(stopTime = stopTime)
-            }
-        }
-    }
-
-    // Save Place Dialog
-    if (showSavePlaceDialog) {
-        SaveTransitStopDialog(
-            place = stopToSave,
-            onDismiss = { showSavePlaceDialog = false },
-            onSave = { updatedPlace ->
-                viewModel.savePlace(updatedPlace)
-                showSavePlaceDialog = false
-            })
-    }
-
-    // Unsave Confirmation Dialog
-    if (showUnsaveConfirmationDialog) {
-        AlertDialog(
-            onDismissRequest = { showUnsaveConfirmationDialog = false },
-            title = { Text(stringResource(string.unsave_place)) },
-            text = {
-                Text(
-                    stringResource(
-                        string.are_you_sure_you_want_to_delete, displayedPlace.name
-                    )
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.unsavePlace(displayedPlace)
-                        showUnsaveConfirmationDialog = false
-                    }) {
-                    Text(stringResource(string.unsave_place))
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showUnsaveConfirmationDialog = false }) {
-                    Text(stringResource(string.cancel_button))
-                }
-            })
-
-        // Departures section
-        Text(
-            text = "Departures",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 16.dp)
-        )
-
-        // Refresh button for departures
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+            // Departures section
             Text(
-                text = "Next departures:",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
+                text = stringResource(string.departures_heading),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 16.dp)
             )
-            IconButton(onClick = { viewModel.refreshDepartures() }) {
-                Icon(
-                    imageVector = Icons.Default.Refresh, contentDescription = "Refresh departures"
-                )
-            }
-        }
 
-        // List of departures
-        if (viewModel.departures.value.isEmpty()) {
-            Text(
-                text = "No upcoming departures",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-        } else {
-            LazyColumn(
+            // Refresh button for departures
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                items(viewModel.departures.value) { stopTime ->
-                    DepartureItem(stopTime = stopTime)
+                Text(
+                    text = "Next departures:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { viewModel.refreshDepartures() }) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh departures"
+                    )
                 }
+            }
+
+            // List of departures grouped by route
+            if (viewModel.departures.value.isEmpty()) {
+                Text(
+                    text = "No upcoming departures",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                RouteDepartures(stopTimes = viewModel.departures.value)
             }
         }
     }
@@ -392,10 +312,63 @@ fun TransitStopScreen(
 
 @OptIn(ExperimentalTime::class)
 @Composable
-fun DepartureItem(stopTime: StopTime) {
+fun RouteDepartures(stopTimes: List<StopTime>) {
+    // Group departures by route name
+    val departuresByRoute = stopTimes.groupBy { it.routeShortName }
+
+    departuresByRoute.forEach { (routeName, departures) ->
+        val routeColor = departures.firstOrNull()?.routeColor?.let {
+            Color(
+                "#$it".toColorInt()
+            )
+        } ?: MaterialTheme.colorScheme.surfaceVariant
+
+        val textColor = routeColor.contrastColor()
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = routeColor
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                // Route name header
+                Text(
+                    text = routeName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                // List departures for this route
+                departures.forEachIndexed { index, stopTime ->
+                    DepartureRow(stopTime = stopTime, textColor = textColor)
+                    // Add divider between departure rows, but not after the last one
+                    if (index < departures.size - 1) {
+                        HorizontalDivider(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            thickness = DividerDefaults.Thickness / 2,
+                            color = textColor.copy(alpha = 0.3f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTime::class)
+@Composable
+fun DepartureRow(stopTime: StopTime, textColor: Color = MaterialTheme.colorScheme.onSurface) {
     val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val isoFormatter = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.systemDefault())
-
 
     val scheduledDepartureInstant = stopTime.place.scheduledDeparture?.let {
         try {
@@ -404,13 +377,13 @@ fun DepartureItem(stopTime: StopTime) {
             null
         }
     }
-    val scheduledDepartureTime = scheduledDepartureInstant?.let {
+    val scheduledDepartureTime: String? = scheduledDepartureInstant?.let {
         try {
             dateFormat.format(Date.from(it))
         } catch (_: Exception) {
-            it
+            null
         }
-    } ?: stringResource(string.unknown_departure)
+    }
 
     val bestDepartureInstant = stopTime.place.departure?.let {
         try {
@@ -420,85 +393,53 @@ fun DepartureItem(stopTime: StopTime) {
         }
     } ?: scheduledDepartureInstant
 
-    val bestDepartureTime = bestDepartureInstant?.let {
+    val bestDepartureTime: String? = bestDepartureInstant?.let {
         try {
             dateFormat.format(Date.from(it))
         } catch (_: Exception) {
-            it
+            scheduledDepartureTime
         }
     } ?: scheduledDepartureTime
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stopTime.routeShortName,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
-            )
-
-            Text(
-                text = if (stopTime.realTime) "● Live" else "Scheduled",
-                style = MaterialTheme.typography.bodySmall,
-                color = if (stopTime.realTime) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Text(
-            text = stopTime.headsign,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 2.dp)
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val timeUntilDeparture =
-                bestDepartureInstant?.toKotlinInstant()?.minus(Clock.System.now())
-            if (timeUntilDeparture != null && timeUntilDeparture > 30.minutes) {
-                Text(
-                    text = "Departure: $bestDepartureTime",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.weight(1f)
-                )
-            } else if (timeUntilDeparture != null) {
-                Text(
-                    text = "${timeUntilDeparture.inWholeMinutes} minutes",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.weight(1f)
-                )
-            } else if (stopTime.cancelled) {
-                Text(
-                    text = stringResource(string.transit_cancelled),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            } else {
-                Text(
-                    text = stringResource(string.transit_unknown_status),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        }
-    }
-
-    HorizontalDivider(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        thickness = DividerDefaults.Thickness / 2,
-        color = MaterialTheme.colorScheme.outlineVariant
-    )
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Headsign at the beginning
+        Text(
+            text = stopTime.headsign,
+            style = MaterialTheme.typography.bodyMedium,
+            color = textColor,
+            modifier = Modifier.weight(1f)
+        )
+
+        // Real-time indicator with text
+        if (stopTime.realTime) {
+            Text(
+                text = "● Live",
+                style = MaterialTheme.typography.bodySmall,
+                color = textColor,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+        }
+
+        // Departure time at the end
+        val timeUntilDeparture = bestDepartureInstant?.toKotlinInstant()?.minus(Clock.System.now())
+        Text(
+            text = if (timeUntilDeparture != null && timeUntilDeparture > 30.minutes) {
+                bestDepartureTime ?: stringResource(string.unknown_departure)
+            } else if (timeUntilDeparture != null) {
+                "${timeUntilDeparture.inWholeMinutes} min"
+            } else {
+                bestDepartureTime ?: stringResource(string.unknown_departure)
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = textColor,
+            fontWeight = if (stopTime.realTime) FontWeight.Medium else FontWeight.Normal
+        )
+    }
 }
 
 @Composable
