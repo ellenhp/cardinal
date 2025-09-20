@@ -146,4 +146,11 @@ class NavigationCoordinator(
     fun navigateToAdvancedSettings() {
         bottomSheetNavController.navigate(Screen.AdvancedSettings.route)
     }
+
+    fun navigateToTransitStopCard(stop: Place) {
+        val stopJson = Uri.encode(Gson().toJson(stop))
+        bottomSheetNavController.navigate("transit_card?stop=$stopJson") {
+            popUpTo(Screen.PlaceCard.route) { inclusive = true }
+        }
+    }
 }

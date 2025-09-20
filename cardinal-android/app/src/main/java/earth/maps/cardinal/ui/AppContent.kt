@@ -77,8 +77,8 @@ import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.LatLng
-import earth.maps.cardinal.data.room.OfflineArea
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.room.OfflineArea
 import earth.maps.cardinal.ui.settings.AccessibilitySettingsScreen
 import earth.maps.cardinal.ui.settings.AdvancedSettingsScreen
 import earth.maps.cardinal.ui.settings.PrivacySettingsScreen
@@ -89,6 +89,7 @@ import earth.maps.cardinal.viewmodel.MapViewModel
 import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
 import earth.maps.cardinal.viewmodel.SettingsViewModel
+import earth.maps.cardinal.viewmodel.TransitStopCardViewModel
 import io.github.dellisd.spatialk.geojson.BoundingBox
 import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
@@ -249,6 +250,61 @@ fun AppContent(
 
                             PlaceCardScreen(
                                 place = place,
+                                viewModel = viewModel,
+                                onBack = {
+                                    navController.popBackStack()
+                                },
+                                onGetDirections = { place ->
+                                    navigationCoordinator.navigateToDirections(toPlace = place)
+                                },
+                                onPeekHeightChange = { peekHeight = it })
+                        }
+                    }
+
+                    composable(Screen.TransitStopCard.route) { backStackEntry ->
+                        LaunchedEffect(key1 = Unit) {
+                            // Allow partial expansion and swiping for the place card screen
+                            allowPartialExpansion = true
+                            sheetSwipeEnabled = true
+                            // The place card starts partially expanded.
+                            coroutineScope.launch {
+                                bottomSheetState.partialExpand()
+                            }
+                        }
+                        val viewModel: TransitStopCardViewModel = hiltViewModel()
+                        val stopJson = backStackEntry.arguments?.getString("stop")
+                        val stop = stopJson?.let { Gson().fromJson(it, Place::class.java) }
+                        stop?.let { stop ->
+                            viewModel.setStop(stop)
+
+                            LaunchedEffect(stop) {
+                                mapPins.clear()
+                                val position =
+                                    Position(stop.latLng.longitude, stop.latLng.latitude)
+                                // Clear any existing pins and add the new one to ensure only one pin is shown at a time
+                                mapPins.clear()
+                                mapPins.add(position)
+
+                                val previousBackStackEntry = navController.previousBackStackEntry
+                                val shouldFlyToPoi =
+                                    previousBackStackEntry?.destination?.route == Screen.Home.route
+
+                                // Only animate if we're entering from the home screen, as opposed to e.g. popping from the
+                                // settings screen. This is brittle and may break if we end up with more entry points.
+                                if (shouldFlyToPoi) {
+                                    coroutineScope.launch {
+                                        cameraState.animateTo(
+                                            CameraPosition(
+                                                target = position, zoom = 15.0
+                                            ),
+                                            duration = appPreferenceRepository.animationSpeedDurationValue
+                                        )
+                                    }
+                                }
+                            }
+
+                            TransitStopScreen(
+                                stop = stop,
                                 viewModel = viewModel,
                                 onBack = {
                                     navController.popBackStack()
@@ -519,6 +575,9 @@ fun AppContent(
                         },
                         onMapPoiClick = {
                             navigationCoordinator.navigateToPlaceCard(it)
+                        },
+                        onTransitStopClick = {
+                            navigationCoordinator.navigateToTransitStopCard(it)
                         },
                         onDropPin = {
                             val place = Place(

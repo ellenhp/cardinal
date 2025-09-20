@@ -17,7 +17,6 @@
 package earth.maps.cardinal.ui
 
 import android.content.Context
-import android.util.Log
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,8 +49,8 @@ import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.LatLng
-import earth.maps.cardinal.data.room.OfflineArea
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.room.OfflineArea
 import earth.maps.cardinal.ui.map.LocationPuck
 import earth.maps.cardinal.viewmodel.MapViewModel
 import io.github.dellisd.spatialk.geojson.Feature
@@ -88,6 +87,7 @@ fun MapView(
     port: Int,
     mapViewModel: MapViewModel,
     onMapPoiClick: (Place) -> Unit,
+    onTransitStopClick: (Place) -> Unit,
     onMapInteraction: () -> Unit,
     onDropPin: (LatLng) -> Unit,
     onRequestLocationPermission: () -> Unit,
@@ -148,9 +148,8 @@ fun MapView(
                     ornamentOptions = OrnamentOptions.AllDisabled, renderOptions = RenderOptions()
                 ),
                 onMapClick = { position, dpOffset ->
-                    Log.d("MapView", "Logged tap at location $position")
                     mapViewModel.handleMapTap(
-                        cameraState, dpOffset, onMapPoiClick, onMapInteraction
+                        cameraState, dpOffset, onMapPoiClick, onTransitStopClick, onMapInteraction
                     )
                     ClickResult.Consume
                 },

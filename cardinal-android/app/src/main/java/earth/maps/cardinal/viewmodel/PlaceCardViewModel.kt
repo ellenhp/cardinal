@@ -48,20 +48,6 @@ class PlaceCardViewModel @Inject constructor(
         }
     }
 
-    fun toggleSavePlace(place: Place) {
-        viewModelScope.launch {
-            if (isPlaceSaved.value) {
-                // Remove place from favorites
-                placeDao.deletePlace(PlaceEntity.fromPlace(place))
-                isPlaceSaved.value = false
-            } else {
-                // Add place to favorites
-                placeDao.insertPlace(PlaceEntity.fromPlace(place))
-                isPlaceSaved.value = true
-            }
-        }
-    }
-
     fun savePlace(place: Place) {
         viewModelScope.launch {
             placeDao.insertPlace(PlaceEntity.fromPlace(place))
