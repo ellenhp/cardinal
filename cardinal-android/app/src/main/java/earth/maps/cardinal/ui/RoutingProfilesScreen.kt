@@ -63,7 +63,7 @@ import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.RoutingMode
-import earth.maps.cardinal.data.RoutingProfile
+import earth.maps.cardinal.data.room.RoutingProfile
 import earth.maps.cardinal.viewmodel.RoutingProfilesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

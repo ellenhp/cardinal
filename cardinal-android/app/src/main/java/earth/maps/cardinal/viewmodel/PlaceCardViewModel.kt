@@ -21,8 +21,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.PlaceDao
-import earth.maps.cardinal.data.PlaceEntity
+import earth.maps.cardinal.data.room.PlaceDao
+import earth.maps.cardinal.data.room.PlaceEntity
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -44,20 +44,6 @@ class PlaceCardViewModel @Inject constructor(
             if (place.id != null) {
                 val existingPlace = placeDao.getPlaceById(place.id)
                 isPlaceSaved.value = existingPlace != null
-            }
-        }
-    }
-
-    fun toggleSavePlace(place: Place) {
-        viewModelScope.launch {
-            if (isPlaceSaved.value) {
-                // Remove place from favorites
-                placeDao.deletePlace(PlaceEntity.fromPlace(place))
-                isPlaceSaved.value = false
-            } else {
-                // Add place to favorites
-                placeDao.insertPlace(PlaceEntity.fromPlace(place))
-                isPlaceSaved.value = true
             }
         }
     }

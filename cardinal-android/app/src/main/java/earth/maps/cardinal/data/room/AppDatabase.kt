@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package earth.maps.cardinal.data
+package earth.maps.cardinal.data.room
 
 import android.content.Context
 import androidx.room.Database
@@ -23,10 +23,11 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import earth.maps.cardinal.data.DownloadStatusConverter
 
 @Database(
     entities = [PlaceEntity::class, OfflineArea::class, RoutingProfile::class, DownloadedTile::class],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(TileTypeConverter::class, DownloadStatusConverter::class)
@@ -93,13 +94,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE places ADD COLUMN isTransitStop INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "cardinal_maps_database"
-                ).addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build()
+                    context.applicationContext, AppDatabase::class.java, "cardinal_maps_database"
+                ).addMigrations(
+                    MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7
+                ).build()
                 INSTANCE = instance
                 instance
             }

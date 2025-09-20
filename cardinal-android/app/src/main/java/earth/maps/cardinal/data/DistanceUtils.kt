@@ -17,6 +17,7 @@
 package earth.maps.cardinal.data
 
 import kotlin.math.roundToInt
+import kotlin.math.*
 
 /**
  * Utility functions for formatting distances based on unit preferences.
@@ -102,5 +103,30 @@ object DistanceUtils {
 
             else -> "${meters.roundToInt()} m" // Default to metric
         }
+    }
+
+    /**
+     * Calculates the great-circle distance between two points on Earth using the haversine formula.
+     *
+     * @param latLng1 First point with latitude and longitude
+     * @param latLng2 Second point with latitude and longitude
+     * @return Distance in meters
+     */
+    fun haversineDistance(latLng1: LatLng, latLng2: LatLng): Double {
+        val lat1 = Math.toRadians(latLng1.latitude)
+        val lon1 = Math.toRadians(latLng1.longitude)
+        val lat2 = Math.toRadians(latLng2.latitude)
+        val lon2 = Math.toRadians(latLng2.longitude)
+
+        val deltaLat = lat2 - lat1
+        val deltaLon = lon2 - lon1
+
+        val a = sin(deltaLat / 2).pow(2) + cos(lat1) * cos(lat2) * sin(deltaLon / 2).pow(2)
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+        // Earth's radius in meters
+        val earthRadius = 6371000.0
+
+        return earthRadius * c
     }
 }

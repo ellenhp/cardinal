@@ -24,9 +24,14 @@ data class Place(
     val latLng: LatLng,
     val address: Address? = null,
     val isMyLocation: Boolean = false,
+    val isTransitStop: Boolean = false,
 )
 
 data class LatLng(
     val latitude: Double,
     val longitude: Double,
-)
+) {
+    fun distanceTo(other: LatLng): Double {
+        return DistanceUtils.haversineDistance(this, other)
+    }
+}

@@ -23,6 +23,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.cargo.ndk)
+    kotlin("plugin.serialization") version "2.2.10"
 }
 
 android {
@@ -159,10 +160,11 @@ dependencies {
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.ktor.client.logging)
     implementation(libs.valhalla.mobile)
-    implementation(libs.valhalla.config)
     implementation(libs.valhalla.models)
+    implementation(libs.valhalla.config)
     implementation(libs.ferrostar.core)
     implementation(libs.ferrostar.maplibreui)
     implementation(libs.ferrostar.composeui)

@@ -14,10 +14,13 @@
  *    limitations under the License.
  */
 
-package earth.maps.cardinal.data
+package earth.maps.cardinal.data.room
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import earth.maps.cardinal.data.Address
+import earth.maps.cardinal.data.LatLng
+import earth.maps.cardinal.data.Place
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 
@@ -35,7 +38,8 @@ data class PlaceEntity(
     val state: String? = null,
     val postcode: String? = null,
     val country: String? = null,
-    val countryCode: String? = null
+    val countryCode: String? = null,
+    val isTransitStop: Boolean = false,
 ) {
     fun toPlace(): Place {
         return Place(
@@ -59,7 +63,8 @@ data class PlaceEntity(
                 )
             } else {
                 null
-            }
+            },
+            isTransitStop = isTransitStop,
         )
     }
 
@@ -78,7 +83,8 @@ data class PlaceEntity(
                 state = place.address?.state,
                 postcode = place.address?.postcode,
                 country = place.address?.country,
-                countryCode = place.address?.countryCode
+                countryCode = place.address?.countryCode,
+                isTransitStop = place.isTransitStop,
             )
         }
     }

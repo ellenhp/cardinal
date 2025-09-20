@@ -19,8 +19,8 @@ package earth.maps.cardinal.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import earth.maps.cardinal.data.RoutingProfile
-import earth.maps.cardinal.data.RoutingProfileRepository
+import earth.maps.cardinal.data.room.RoutingProfile
+import earth.maps.cardinal.data.room.RoutingProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

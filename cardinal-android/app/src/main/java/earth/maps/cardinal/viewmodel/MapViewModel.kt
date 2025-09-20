@@ -31,9 +31,9 @@ import earth.maps.cardinal.R
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.PlaceDao
 import earth.maps.cardinal.data.ViewportPreferences
 import earth.maps.cardinal.data.ViewportRepository
+import earth.maps.cardinal.data.room.PlaceDao
 import earth.maps.cardinal.geocoding.OfflineGeocodingService
 import earth.maps.cardinal.ui.generatePlaceId
 import io.github.dellisd.spatialk.geojson.Feature
@@ -148,6 +148,7 @@ class MapViewModel @Inject constructor(
         cameraState: CameraState,
         dpOffset: DpOffset,
         onMapPoiClick: (Place) -> Unit,
+        onTransitStopClick: (Place) -> Unit,
         onMapInteraction: () -> Unit
     ) {
         val features = cameraState.projection?.queryRenderedFeatures(
@@ -159,18 +160,30 @@ class MapViewModel @Inject constructor(
             it.geometry is Point
         }
         val savedFeatures = filteredFeatures?.filter { it.properties.contains("saved_poi_id") }
+        val transitFeatures =
+            filteredFeatures?.filter { it.properties["class"]?.jsonPrimitive?.content == "bus" }
         val namedFeatures = filteredFeatures?.filter { it.properties.contains("name") }
-        val feature = savedFeatures?.firstOrNull() ?: namedFeatures?.firstOrNull()
-        ?: filteredFeatures?.firstOrNull()
+        val feature = savedFeatures?.firstOrNull() ?: transitFeatures?.firstOrNull()
+        ?: namedFeatures?.firstOrNull() ?: filteredFeatures?.firstOrNull()
         if (feature != null) {
             val properties =
                 feature.properties.map { (key, value) -> key to value.jsonPrimitive.content }
                     .toMap()
-            onMapPoiClick(
-                convertFeatureToPlace(
-                    feature, description = locationRepository.mapOsmTagsToDescription(properties)
+            if (properties["class"] == "bus") {
+                onTransitStopClick(
+                    convertFeatureToPlace(
+                        feature,
+                        description = context.getString(R.string.transit_stop)
+                    )
                 )
-            )
+            } else {
+                onMapPoiClick(
+                    convertFeatureToPlace(
+                        feature,
+                        description = locationRepository.mapOsmTagsToDescription(properties)
+                    )
+                )
+            }
         } else {
             onMapInteraction()
         }
@@ -204,7 +217,8 @@ class MapViewModel @Inject constructor(
                 latitude = result.latitude,
                 longitude = result.longitude,
             ),
-            address = result.address
+            address = result.address,
+            isTransitStop = tags["class"] == "bus",
         )
     }
 

@@ -42,6 +42,12 @@ class SettingsViewModel @Inject constructor(
         false
     )
 
+    val allowTransitInOfflineMode = appPreferenceRepository.allowTransitInOfflineMode.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        false
+    )
+
     val contrastLevel = appPreferenceRepository.contrastLevel.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -68,6 +74,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setOfflineMode(enabled: Boolean) {
         appPreferenceRepository.setOfflineMode(enabled)
+    }
+
+    fun setAllowTransitInOfflineMode(enabled: Boolean) {
+        appPreferenceRepository.setAllowTransitInOfflineMode(enabled)
     }
 
     fun setContrastLevel(level: Int) {

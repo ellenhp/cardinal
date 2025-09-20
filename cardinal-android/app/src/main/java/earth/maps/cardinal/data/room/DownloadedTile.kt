@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package earth.maps.cardinal.data
+package earth.maps.cardinal.data.room
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
