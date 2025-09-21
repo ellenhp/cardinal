@@ -46,8 +46,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -114,10 +112,7 @@ fun TransitStopInformation(viewModel: TransitStopCardViewModel) {
     ) {
         // Departures section
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = stringResource(string.next_departures),
@@ -200,14 +195,14 @@ fun RouteDepartures(stopTimes: List<StopTime>, maxDepartures: Int) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp),
+                .padding(bottom = 4.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color.Transparent
             )
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
+            val pagerState = rememberPagerState(pageCount = { headsigns.size })
+            val scrollScope = rememberCoroutineScope()
+            Box {
                 // Route name header
                 Text(
                     text = routeName,
@@ -217,66 +212,41 @@ fun RouteDepartures(stopTimes: List<StopTime>, maxDepartures: Int) {
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                // Carousel for headsigns if there are multiple headsigns
-                if (headsigns.size > 1) {
-                    val pagerState = rememberPagerState(pageCount = { headsigns.size })
-                    val scrollScope = rememberCoroutineScope()
-
-                    // Display headsign tabs for navigation
-                    TabRow(
-                        selectedTabIndex = pagerState.currentPage,
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        divider = {}) {
-                        headsigns.forEachIndexed { index, headsign ->
-                            Tab(
-                                selected = pagerState.currentPage == index,
-                                onClick = {
-                                    scrollScope.launch {
-                                        pagerState.scrollToPage(index)
-                                    }
-                                },
-                                text = {
-                                    Text(
-                                        text = headsign,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        maxLines = 1
-                                    )
-                                },
-                                selectedContentColor = MaterialTheme.colorScheme.onSurface,
-                                unselectedContentColor = MaterialTheme.colorScheme.onSurface.copy(
-                                    alpha = 0.5f
-                                )
-                            )
-                        }
-                    }
-
-                    // Swipeable pager for headsigns with fixed height
-                    FixedHeightHorizontalPager(
-                        state = pagerState,
-                        departuresByHeadsign = departuresByHeadsign,
-                        headsigns = headsigns,
-                        routeColor = routeColor,
-                        onRouteColor = onRouteColor,
-                    )
-                } else {
-                    // If there's only one headsign, display departures normally
-                    departures.take(maxDepartures).forEachIndexed { index, stopTime ->
-                        DepartureRow(
-                            stopTime = stopTime,
-                            isFirst = index == 0,
+                Box(modifier = Modifier.align(Alignment.TopCenter)) {
+                    PageIndicator(headsigns.size, currentPage = pagerState.currentPage)
+                }
+                Column(
+                    modifier = Modifier.padding(8.dp)
+                ) {
+                    // Carousel for headsigns if there are multiple headsigns
+                    if (headsigns.size > 1) {
+                        // Swipeable pager for headsigns with fixed height
+                        FixedHeightHorizontalPager(
+                            state = pagerState,
+                            departuresByHeadsign = departuresByHeadsign,
+                            headsigns = headsigns,
                             routeColor = routeColor,
-                            onRouteColor = onRouteColor
+                            onRouteColor = onRouteColor,
                         )
-                        // Add divider between departure rows, but not after the last one
-                        if (index < departures.size - 1) {
-                            HorizontalDivider(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                thickness = DividerDefaults.Thickness / 2,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                    } else {
+                        // If there's only one headsign, display departures normally
+                        departures.take(maxDepartures).forEachIndexed { index, stopTime ->
+                            DepartureRow(
+                                stopTime = stopTime,
+                                isFirst = index == 0,
+                                routeColor = routeColor,
+                                onRouteColor = onRouteColor
                             )
+                            // Add divider between departure rows, but not after the last one
+                            if (index < departures.size - 1) {
+                                HorizontalDivider(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    thickness = DividerDefaults.Thickness / 2,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                )
+                            }
                         }
                     }
                 }
