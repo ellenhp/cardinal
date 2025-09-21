@@ -66,6 +66,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R.dimen
@@ -84,9 +85,8 @@ fun HomeScreen(
     managePlacesViewModel: ManagePlacesViewModel,
     onPlaceSelected: (Place) -> Unit,
     onPeekHeightChange: (dp: Dp) -> Unit,
-    isSearchFocused: Boolean,
     onSearchFocusChange: (Boolean) -> Unit,
-    shouldRefocusKeyboardOnHome: Boolean
+    homeInSearchScreen: Boolean,
 ) {
     val savedPlaces = viewModel.savedPlaces.value
     val geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value)
@@ -100,7 +100,6 @@ fun HomeScreen(
             onSearchQueryChange = { query ->
                 viewModel.updateSearchQuery(query)
             },
-            isSearchFocused = isSearchFocused,
             onSearchFocusChange = onSearchFocusChange,
             savedPlaces = savedPlaces,
             geocodeResults = geocodeResults,
@@ -108,7 +107,7 @@ fun HomeScreen(
             managePlacesViewModel = managePlacesViewModel,
             onPeekHeightChange = onPeekHeightChange,
             onPlaceSelected = onPlaceSelected,
-            shouldRefocusKeyboardOnHome = shouldRefocusKeyboardOnHome,
+            homeInSearchScreen = homeInSearchScreen
         )
     }
 }
@@ -116,9 +115,8 @@ fun HomeScreen(
 @Composable
 private fun SearchPanelContent(
     viewModel: HomeViewModel,
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit,
-    isSearchFocused: Boolean,
+    searchQuery: TextFieldValue,
+    onSearchQueryChange: (TextFieldValue) -> Unit,
     onSearchFocusChange: (Boolean) -> Unit,
     savedPlaces: List<Place>,
     geocodeResults: List<GeocodeResult>,
@@ -126,7 +124,7 @@ private fun SearchPanelContent(
     managePlacesViewModel: ManagePlacesViewModel,
     onPeekHeightChange: (dp: Dp) -> Unit,
     onPlaceSelected: (Place) -> Unit,
-    shouldRefocusKeyboardOnHome: Boolean
+    homeInSearchScreen: Boolean
 ) {
     Column(
         modifier = Modifier
@@ -142,8 +140,7 @@ private fun SearchPanelContent(
                 .onGloballyPositioned { coordinates ->
                     val heightInDp = with(density) { coordinates.size.height.toDp() }
                     onPeekHeightChange(heightInDp)
-                }
-        ) {
+                }) {
             val textField = remember { FocusRequester() }
             // Search box with "Where to?" placeholder
             TextField(
@@ -164,9 +161,9 @@ private fun SearchPanelContent(
                     )
                 },
                 trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
+                    if (searchQuery.text.isNotEmpty()) {
                         FilledTonalIconButton(
-                            onClick = { onSearchQueryChange("") },
+                            onClick = { onSearchQueryChange(TextFieldValue()) },
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
@@ -184,8 +181,8 @@ private fun SearchPanelContent(
                 shape = RoundedCornerShape(dimensionResource(dimen.icon_size))
             )
 
-            LaunchedEffect(shouldRefocusKeyboardOnHome) {
-                if (shouldRefocusKeyboardOnHome) {
+            LaunchedEffect(homeInSearchScreen) {
+                if (homeInSearchScreen) {
                     textField.requestFocus()
                 }
             }
@@ -227,14 +224,11 @@ private fun SearchPanelContent(
                 )
 
                 FilledTonalIconButton(
-                    modifier = Modifier.size(48.dp),
-                    onClick = {
+                    modifier = Modifier.size(48.dp), onClick = {
                         showManagePlacesDialog = true
-                    }
-                ) {
+                    }) {
                     Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = stringResource(
+                        imageVector = Icons.Default.Edit, contentDescription = stringResource(
                             string.content_description_edit_saved_places
                         )
                     )
@@ -253,7 +247,7 @@ private fun SearchPanelContent(
 
         // Content: either saved places or search results
         LazyColumn {
-            if (isSearchFocused) {
+            if (homeInSearchScreen) {
                 // Show search results
                 if (isSearching) {
                     item {
@@ -282,7 +276,7 @@ private fun SearchPanelContent(
             }
         }
 
-        if (isSearchFocused) {
+        if (homeInSearchScreen) {
             Spacer(modifier = Modifier.fillMaxSize())
         }
     }
@@ -295,14 +289,11 @@ private fun PlaceItem(place: Place, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(bottom = dimensionResource(dimen.padding))
             .clickable(
-                true,
-                onClick = onClick
-            ),
-        onClick = {
+                true, onClick = onClick
+            ), onClick = {
             Log.d("Place", "$place")
             onClick()
-        },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        }, elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -364,13 +355,11 @@ fun NavigationIcon(
         Row(modifier = Modifier.padding(vertical = 4.dp)) {
             Icon(
                 imageVector = icon,
-                modifier = Modifier
-                    .padding(end = 4.dp),
+                modifier = Modifier.padding(end = 4.dp),
                 contentDescription = null // This is fine because the semantic information is provided by the text.
             )
             Text(
-                modifier = Modifier.align(Alignment.CenterVertically),
-                text = text
+                modifier = Modifier.align(Alignment.CenterVertically), text = text
             )
         }
     }

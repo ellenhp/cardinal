@@ -19,15 +19,16 @@ package earth.maps.cardinal.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.data.room.PlaceDao
 import earth.maps.cardinal.data.room.PlaceEntity
-import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,8 +58,9 @@ class HomeViewModel @Inject constructor(
     private val _searchQueryFlow = MutableStateFlow("")
     private val searchQueryFlow: StateFlow<String> = _searchQueryFlow.asStateFlow()
 
-    var searchQuery by mutableStateOf("")
-        private set
+    var searchQuery by mutableStateOf(
+        TextFieldValue()
+    )
 
     val geocodeResults = mutableStateOf<List<GeocodeResult>>(emptyList())
 
@@ -85,8 +87,7 @@ class HomeViewModel @Inject constructor(
                         state = "CA",
                         postcode = "94105",
                         country = "USA"
-                    ),
-                    PlaceEntity(
+                    ), PlaceEntity(
                         id = 2,
                         name = "Work",
                         type = "Office",
@@ -98,8 +99,7 @@ class HomeViewModel @Inject constructor(
                         state = "CA",
                         postcode = "94103",
                         country = "USA"
-                    ),
-                    PlaceEntity(
+                    ), PlaceEntity(
                         id = 3,
                         name = "Coffee Shop",
                         type = "Cafe",
@@ -125,10 +125,8 @@ class HomeViewModel @Inject constructor(
         }
 
         // Set up debounced search
-        searchQueryFlow
-            .debounce(300) // 300ms delay
-            .distinctUntilChanged()
-            .onEach { query ->
+        searchQueryFlow.debounce(300) // 300ms delay
+            .distinctUntilChanged().onEach { query ->
                 if (query.isNotEmpty()) {
                     performSearch(query)
                 } else {
@@ -136,13 +134,12 @@ class HomeViewModel @Inject constructor(
                     geocodeResults.value = emptyList()
                     searchError = null
                 }
-            }
-            .launchIn(viewModelScope)
+            }.launchIn(viewModelScope)
     }
 
-    fun updateSearchQuery(query: String) {
+    fun updateSearchQuery(query: TextFieldValue) {
         searchQuery = query
-        _searchQueryFlow.value = query
+        _searchQueryFlow.value = query.text
     }
 
     fun geocodeResultToPlace(result: GeocodeResult): Place {

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
@@ -129,18 +130,14 @@ class BottomSheetState(
          * The default [Saver] implementation for [BottomSheetState].
          */
         fun Saver(
-            animationSpec: AnimationSpec<Float>,
-            confirmStateChange: (BottomSheetValue) -> Boolean
-        ): Saver<BottomSheetState, *> = Saver(
-            save = { it.currentValue },
-            restore = {
-                BottomSheetState(
-                    initialValue = it,
-                    animationSpec = animationSpec,
-                    confirmStateChange = confirmStateChange
-                )
-            }
-        )
+            animationSpec: AnimationSpec<Float>, confirmStateChange: (BottomSheetValue) -> Boolean
+        ): Saver<BottomSheetState, *> = Saver(save = { it.currentValue }, restore = {
+            BottomSheetState(
+                initialValue = it,
+                animationSpec = animationSpec,
+                confirmStateChange = confirmStateChange
+            )
+        })
     }
 
     internal val nestedScrollConnection = this.PreUpPostDownNestedScrollConnection
@@ -160,10 +157,8 @@ fun rememberBottomSheetState(
     confirmStateChange: (BottomSheetValue) -> Boolean = { true }
 ): BottomSheetState {
     return rememberSaveable(
-        animationSpec,
-        saver = BottomSheetState.Saver(
-            animationSpec = animationSpec,
-            confirmStateChange = confirmStateChange
+        animationSpec, saver = BottomSheetState.Saver(
+            animationSpec = animationSpec, confirmStateChange = confirmStateChange
         )
     ) {
         BottomSheetState(
@@ -292,49 +287,54 @@ fun BottomSheetScaffold(
         val peekHeightPx = with(LocalDensity.current) { sheetPeekHeight.toPx() }
         var bottomSheetHeight by remember { mutableStateOf(fullHeight) }
 
-        val swipeable = Modifier
-            .nestedScroll(scaffoldState.bottomSheetState.nestedScrollConnection)
-            .swipeable(
-                state = scaffoldState.bottomSheetState,
-                anchors = mapOf(
-                    fullHeight - peekHeightPx to BottomSheetValue.Collapsed,
-                    fullHeight - bottomSheetHeight to BottomSheetValue.Expanded
-                ),
-                orientation = Orientation.Vertical,
-                enabled = sheetGesturesEnabled,
-                resistance = null
-            )
-            .semantics {
-                if (peekHeightPx != bottomSheetHeight) {
-                    if (scaffoldState.bottomSheetState.isCollapsed) {
-                        expand {
-                            if (scaffoldState.bottomSheetState.confirmStateChange(BottomSheetValue.Expanded)) {
-                                scope.launch { scaffoldState.bottomSheetState.expand() }
+        val swipeable =
+            Modifier
+                .nestedScroll(scaffoldState.bottomSheetState.nestedScrollConnection)
+                .swipeable(
+                    state = scaffoldState.bottomSheetState,
+                    anchors = mapOf(
+                        fullHeight - peekHeightPx to BottomSheetValue.Collapsed,
+                        fullHeight - bottomSheetHeight to BottomSheetValue.Expanded
+                    ),
+                    orientation = Orientation.Vertical,
+                    enabled = sheetGesturesEnabled,
+                    resistance = null
+                )
+                .semantics {
+                    if (peekHeightPx != bottomSheetHeight) {
+                        if (scaffoldState.bottomSheetState.isCollapsed) {
+                            expand {
+                                if (scaffoldState.bottomSheetState.confirmStateChange(
+                                        BottomSheetValue.Expanded
+                                    )
+                                ) {
+                                    scope.launch { scaffoldState.bottomSheetState.expand() }
+                                }
+                                true
                             }
-                            true
-                        }
-                    } else {
-                        collapse {
-                            if (scaffoldState.bottomSheetState.confirmStateChange(BottomSheetValue.Collapsed)) {
-                                scope.launch { scaffoldState.bottomSheetState.collapse() }
+                        } else {
+                            collapse {
+                                if (scaffoldState.bottomSheetState.confirmStateChange(
+                                        BottomSheetValue.Collapsed
+                                    )
+                                ) {
+                                    scope.launch { scaffoldState.bottomSheetState.collapse() }
+                                }
+                                true
                             }
-                            true
                         }
                     }
                 }
-            }
 
         val child = @Composable {
             BottomSheetScaffoldStack(
                 body = {
-                    Surface(
-                        color = backgroundColor,
-                        contentColor = contentColor
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .imePadding()
                     ) {
-                        Column(Modifier.fillMaxSize()) {
-                            topBar?.invoke()
-                            content(PaddingValues(bottom = sheetPeekHeight))
-                        }
+                        content(PaddingValues(bottom = sheetPeekHeight))
                     }
                 },
                 bottomSheet = {
@@ -350,8 +350,7 @@ fun BottomSheetScaffold(
                         // elevation = sheetElevation,
                         color = sheetBackgroundColor,
                         contentColor = sheetContentColor,
-                        content = { Column(content = sheetContent) }
-                    )
+                        content = { Column(content = sheetContent) })
                 },
                 floatingActionButton = {
                     Box {
@@ -401,17 +400,15 @@ private fun BottomSheetScaffoldStack(
             bottomSheet()
             floatingActionButton()
             snackbarHost()
-        }
-    ) { measurables, constraints ->
+        }) { measurables, constraints ->
         val placeable = measurables.first().measure(constraints)
 
         layout(placeable.width, placeable.height) {
             placeable.placeRelative(0, 0)
 
-            val (sheetPlaceable, fabPlaceable, snackbarPlaceable) =
-                measurables.drop(1).map {
-                    it.measure(constraints.copy(minWidth = 0, minHeight = 0))
-                }
+            val (sheetPlaceable, fabPlaceable, snackbarPlaceable) = measurables.drop(1).map {
+                it.measure(constraints.copy(minWidth = 0, minHeight = 0))
+            }
 
             val sheetOffsetY = bottomSheetOffset.value.roundToInt()
 

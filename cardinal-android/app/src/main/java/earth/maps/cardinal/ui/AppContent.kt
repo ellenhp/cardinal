@@ -60,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
@@ -134,7 +135,8 @@ fun AppContent(
     val handleHeight = 48.dp
     var screenHeightDp by remember { mutableStateOf(0.dp) }
     var screenWidthDp by remember { mutableStateOf(0.dp) }
-    var shouldRefocusKeyboardOnHome by remember { mutableStateOf(false) }
+    var homeExpanded by remember { mutableStateOf(false) }
+    var homeInSearchScreen by remember { mutableStateOf(false) }
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
@@ -148,10 +150,10 @@ fun AppContent(
         sheetBackgroundColor = BottomSheetDefaults.ContainerColor,
         sheetContent = {
             Column(
-                modifier = Modifier
-                    .onGloballyPositioned {
-                        fabHeight = with(density) { it.positionInRoot().y.toDp() - handleHeight }
-                    }) {
+                modifier = Modifier.onGloballyPositioned {
+                    fabHeight =
+                        with(density) { it.positionInRoot().y.toDp() }
+                }) {
                 Box(
                     modifier = Modifier
                         .defaultMinSize(minHeight = handleHeight)
@@ -167,36 +169,37 @@ fun AppContent(
                     composable(Screen.Home.route) {
                         val viewModel: HomeViewModel = hiltViewModel()
                         val managePlacesViewModel: ManagePlacesViewModel = hiltViewModel()
-                        var isSearchFocused by remember { mutableStateOf(false) }
+                        val focusManager = LocalFocusManager.current
                         val imeController = LocalSoftwareKeyboardController.current
-                        if (isSearchFocused) {
+                        if (bottomSheetState.isExpanded) {
                             BackHandler {
                                 coroutineScope.launch {
-                                    scaffoldState.bottomSheetState.collapse()
                                     imeController?.hide()
+                                    focusManager.clearFocus(force = true)
+                                    homeExpanded = false
+                                    homeInSearchScreen = false
                                 }
                             }
                         }
 
-                        // Automatically expand the bottom sheet and disable swiping when search box is focused
-                        LaunchedEffect(isSearchFocused) {
+                        LaunchedEffect(homeExpanded) {
                             mapPins.clear()
-                            sheetSwipeEnabled = !isSearchFocused
-                            if (isSearchFocused) {
-                                scaffoldState.bottomSheetState.expand()
+                            coroutineScope.launch {
+                                if (homeExpanded) {
+                                    scaffoldState.bottomSheetState.expand()
+                                } else {
+                                    scaffoldState.bottomSheetState.collapse()
+                                }
                             }
                         }
 
                         HomeScreen(
                             viewModel = viewModel,
                             managePlacesViewModel = managePlacesViewModel,
-                            shouldRefocusKeyboardOnHome = shouldRefocusKeyboardOnHome,
                             onPlaceSelected = { place ->
-                                // TODO: This is error prone and should be tracked in the navigationCoordinator
-                                shouldRefocusKeyboardOnHome = true
                                 coroutineScope.launch {
                                     imeController?.hide()
-                                    // Force the sheet to be partially expanded.
+                                    // Collapse the bottom sheet but don't touch homeExpanded.
                                     scaffoldState.bottomSheetState.collapse()
                                 }
                                 if (place.isTransitStop) {
@@ -206,8 +209,13 @@ fun AppContent(
                                 }
                             },
                             onPeekHeightChange = { peekHeight = it },
-                            isSearchFocused = isSearchFocused,
-                            onSearchFocusChange = { isSearchFocused = it })
+                            homeInSearchScreen = homeInSearchScreen,
+                            onSearchFocusChange = {
+                                if (it) {
+                                    homeExpanded = true
+                                    homeInSearchScreen = true
+                                }
+                            })
                     }
 
                     composable(Screen.PlaceCard.route) { backStackEntry ->
@@ -222,9 +230,7 @@ fun AppContent(
                         val placeJson = backStackEntry.arguments?.getString("place")
                         val place = placeJson?.let { Gson().fromJson(it, Place::class.java) }
                         place?.let { place ->
-
                             viewModel.setPlace(place)
-
                             LaunchedEffect(place) {
                                 mapPins.clear()
                                 val position =
@@ -310,10 +316,7 @@ fun AppContent(
                             mapPins.clear()
                             sheetSwipeEnabled = true
                             peekHeight = screenHeightDp / 3 // Approx, empirical
-                            // The offline areas screen starts partially expanded.
-                            coroutineScope.launch {
-                                bottomSheetState.collapse()
-                            }
+                            bottomSheetState.collapse()
                         }
                         DisposableEffect(key1 = Unit) {
                             onDispose {

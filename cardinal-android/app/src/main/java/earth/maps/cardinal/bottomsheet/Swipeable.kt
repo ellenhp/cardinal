@@ -207,29 +207,35 @@ open class SwipeableState<T>(
         absoluteOffset.value = newAbsolute
     }
 
-    private suspend fun snapInternalToOffset(target: Float) {
-        draggableState.drag {
-            dragBy(target - absoluteOffset.value)
-        }
+    private fun snapInternalToOffset(target: Float) {
+        val newAbsolute = target
+        val clamped = newAbsolute.coerceIn(minBound, maxBound)
+        val overflow = newAbsolute - clamped
+        val resistanceDelta = resistance?.computeResistance(overflow) ?: 0f
+        offsetState.value = clamped + resistanceDelta
+        overflowState.value = overflow
+        absoluteOffset.value = newAbsolute
     }
 
     private suspend fun animateInternalToOffset(target: Float, spec: AnimationSpec<Float>) {
         if (isAnimationRunning) {
-            Log.d("TAG", "Swipe animation running")
+            Log.d("TAG", "Swipe animation running: $overflow")
         }
-        draggableState.drag {
-            var prevValue = absoluteOffset.value
-            animationTarget.value = target
-            isAnimationRunning = true
-            try {
-                Animatable(prevValue).animateTo(target, spec) {
-                    dragBy(this.value - prevValue)
-                    prevValue = this.value
-                }
-            } finally {
-                animationTarget.value = null
-                isAnimationRunning = false
+        animationTarget.value = target
+        isAnimationRunning = true
+        try {
+            Animatable(absoluteOffset.value).animateTo(target, spec) {
+                val newAbsolute = this.value
+                val clamped = newAbsolute.coerceIn(minBound, maxBound)
+                val overflow = newAbsolute - clamped
+                val resistanceDelta = resistance?.computeResistance(overflow) ?: 0f
+                offsetState.value = clamped + resistanceDelta
+                overflowState.value = overflow
+                absoluteOffset.value = newAbsolute
             }
+        } finally {
+            animationTarget.value = null
+            isAnimationRunning = false
         }
     }
 

@@ -80,6 +80,7 @@ import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
 import org.maplibre.compose.style.rememberStyleState
 import org.maplibre.compose.util.ClickResult
+import uniffi.ferrostar.Route
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -97,7 +98,7 @@ fun MapView(
     cameraState: CameraState,
     appPreferences: AppPreferenceRepository,
     selectedOfflineArea: OfflineArea? = null,
-    currentRoute: uniffi.ferrostar.Route? = null,
+    currentRoute: Route? = null,
 ) {
     val context = LocalContext.current
     val styleState = rememberStyleState()
