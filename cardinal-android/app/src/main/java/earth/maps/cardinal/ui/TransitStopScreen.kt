@@ -18,6 +18,8 @@ package earth.maps.cardinal.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +32,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -64,7 +67,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
@@ -72,6 +78,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import earth.maps.cardinal.R.dimen
@@ -306,11 +313,10 @@ fun TransitStopScreen(
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             } else {
-                val maxDeparturesPerHeadsign = 5
+                val maxDeparturesPerHeadsign = 3
                 // List of departures grouped by route and headsign
                 RouteDepartures(
-                    stopTimes = viewModel.departures.value,
-                    maxDepartures = maxDeparturesPerHeadsign
+                    stopTimes = viewModel.departures.value, maxDepartures = maxDeparturesPerHeadsign
                 )
             }
         }
@@ -383,7 +389,7 @@ fun RouteDepartures(stopTimes: List<StopTime>, maxDepartures: Int) {
                 .fillMaxWidth()
                 .padding(vertical = 4.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
+                containerColor = Color.Transparent
             )
         ) {
             Column(
@@ -394,7 +400,7 @@ fun RouteDepartures(stopTimes: List<StopTime>, maxDepartures: Int) {
                     text = routeName,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
@@ -406,8 +412,8 @@ fun RouteDepartures(stopTimes: List<StopTime>, maxDepartures: Int) {
                     // Display headsign tabs for navigation
                     TabRow(
                         selectedTabIndex = pagerState.currentPage,
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                         divider = {}) {
                         headsigns.forEachIndexed { index, headsign ->
                             Tab(
@@ -420,12 +426,12 @@ fun RouteDepartures(stopTimes: List<StopTime>, maxDepartures: Int) {
                                 text = {
                                     Text(
                                         text = headsign,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1
                                     )
                                 },
-                                selectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                unselectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                                selectedContentColor = MaterialTheme.colorScheme.onSurface,
+                                unselectedContentColor = MaterialTheme.colorScheme.onSurface.copy(
                                     alpha = 0.5f
                                 )
                             )
@@ -456,12 +462,66 @@ fun RouteDepartures(stopTimes: List<StopTime>, maxDepartures: Int) {
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp),
                                 thickness = DividerDefaults.Thickness / 2,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                             )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun rememberNestedScrollConsumer(heightToConsume: Dp): NestedScrollConnection {
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+
+            override fun onPreScroll(
+                available: Offset, source: NestedScrollSource
+            ): Offset {
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(
+                consumed: Offset, available: Offset, source: NestedScrollSource
+            ): Offset {
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                return Velocity(0f, available.y / 2f)
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                return Velocity.Zero
+            }
+        }
+    }
+    return nestedScrollConnection
+}
+
+@Composable
+fun PageIndicator(pageCount: Int, currentPage: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+    ) {
+        repeat(pageCount) { index ->
+            val color = if (index == currentPage) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.outlineVariant
+            }
+
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 4.dp)
+                    .size(8.dp)
+                    .background(color, CircleShape)
+            )
         }
     }
 }

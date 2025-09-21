@@ -49,12 +49,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -82,7 +85,8 @@ fun HomeScreen(
     onPlaceSelected: (Place) -> Unit,
     onPeekHeightChange: (dp: Dp) -> Unit,
     isSearchFocused: Boolean,
-    onSearchFocusChange: (Boolean) -> Unit
+    onSearchFocusChange: (Boolean) -> Unit,
+    shouldRefocusKeyboardOnHome: Boolean
 ) {
     val savedPlaces = viewModel.savedPlaces.value
     val geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value)
@@ -103,7 +107,8 @@ fun HomeScreen(
             isSearching = isSearching,
             managePlacesViewModel = managePlacesViewModel,
             onPeekHeightChange = onPeekHeightChange,
-            onPlaceSelected = onPlaceSelected
+            onPlaceSelected = onPlaceSelected,
+            shouldRefocusKeyboardOnHome = shouldRefocusKeyboardOnHome,
         )
     }
 }
@@ -120,7 +125,8 @@ private fun SearchPanelContent(
     isSearching: Boolean,
     managePlacesViewModel: ManagePlacesViewModel,
     onPeekHeightChange: (dp: Dp) -> Unit,
-    onPlaceSelected: (Place) -> Unit
+    onPlaceSelected: (Place) -> Unit,
+    shouldRefocusKeyboardOnHome: Boolean
 ) {
     Column(
         modifier = Modifier
@@ -138,11 +144,13 @@ private fun SearchPanelContent(
                     onPeekHeightChange(heightInDp)
                 }
         ) {
+            val textField = remember { FocusRequester() }
             // Search box with "Where to?" placeholder
             TextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
                 modifier = Modifier
+                    .focusRequester(textField)
                     .fillMaxWidth()
                     .padding(bottom = dimensionResource(dimen.padding))
                     .onFocusChanged { focusState ->
@@ -175,6 +183,12 @@ private fun SearchPanelContent(
                 ),
                 shape = RoundedCornerShape(dimensionResource(dimen.icon_size))
             )
+
+            LaunchedEffect(shouldRefocusKeyboardOnHome) {
+                if (shouldRefocusKeyboardOnHome) {
+                    textField.requestFocus()
+                }
+            }
 
             // Pinned destinations.
             var showManagePlacesDialog by remember { mutableStateOf(false) }

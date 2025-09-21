@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,16 +37,13 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -62,7 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -75,6 +73,10 @@ import com.google.gson.Gson
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
+import earth.maps.cardinal.bottomsheet.BottomSheetScaffold
+import earth.maps.cardinal.bottomsheet.BottomSheetValue
+import earth.maps.cardinal.bottomsheet.rememberBottomSheetScaffoldState
+import earth.maps.cardinal.bottomsheet.rememberBottomSheetState
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
@@ -121,57 +123,58 @@ fun AppContent(
     // Route state for displaying on map
     var currentRoute by remember { mutableStateOf<Route?>(null) }
 
-    val sheetPeekHeightEmpirical = dimensionResource(dimen.empirical_bottom_sheet_handle_height)
-
-    var allowPartialExpansion by remember { mutableStateOf(true) }
-    val bottomSheetState = rememberStandardBottomSheetState(
-        initialValue = SheetValue.PartiallyExpanded, confirmValueChange = { newState ->
-            when (newState) {
-                SheetValue.Hidden -> false // Always false!
-                SheetValue.Expanded -> true // Always true!
-                SheetValue.PartiallyExpanded -> allowPartialExpansion // Allow composables to control this
-            }
-        })
-    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState)
+    val bottomSheetState = rememberBottomSheetState(
+        initialValue = BottomSheetValue.Collapsed
+    )
+    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
     val snackBarHostState = remember { SnackbarHostState() }
     val bottomInset = with(density) {
         WindowInsets.safeDrawing.getBottom(density).toDp()
     }
+    val handleHeight = 48.dp
     var screenHeightDp by remember { mutableStateOf(0.dp) }
     var screenWidthDp by remember { mutableStateOf(0.dp) }
+    var shouldRefocusKeyboardOnHome by remember { mutableStateOf(false) }
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
-        sheetSwipeEnabled = sheetSwipeEnabled,
         modifier = Modifier.onGloballyPositioned {
             screenHeightDp = with(density) { it.size.height.toDp() }
             screenWidthDp = with(density) { it.size.width.toDp() }
         },
-        sheetPeekHeight = peekHeight + sheetPeekHeightEmpirical + bottomInset,
+        sheetGesturesEnabled = sheetSwipeEnabled,
+        sheetPeekHeight = peekHeight + bottomInset + handleHeight,
         snackbarHost = { SnackbarHost(snackBarHostState) },
+        sheetBackgroundColor = BottomSheetDefaults.ContainerColor,
         sheetContent = {
-            Column(modifier = Modifier.onGloballyPositioned {
-                fabHeight = with(density) { it.positionInRoot().y.toDp() - 50.dp }
-            }) {
+            Column(
+                modifier = Modifier
+                    .onGloballyPositioned {
+                        fabHeight = with(density) { it.positionInRoot().y.toDp() - handleHeight }
+                    }) {
+                Box(
+                    modifier = Modifier
+                        .defaultMinSize(minHeight = handleHeight)
+                        .align(Alignment.CenterHorizontally)
+                ) {
+                    if (sheetSwipeEnabled) {
+                        BottomSheetDefaults.DragHandle()
+                    }
+                }
                 NavHost(
                     navController = navController, startDestination = "home"
                 ) {
                     composable(Screen.Home.route) {
-                        LaunchedEffect(key1 = Unit) {
-                            // Allow partial expansion and swiping for the home screen
-                            allowPartialExpansion = true
-                            // The home screen starts partially expanded.
-                            coroutineScope.launch {
-                                bottomSheetState.partialExpand()
-                            }
-                        }
                         val viewModel: HomeViewModel = hiltViewModel()
                         val managePlacesViewModel: ManagePlacesViewModel = hiltViewModel()
                         var isSearchFocused by remember { mutableStateOf(false) }
-                        val focusManager = LocalFocusManager.current
+                        val imeController = LocalSoftwareKeyboardController.current
                         if (isSearchFocused) {
                             BackHandler {
-                                focusManager.clearFocus()
+                                coroutineScope.launch {
+                                    scaffoldState.bottomSheetState.collapse()
+                                    imeController?.hide()
+                                }
                             }
                         }
 
@@ -187,13 +190,14 @@ fun AppContent(
                         HomeScreen(
                             viewModel = viewModel,
                             managePlacesViewModel = managePlacesViewModel,
+                            shouldRefocusKeyboardOnHome = shouldRefocusKeyboardOnHome,
                             onPlaceSelected = { place ->
+                                // TODO: This is error prone and should be tracked in the navigationCoordinator
+                                shouldRefocusKeyboardOnHome = true
                                 coroutineScope.launch {
-                                    // Clear the focus first. This will happen automatically when the navigation animation
-                                    // completes but it's nicer when the keyboard is dismissed immediately.
-                                    focusManager.clearFocus()
+                                    imeController?.hide()
                                     // Force the sheet to be partially expanded.
-                                    scaffoldState.bottomSheetState.partialExpand()
+                                    scaffoldState.bottomSheetState.collapse()
                                 }
                                 if (place.isTransitStop) {
                                     navigationCoordinator.navigateToTransitStopCard(place)
@@ -208,12 +212,10 @@ fun AppContent(
 
                     composable(Screen.PlaceCard.route) { backStackEntry ->
                         LaunchedEffect(key1 = Unit) {
-                            // Allow partial expansion and swiping for the place card screen
-                            allowPartialExpansion = true
                             sheetSwipeEnabled = true
                             // The place card starts partially expanded.
                             coroutineScope.launch {
-                                bottomSheetState.partialExpand()
+                                bottomSheetState.collapse()
                             }
                         }
                         val viewModel: PlaceCardViewModel = hiltViewModel()
@@ -259,12 +261,10 @@ fun AppContent(
 
                     composable(Screen.TransitStopCard.route) { backStackEntry ->
                         LaunchedEffect(key1 = Unit) {
-                            // Allow partial expansion and swiping for the place card screen
-                            allowPartialExpansion = true
                             sheetSwipeEnabled = true
                             // The place card starts partially expanded.
                             coroutineScope.launch {
-                                bottomSheetState.partialExpand()
+                                bottomSheetState.collapse()
                             }
                         }
                         val viewModel: TransitStopCardViewModel = hiltViewModel()
@@ -308,13 +308,11 @@ fun AppContent(
                     composable(Screen.OfflineAreas.route) {
                         LaunchedEffect(key1 = Unit) {
                             mapPins.clear()
-                            // Allow partial expansion and swiping for the offline areas screen
-                            allowPartialExpansion = true
                             sheetSwipeEnabled = true
                             peekHeight = screenHeightDp / 3 // Approx, empirical
                             // The offline areas screen starts partially expanded.
                             coroutineScope.launch {
-                                bottomSheetState.partialExpand()
+                                bottomSheetState.collapse()
                             }
                         }
                         DisposableEffect(key1 = Unit) {
@@ -341,7 +339,7 @@ fun AppContent(
                                 onDismiss = { navigationCoordinator.navigateBack() },
                                 onAreaSelected = { area ->
                                     coroutineScope.launch {
-                                        scaffoldState.bottomSheetState.partialExpand()
+                                        scaffoldState.bottomSheetState.collapse()
                                         cameraState.animateTo(
                                             boundingBox = BoundingBox(
                                                 area.west, area.south, area.east, area.north
@@ -363,8 +361,6 @@ fun AppContent(
                     composable(Screen.Settings.route) {
                         LaunchedEffect(key1 = Unit) {
                             mapPins.clear()
-                            // Don't allow partial expansion while we're in this state.
-                            allowPartialExpansion = false
                             sheetSwipeEnabled = false
                             // The settings screen is always fully expanded.
                             coroutineScope.launch {
@@ -381,8 +377,6 @@ fun AppContent(
                     composable(Screen.PrivacySettings.route) {
                         LaunchedEffect(key1 = Unit) {
                             mapPins.clear()
-                            // Don't allow partial expansion while we're in this state.
-                            allowPartialExpansion = false
                             sheetSwipeEnabled = false
                             // The privacy settings screen is always fully expanded.
                             coroutineScope.launch {
@@ -401,8 +395,6 @@ fun AppContent(
                     composable(Screen.AccessibilitySettings.route) {
                         LaunchedEffect(key1 = Unit) {
                             mapPins.clear()
-                            // Don't allow partial expansion while we're in this state.
-                            allowPartialExpansion = false
                             sheetSwipeEnabled = false
                             // The accessibility settings screen is always fully expanded.
                             coroutineScope.launch {
@@ -418,8 +410,6 @@ fun AppContent(
                     composable(Screen.AdvancedSettings.route) {
                         LaunchedEffect(key1 = Unit) {
                             mapPins.clear()
-                            // Don't allow partial expansion while we're in this state.
-                            allowPartialExpansion = false
                             sheetSwipeEnabled = false
                             // The advanced settings screen is always fully expanded.
                             coroutineScope.launch {
@@ -435,8 +425,6 @@ fun AppContent(
                     composable(Screen.RoutingProfiles.route) {
                         LaunchedEffect(key1 = Unit) {
                             mapPins.clear()
-                            // Don't allow partial expansion while we're in this state.
-                            allowPartialExpansion = false
                             sheetSwipeEnabled = false
                             // The routing profiles screen is always fully expanded.
                             coroutineScope.launch {
@@ -451,8 +439,6 @@ fun AppContent(
                     composable(Screen.ProfileEditor.route) { backStackEntry ->
                         LaunchedEffect(key1 = Unit) {
                             mapPins.clear()
-                            // Don't allow partial expansion while we're in this state.
-                            allowPartialExpansion = false
                             sheetSwipeEnabled = false
                             // The profile editor screen is always fully expanded.
                             coroutineScope.launch {
@@ -469,12 +455,10 @@ fun AppContent(
 
                     composable(Screen.Directions.route) { backStackEntry ->
                         LaunchedEffect(key1 = Unit) {
-                            // Allow partial expansion and swiping for the directions screen
-                            allowPartialExpansion = true
                             sheetSwipeEnabled = true
                             // The directions screen starts partially expanded.
                             coroutineScope.launch {
-                                bottomSheetState.partialExpand()
+                                bottomSheetState.collapse()
                             }
                         }
 
