@@ -35,7 +35,7 @@
     <string name="are_you_sure_you_want_to_delete">Are you sure you want to delete \"%1$s\"?</string>
     <string name="delete_place">Delete Place</string>
     <string name="no_saved_places_yet">No saved places yet</string>
-    <string name="saved_places">Saved Places</string>
+    <string name="saved_places_title_case">Saved Places</string>
     <string name="close_button">Close</string>
 
     <!-- Manage Places Dialog -->
@@ -175,4 +175,7 @@
     <string name="refresh_departures">Refresh departures</string>
     <string name="loading_departures">Loading departures…</string>
     <string name="failed_to_load_departures">Failed to load departures for this stop.</string>
+    <string name="save_places_to_view_them_here">Save places to view them here</string>
+    <string name="delete_confirmation_question">Are you sure you want to delete this item?</string>
+    <string name="delete_item">Delete Item</string>
 </resources>

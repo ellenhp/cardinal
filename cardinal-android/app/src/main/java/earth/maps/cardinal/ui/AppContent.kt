@@ -167,6 +167,7 @@ fun AppContent(
                         }
                         val viewModel: HomeViewModel = hiltViewModel()
                         val managePlacesViewModel: ManagePlacesViewModel = hiltViewModel()
+                        var isSheetFixed by remember { mutableStateOf(false) }
                         var isSearchFocused by remember { mutableStateOf(false) }
                         val focusManager = LocalFocusManager.current
                         if (isSearchFocused) {
@@ -176,11 +177,17 @@ fun AppContent(
                         }
 
                         // Automatically expand the bottom sheet and disable swiping when search box is focused
-                        LaunchedEffect(isSearchFocused) {
+                        LaunchedEffect(isSheetFixed) {
                             mapPins.clear()
-                            sheetSwipeEnabled = !isSearchFocused
-                            if (isSearchFocused) {
+                            sheetSwipeEnabled = !isSheetFixed
+                            if (isSheetFixed) {
                                 scaffoldState.bottomSheetState.expand()
+                            }
+                        }
+
+                        if (bottomSheetState.hasExpandedState) {
+                            BackHandler {
+                                coroutineScope.launch { bottomSheetState.partialExpand() }
                             }
                         }
 
@@ -203,7 +210,8 @@ fun AppContent(
                             },
                             onPeekHeightChange = { peekHeight = it },
                             isSearchFocused = isSearchFocused,
-                            onSearchFocusChange = { isSearchFocused = it })
+                            onSearchFocusChanged = { isSearchFocused = it },
+                            onSheetFixedChange = { isSheetFixed = it })
                     }
 
                     composable(Screen.PlaceCard.route) { backStackEntry ->

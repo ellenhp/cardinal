@@ -28,15 +28,26 @@ interface SavedListDao {
     @Query("SELECT * FROM saved_lists WHERE isRoot = 1 LIMIT 1")
     suspend fun getRootList(): SavedList?
 
+    @Query("SELECT * FROM saved_lists WHERE isRoot = 1 LIMIT 1")
+    fun getRootListAsFlow(): Flow<SavedList?>
+
     @Query("SELECT * FROM saved_lists WHERE id = :listId")
     suspend fun getList(listId: String): SavedList?
 
-    @Query("""
+    @Query("SELECT * FROM saved_lists WHERE id = :listId")
+    fun getListAsFlow(listId: String): Flow<SavedList?>
+
+    @Query("SELECT * FROM saved_lists")
+    suspend fun getAllLists(): List<SavedList>
+
+    @Query(
+        """
         SELECT sl.* FROM saved_lists sl
         INNER JOIN list_items li ON sl.id = li.itemId
         WHERE li.listId = :parentListId AND li.itemType = 'LIST'
         ORDER BY li.position
-    """)
+    """
+    )
     fun getChildLists(parentListId: String): Flow<List<SavedList>>
 
     @Insert

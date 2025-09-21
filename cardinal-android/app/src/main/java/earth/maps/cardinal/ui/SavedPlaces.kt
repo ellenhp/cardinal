@@ -16,42 +16,44 @@
 
 package earth.maps.cardinal.ui
 
+import android.util.Log
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,144 +62,72 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.R.string
+import earth.maps.cardinal.data.room.ItemType
 import earth.maps.cardinal.data.room.ListContent
-import earth.maps.cardinal.data.room.ListContentItem
-import earth.maps.cardinal.data.room.PlaceContent
-import earth.maps.cardinal.viewmodel.SavedPlacesUiState
+import earth.maps.cardinal.data.room.ListItem
+import earth.maps.cardinal.data.room.SavedList
+import earth.maps.cardinal.data.room.SavedPlace
 import earth.maps.cardinal.viewmodel.SavedPlacesViewModel
 
 @Composable
 fun SavedPlacesList(
     viewModel: SavedPlacesViewModel = hiltViewModel(),
-    onBack: () -> Unit = {},
     onPlaceSelected: (String) -> Unit = {},
-    onListSelected: (String) -> Unit = {}
+    onListSelected: (String) -> Unit = {},
+    onSheetFixedChange: (Boolean) -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val rootList by viewModel.observeRootList().collectAsState(null)
     val isEditMode = viewModel.isEditMode
     val selectedItems = viewModel.selectedItems
 
-    Scaffold(
-        topBar = {
-            SavedPlacesTopBar(
-                isEditMode = isEditMode,
-                selectedCount = selectedItems.size,
-                onBack = onBack,
-                onEditToggle = viewModel::toggleEditMode,
-                onSelectAll = viewModel::selectAllItems,
-                onClearSelection = viewModel::clearSelection,
-                onDeleteSelected = viewModel::deleteSelectedItems
-            )
+    LaunchedEffect(isEditMode) {
+        onSheetFixedChange(isEditMode)
+    }
+
+    if (isEditMode) {
+        BackHandler {
+            viewModel.toggleEditMode()
         }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            val uiState = uiState
-            when (uiState) {
-                is SavedPlacesUiState.Loading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
+    }
 
-                is SavedPlacesUiState.Success -> {
-                    if (uiState.content.isEmpty()) {
-                        EmptySavedPlacesContent()
-                    } else {
-                        SavedPlacesContent(
-                            content = uiState.content,
-                            isEditMode = isEditMode,
-                            selectedItems = selectedItems,
-                            onItemClicked = { item ->
-                                if (isEditMode) {
-                                    viewModel.toggleItemSelection(item.id)
-                                } else {
-                                    when (item) {
-                                        is PlaceContent -> onPlaceSelected(item.id)
-                                        is ListContentItem -> onListSelected(item.id)
-                                    }
-                                }
-                            },
-                            onItemLongClicked = { item ->
-                                if (!isEditMode) {
-                                    viewModel.toggleEditMode()
-                                    viewModel.toggleItemSelection(item.id)
-                                }
-                            },
-                            onReorder = viewModel::reorderItems,
-                            onToggleCollapse = viewModel::toggleListCollapse,
-                            onUpdateName = viewModel::updateItemName
-                        )
-                    }
-                }
-
-                is SavedPlacesUiState.Error -> {
-                    Text(
-                        text = uiState.message,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        rootList?.let { rootList ->
+            val content by viewModel.observeListChildren(rootList.id).collectAsState(emptyList())
+            if (content.isEmpty()) {
+                EmptySavedPlacesContent()
+            } else {
+                SavedPlacesContent(
+                    viewModel = viewModel,
+                    savedList = rootList,
+                    isEditMode = isEditMode,
+                    selectedItems = selectedItems,
+                    onItemClicked = { item ->
+                        if (isEditMode) {
+                            viewModel.toggleItemSelection(item.itemId)
+                        }
+                    },
+                    onItemLongClicked = { item ->
+                        if (!isEditMode) {
+                            viewModel.toggleEditMode()
+                            viewModel.toggleItemSelection(item.itemId)
+                        }
+                    },
+                    onReorder = viewModel::reorderItems,
+                    onToggleCollapse = viewModel::toggleListCollapse,
+                    onUpdateName = viewModel::updateItemName
+                )
             }
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SavedPlacesTopBar(
-    isEditMode: Boolean,
-    selectedCount: Int,
-    onBack: () -> Unit,
-    onEditToggle: () -> Unit,
-    onSelectAll: () -> Unit,
-    onClearSelection: () -> Unit,
-    onDeleteSelected: () -> Unit
-) {
-    TopAppBar(
-        title = {
-            if (isEditMode && selectedCount > 0) {
-                Text("$selectedCount selected")
-            } else {
-                Text("Saved Places")
-            }
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-            }
-        },
-        actions = {
-            if (isEditMode) {
-                if (selectedCount > 0) {
-                    IconButton(onClick = onDeleteSelected) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete")
-                    }
-                    IconButton(onClick = onSelectAll) {
-                        Icon(Icons.Default.Check, contentDescription = "Select all")
-                    }
-                }
-                IconButton(onClick = {
-                    if (selectedCount > 0) {
-                        onClearSelection()
-                    } else {
-                        onEditToggle()
-                    }
-                }) {
-                    Text(if (selectedCount > 0) "Cancel" else "Done")
-                }
-            } else {
-                IconButton(onClick = onEditToggle) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
-                }
-            }
-        }
-    )
 }
 
 @Composable
@@ -217,12 +147,12 @@ private fun EmptySavedPlacesContent() {
         )
         Spacer(modifier = Modifier.padding(8.dp))
         Text(
-            text = "No saved places yet",
+            text = stringResource(string.no_saved_places_yet),
             style = MaterialTheme.typography.headlineSmall
         )
         Spacer(modifier = Modifier.padding(4.dp))
         Text(
-            text = "Save places to view them here",
+            text = stringResource(string.save_places_to_view_them_here),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -232,12 +162,13 @@ private fun EmptySavedPlacesContent() {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SavedPlacesContent(
-    content: List<ListContent>,
+    viewModel: SavedPlacesViewModel,
+    savedList: SavedList,
     isEditMode: Boolean,
     selectedItems: Set<String>,
-    onItemClicked: (ListContent) -> Unit,
-    onItemLongClicked: (ListContent) -> Unit,
-    onReorder: (List<ListContent>) -> Unit,
+    onItemClicked: (ListItem) -> Unit,
+    onItemLongClicked: (ListItem) -> Unit,
+    onReorder: (List<ListItem>) -> Unit,
     onToggleCollapse: (String, Boolean) -> Unit,
     onUpdateName: (String, String) -> Unit
 ) {
@@ -247,112 +178,26 @@ private fun SavedPlacesContent(
     LazyColumn(
         modifier = Modifier.fillMaxSize()
     ) {
-        items(content, key = { it.id }) { item ->
-            val isSelected = item.id in selectedItems
-
-            Card(
+        item {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp)
-                    .combinedClickable(
-                        onClick = { onItemClicked(item) },
-                        onLongClick = { onItemLongClicked(item) }
-                    ),
-                elevation = if (isSelected) androidx.compose.material3.CardDefaults.cardElevation(8.dp) else androidx.compose.material3.CardDefaults.cardElevation(
-                    2.dp
-                )
+                    .padding(dimensionResource(dimen.padding_minor)),
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Selection checkbox in edit mode
-                    if (isEditMode) {
-                        Checkbox(
-                            checked = isSelected,
-                            onCheckedChange = { onItemClicked(item) }
+                SavedPlacesListListItem(
+                    savedList,
+                    onToggleCollapse = onToggleCollapse,
+                    viewModel = hiltViewModel<SavedPlacesViewModel>().also {
+                        it.setListId(
+                            savedList.id
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-
-                    // Drag handle in edit mode
-                    if (isEditMode) {
-                        Icon(
-                            imageVector = Icons.Default.Menu,
-                            contentDescription = "Drag to reorder",
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-
-                    // Item icon
-                    when (item) {
-                        is PlaceContent -> {
-                            Icon(
-                                imageVector = Icons.Default.Place,
-                                contentDescription = null,
-                                tint = Color.Red
-                            )
-                        }
-
-                        is ListContentItem -> {
-                            Icon(
-                                imageVector = if (item.isCollapsed) Icons.AutoMirrored.Filled.List else Icons.Default.KeyboardArrowDown,
-                                contentDescription = null,
-                                tint = Color.Blue
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    // Item content
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = item.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        when (item) {
-                            is PlaceContent -> {
-                                if (item.customDescription != null) {
-                                    Text(
-                                        text = item.customDescription,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
-                            is ListContentItem -> {
-                                if (item.description != null) {
-                                    Text(
-                                        text = item.description,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Collapse/Expand button for lists
-                    if (item is ListContentItem) {
-                        IconButton(
-                            onClick = { onToggleCollapse(item.id, item.isCollapsed) }
-                        ) {
-                            Icon(
-                                imageVector = if (item.isCollapsed) Icons.AutoMirrored.Filled.List else Icons.Default.KeyboardArrowDown,
-                                contentDescription = if (item.isCollapsed) "Expand" else "Collapse"
-                            )
-                        }
-                    }
-                }
+                    },
+                    isExpanded = true,
+                    isSelected = false,
+                    isEditMode = isEditMode,
+                    onItemClicked = onItemClicked,
+                    onItemLongClicked = onItemLongClicked,
+                )
             }
         }
     }
@@ -361,17 +206,16 @@ private fun SavedPlacesContent(
     if (showDeleteDialog && itemToDelete != null) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Item") },
-            text = { Text("Are you sure you want to delete this item?") },
+            title = { Text(stringResource(string.delete_item)) },
+            text = { Text(stringResource(string.delete_confirmation_question)) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         // Handle deletion
                         showDeleteDialog = false
                         itemToDelete = null
-                    }
-                ) {
-                    Text("Delete")
+                    }) {
+                    Text(stringResource(string.delete))
                 }
             },
             dismissButton = {
@@ -379,11 +223,191 @@ private fun SavedPlacesContent(
                     onClick = {
                         showDeleteDialog = false
                         itemToDelete = null
-                    }
-                ) {
-                    Text("Cancel")
+                    }) {
+                    Text(stringResource(string.cancel))
+                }
+            })
+    }
+}
+
+@Composable
+private fun SavedPlacesListItem(
+    item: ListItem,
+    isSelected: Boolean,
+    isEditMode: Boolean,
+    onItemClicked: (ListItem) -> Unit,
+    onItemLongClicked: (ListItem) -> Unit,
+    viewModel: SavedPlacesViewModel,
+    onToggleCollapse: (String, Boolean) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+            .combinedClickable(
+                onClick = { onItemClicked(item) },
+                onLongClick = { onItemLongClicked(item) }),
+        elevation = if (isSelected) CardDefaults.cardElevation(
+            8.dp
+        ) else CardDefaults.cardElevation(
+            2.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Selection checkbox in edit mode
+            AnimatedVisibility(isEditMode) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        modifier = Modifier.padding(end = 8.dp),
+                        checked = isSelected, onCheckedChange = { onItemClicked(item) })
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Drag to reorder",
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
                 }
             }
+
+
+            // Item icon
+            when (item.itemType) {
+                ItemType.PLACE -> {
+                    val item by viewModel.observePlace(item.itemId).collectAsState(null)
+                    SavedPlacesPlaceListItem(item, isEditMode)
+
+                }
+
+                ItemType.LIST -> {
+                    val item by viewModel.observeList(item.itemId).collectAsState(null)
+                    val isExpanded by viewModel.observeIsExpanded().collectAsState(false)
+                    item?.let { item ->
+                        SavedPlacesListListItem(
+                            viewModel = hiltViewModel<SavedPlacesViewModel>().also {
+                                it.setListId(
+                                    item.id
+                                )
+                            },
+                            item = item,
+                            isExpanded = isExpanded,
+                            isSelected = viewModel.isItemSelected(item.id),
+                            isEditMode = isEditMode,
+                            onItemClicked = onItemClicked,
+                            onItemLongClicked = onItemLongClicked,
+                            onToggleCollapse = onToggleCollapse,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SavedPlacesListListItem(
+    item: SavedList,
+    isExpanded: Boolean,
+    isSelected: Boolean,
+    isEditMode: Boolean,
+    onItemClicked: (ListItem) -> Unit,
+    onItemLongClicked: (ListItem) -> Unit,
+    viewModel: SavedPlacesViewModel,
+    onToggleCollapse: (String, Boolean) -> Unit,
+) {
+    val expandCollapseDurationMillis = 250
+    Column {
+        Row {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                item.description?.let {
+                    Text(
+                        text = item.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Icon(
+                imageVector = if (item.isCollapsed) Icons.AutoMirrored.Filled.List else Icons.Default.KeyboardArrowDown,
+                contentDescription = if (item.isCollapsed) "Expand" else "Collapse"
+            )
+        }
+        val enterTransition = remember {
+            expandVertically(
+                expandFrom = Alignment.Top, animationSpec = tween(expandCollapseDurationMillis)
+            ) + fadeIn(
+                initialAlpha = 0.3f, animationSpec = tween(expandCollapseDurationMillis)
+            )
+        }
+        val exitTransition = remember {
+            shrinkVertically(
+                // Expand from the top.
+                shrinkTowards = Alignment.Top, animationSpec = tween(expandCollapseDurationMillis)
+            ) + fadeOut(
+                // Fade in with the initial alpha of 0.3f.
+                animationSpec = tween(expandCollapseDurationMillis)
+            )
+        }
+
+        val children by viewModel.observeListChildren(id = item.id).collectAsState(emptyList())
+
+        Log.d("CHILDREN", "$children")
+
+        for (child in children) {
+            AnimatedVisibility(
+                visible = isExpanded, enter = enterTransition, exit = exitTransition
+            ) {
+                SavedPlacesListItem(
+                    viewModel = hiltViewModel<SavedPlacesViewModel>().also { it.setListId(child.itemId) },
+                    isSelected = viewModel.isItemSelected(child.itemId),
+                    item = child,
+                    isEditMode = isEditMode,
+                    onItemClicked = onItemClicked,
+                    onItemLongClicked = onItemLongClicked,
+                    onToggleCollapse = onToggleCollapse,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.SavedPlacesPlaceListItem(item: SavedPlace?, isEditMode: Boolean) {
+    if (!isEditMode) {
+        Icon(
+            imageVector = Icons.Default.Place, contentDescription = null, tint = Color.Red
         )
+    }
+    Spacer(modifier = Modifier.width(16.dp))
+
+    Column(
+        modifier = Modifier.weight(1f)
+    ) {
+        val name = item?.customName ?: item?.name
+        if (name != null) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        val description = item?.customDescription
+        if (description != null) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

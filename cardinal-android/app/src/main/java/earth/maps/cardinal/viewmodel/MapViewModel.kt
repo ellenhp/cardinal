@@ -93,7 +93,7 @@ class MapViewModel @Inject constructor(
     // Permission tracking
     private val previousPermissionState = AtomicBoolean(false)
 
-    val savedPlacesFlow: Flow<FeatureCollection> = placeDao.getAllPlaces().map { placeList ->
+    val savedPlacesFlow: Flow<FeatureCollection> = placeDao.getAllPlacesAsFlow().map { placeList ->
         FeatureCollection(placeList.map {
             Feature(
                 geometry = Point(Position(latitude = it.latitude, longitude = it.longitude)),

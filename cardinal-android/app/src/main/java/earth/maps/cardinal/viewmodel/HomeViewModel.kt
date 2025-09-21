@@ -47,10 +47,6 @@ class HomeViewModel @Inject constructor(
     private val viewportRepository: ViewportRepository,
     private val locationRepository: LocationRepository,
 ) : ViewModel() {
-
-    // Saved places from database
-    val savedPlaces = mutableStateOf<List<Place>>(emptyList())
-
     // Search query flow for debouncing
     private val _searchQueryFlow = MutableStateFlow("")
     private val searchQueryFlow: StateFlow<String> = _searchQueryFlow.asStateFlow()

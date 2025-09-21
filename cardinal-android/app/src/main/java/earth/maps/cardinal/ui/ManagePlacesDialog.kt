@@ -94,7 +94,7 @@ fun ManagePlacesDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.saved_places),
+                    text = stringResource(R.string.saved_places_title_case),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )

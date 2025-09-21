@@ -65,6 +65,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.GeocodeResult
@@ -72,6 +73,7 @@ import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.deduplicateSearchResults
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
+import earth.maps.cardinal.viewmodel.SavedPlacesViewModel
 import kotlin.math.abs
 
 @SuppressLint("ConfigurationScreenWidthHeight")
@@ -82,9 +84,9 @@ fun HomeScreen(
     onPlaceSelected: (Place) -> Unit,
     onPeekHeightChange: (dp: Dp) -> Unit,
     isSearchFocused: Boolean,
-    onSearchFocusChange: (Boolean) -> Unit
+    onSheetFixedChange: (Boolean) -> Unit,
+    onSearchFocusChanged: (Boolean) -> Unit,
 ) {
-    val savedPlaces = viewModel.savedPlaces.value
     val geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value)
     val isSearching = viewModel.isSearching
     val searchQuery = viewModel.searchQuery
@@ -97,8 +99,13 @@ fun HomeScreen(
                 viewModel.updateSearchQuery(query)
             },
             isSearchFocused = isSearchFocused,
-            onSearchFocusChange = onSearchFocusChange,
-            savedPlaces = savedPlaces,
+            onSearchFocusChange = {
+                onSearchFocusChanged(it)
+                onSheetFixedChange(it)
+            },
+            onSheetFixedChange = {
+                onSheetFixedChange(it)
+            },
             geocodeResults = geocodeResults,
             isSearching = isSearching,
             managePlacesViewModel = managePlacesViewModel,
@@ -115,13 +122,14 @@ private fun SearchPanelContent(
     onSearchQueryChange: (String) -> Unit,
     isSearchFocused: Boolean,
     onSearchFocusChange: (Boolean) -> Unit,
-    savedPlaces: List<Place>,
+    onSheetFixedChange: (Boolean) -> Unit,
     geocodeResults: List<GeocodeResult>,
     isSearching: Boolean,
     managePlacesViewModel: ManagePlacesViewModel,
     onPeekHeightChange: (dp: Dp) -> Unit,
     onPlaceSelected: (Place) -> Unit
 ) {
+    val savedPlacesViewModel = hiltViewModel<SavedPlacesViewModel>()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -136,8 +144,7 @@ private fun SearchPanelContent(
                 .onGloballyPositioned { coordinates ->
                     val heightInDp = with(density) { coordinates.size.height.toDp() }
                     onPeekHeightChange(heightInDp)
-                }
-        ) {
+                }) {
             // Search box with "Where to?" placeholder
             TextField(
                 value = searchQuery,
@@ -158,8 +165,7 @@ private fun SearchPanelContent(
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         FilledTonalIconButton(
-                            onClick = { onSearchQueryChange("") },
-                            modifier = Modifier.size(36.dp)
+                            onClick = { onSearchQueryChange("") }, modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
@@ -190,37 +196,30 @@ private fun SearchPanelContent(
                 )
             }
 
-            // Find pinned places
-            val homePlace = savedPlaces.find { it.icon == "home" }
-            val workPlace = savedPlaces.find { it.icon == "work" }
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = dimensionResource(dimen.padding))
             ) {
-                NavigationIcon(
-                    text = stringResource(string.home),
-                    icon = Icons.Default.Home,
-                    place = homePlace,
-                    onPlaceSelected = onPlaceSelected
-                )
-                NavigationIcon(
-                    text = stringResource(string.work),
-                    icon = Icons.Default.AccountCircle,
-                    place = workPlace,
-                    onPlaceSelected = onPlaceSelected
-                )
+//                NavigationIcon(
+//                    text = stringResource(string.home),
+//                    icon = Icons.Default.Home,
+//                    place = homePlace,
+//                    onPlaceSelected = onPlaceSelected
+//                )
+//                NavigationIcon(
+//                    text = stringResource(string.work),
+//                    icon = Icons.Default.AccountCircle,
+//                    place = workPlace,
+//                    onPlaceSelected = onPlaceSelected
+//                )
 
                 FilledTonalIconButton(
-                    modifier = Modifier.size(48.dp),
-                    onClick = {
+                    modifier = Modifier.size(48.dp), onClick = {
                         showManagePlacesDialog = true
-                    }
-                ) {
+                    }) {
                     Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = stringResource(
+                        imageVector = Icons.Default.Edit, contentDescription = stringResource(
                             string.content_description_edit_saved_places
                         )
                     )
@@ -238,8 +237,8 @@ private fun SearchPanelContent(
         }
 
         // Content: either saved places or search results
-        LazyColumn {
-            if (isSearchFocused) {
+        if (isSearchFocused) {
+            LazyColumn {
                 // Show search results
                 if (isSearching) {
                     item {
@@ -258,19 +257,22 @@ private fun SearchPanelContent(
                         )
                     }
                 }
-            } else {
-                // Show saved places
-                items(savedPlaces) { place ->
-                    PlaceItem(place = place, onClick = {
-                        onPlaceSelected(place)
-                    })
-                }
-            }
-        }
 
-        if (isSearchFocused) {
-            Spacer(modifier = Modifier.fillMaxSize())
+            }
+        } else {
+            SavedPlacesList(
+                viewModel = savedPlacesViewModel,
+                onPlaceSelected = {},
+                onListSelected = {},
+                onSheetFixedChange = {
+                    onSheetFixedChange(it)
+                }
+            )
         }
+    }
+
+    if (isSearchFocused) {
+        Spacer(modifier = Modifier.fillMaxSize())
     }
 }
 
@@ -281,14 +283,11 @@ private fun PlaceItem(place: Place, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(bottom = dimensionResource(dimen.padding))
             .clickable(
-                true,
-                onClick = onClick
-            ),
-        onClick = {
+                true, onClick = onClick
+            ), onClick = {
             Log.d("Place", "$place")
             onClick()
-        },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        }, elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -350,13 +349,11 @@ fun NavigationIcon(
         Row(modifier = Modifier.padding(vertical = 4.dp)) {
             Icon(
                 imageVector = icon,
-                modifier = Modifier
-                    .padding(end = 4.dp),
+                modifier = Modifier.padding(end = 4.dp),
                 contentDescription = null // This is fine because the semantic information is provided by the text.
             )
             Text(
-                modifier = Modifier.align(Alignment.CenterVertically),
-                text = text
+                modifier = Modifier.align(Alignment.CenterVertically), text = text
             )
         }
     }

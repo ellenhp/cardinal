@@ -64,10 +64,10 @@ import earth.maps.cardinal.viewmodel.PlaceCardViewModel
 
 @Composable
 fun PlaceCardScreen(
+    viewModel: PlaceCardViewModel,
     place: Place,
     onBack: () -> Unit,
     onGetDirections: (Place) -> Unit,
-    viewModel: PlaceCardViewModel,
     onPeekHeightChange: (dp: Dp) -> Unit
 ) {
     val density = LocalDensity.current

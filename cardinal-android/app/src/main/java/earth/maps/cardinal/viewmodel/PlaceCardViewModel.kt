@@ -23,11 +23,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.room.SavedPlace
 import earth.maps.cardinal.data.room.SavedPlaceDao
+import earth.maps.cardinal.data.room.SavedPlaceRepository
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class PlaceCardViewModel @Inject constructor(
+    private val placeRepository: SavedPlaceRepository,
     private val placeDao: SavedPlaceDao
 ) : ViewModel() {
 
@@ -50,23 +52,25 @@ class PlaceCardViewModel @Inject constructor(
 
     fun savePlace(place: Place) {
         viewModelScope.launch {
-            placeDao.insertPlace(SavedPlace.fromPlace(place))
-            isPlaceSaved.value = true
+            savePlaceInner(place)
         }
     }
 
     fun savePlaceAsHome(place: Place) {
         viewModelScope.launch {
-            placeDao.insertPlace(SavedPlace.fromPlace(place.copy(icon = "home")))
-            isPlaceSaved.value = true
+            savePlaceInner(place.copy(icon = "home"))
         }
     }
 
     fun savePlaceAsWork(place: Place) {
         viewModelScope.launch {
-            placeDao.insertPlace(SavedPlace.fromPlace(place.copy(icon = "work")))
-            isPlaceSaved.value = true
+            savePlaceInner(place.copy(icon = "work"))
         }
+    }
+
+    private suspend fun savePlaceInner(place: Place) {
+        placeRepository.savePlace(place)
+        isPlaceSaved.value = true
     }
 
     fun unsavePlace(place: Place) {

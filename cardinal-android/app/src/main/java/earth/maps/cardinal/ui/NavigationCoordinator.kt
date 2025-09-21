@@ -99,8 +99,11 @@ class NavigationCoordinator(
             bottomSheetNavController.popBackStack() -> true
             // Fall back to main controller
             else -> {
-                mainNavController.navigate(Screen.Home.route) {
-                    popUpTo(Screen.Home.route)
+                mainNavController.navigate("main") {
+                    popUpTo("main") { inclusive = true }
+                }
+                bottomSheetNavController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.Home.route) { inclusive = true }
                 }
                 true
             }

@@ -18,6 +18,7 @@ package earth.maps.cardinal.data.room
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.util.UUID
 
 @Entity(tableName = "saved_lists")
 data class SavedList(
@@ -28,4 +29,25 @@ data class SavedList(
     val isCollapsed: Boolean = false,  // UI state for collapsible lists
     val createdAt: Long,
     val updatedAt: Long
-)
+) {
+    companion object {
+        fun createList(
+            name: String,
+            description: String? = null,
+            isCollapsed: Boolean = false,
+            isRoot: Boolean = false
+        ): SavedList {
+            val id = UUID.randomUUID().toString()
+            val currentTime = System.currentTimeMillis()
+            return SavedList(
+                id = id,
+                name = name,
+                description = description,
+                isRoot = isRoot,
+                isCollapsed = isCollapsed,
+                createdAt = currentTime,
+                updatedAt = currentTime
+            )
+        }
+    }
+}

@@ -16,37 +16,34 @@
 
 package earth.maps.cardinal.data.room
 
+import earth.maps.cardinal.data.Address
+import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 @Singleton
 class SavedPlaceRepository @Inject constructor(
-    database: AppDatabase
+    private val placeDao: SavedPlaceDao,
+    private val listItemDao: ListItemDao,
+    private val savedListDao: SavedListDao,
 ) {
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val placeDao = database.savedPlaceDao()
-    private val listItemDao = database.listItemDao()
 
     private val _allPlaces = MutableStateFlow<List<SavedPlace>>(emptyList())
-    val allPlaces: StateFlow<List<SavedPlace>> = _allPlaces.asStateFlow()
-
-    init {
-        // TODO: Implement place observation if needed
-    }
 
     /**
      * Saves a place.
      */
+    @OptIn(ExperimentalTime::class)
     suspend fun savePlace(
         place: Place,
         customName: String? = null,
@@ -58,7 +55,20 @@ class SavedPlaceRepository @Inject constructor(
                 customDescription = customDescription
             )
 
+            val rootList = savedListDao.getRootList()!!
+            val rootListLength = listItemDao.getItemsInList(rootList.id).size
             placeDao.insertPlace(savedPlace)
+            listItemDao.insertItem(
+                ListItem(
+                    listId = rootList.id,
+                    itemId = savedPlace.id,
+                    itemType = ItemType.PLACE,
+                    position = rootListLength,
+                    addedAt = Clock.System.now().toEpochMilliseconds()
+                )
+            )
+
+
             Result.success(savedPlace.id)
         } catch (e: Exception) {
             Result.failure(e)
@@ -133,7 +143,7 @@ class SavedPlaceRepository @Inject constructor(
             name = savedPlace.customName ?: savedPlace.name,
             description = savedPlace.type,
             icon = savedPlace.icon,
-            latLng = earth.maps.cardinal.data.LatLng(
+            latLng = LatLng(
                 latitude = savedPlace.latitude,
                 longitude = savedPlace.longitude
             ),
@@ -141,7 +151,7 @@ class SavedPlaceRepository @Inject constructor(
                 savedPlace.state != null || savedPlace.postcode != null || savedPlace.country != null ||
                 savedPlace.countryCode != null
             ) {
-                earth.maps.cardinal.data.Address(
+                Address(
                     houseNumber = savedPlace.houseNumber,
                     road = savedPlace.road,
                     city = savedPlace.city,

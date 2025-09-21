@@ -16,14 +16,14 @@
 
 package earth.maps.cardinal.data.room
 
+import android.content.Context
+import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
@@ -31,18 +31,17 @@ import javax.inject.Singleton
 
 @Singleton
 class SavedListRepository @Inject constructor(
-    database: AppDatabase
+    @param:ApplicationContext private val context: Context, database: AppDatabase
 ) {
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val listDao = database.savedListDao()
     private val listItemDao = database.listItemDao()
     private val placeDao = database.savedPlaceDao()
 
-    private val _allLists = MutableStateFlow<List<SavedList>>(emptyList())
-    val allLists: StateFlow<List<SavedList>> = _allLists.asStateFlow()
-
     init {
-        // TODO: Implement list observation if needed
+        coroutineScope.launch {
+            cleanupUnparentedElements()
+        }
     }
 
     /**
@@ -84,8 +83,9 @@ class SavedListRepository @Inject constructor(
         isCollapsed: Boolean? = null
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val existingList = listDao.getList(listId)
-                ?: return@withContext Result.failure(IllegalArgumentException("List not found"))
+            val existingList = listDao.getList(listId) ?: return@withContext Result.failure(
+                IllegalArgumentException("List not found")
+            )
 
             val updatedList = existingList.copy(
                 name = name ?: existingList.name,
@@ -106,8 +106,9 @@ class SavedListRepository @Inject constructor(
      */
     suspend fun deleteList(listId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val list = listDao.getList(listId)
-                ?: return@withContext Result.failure(IllegalArgumentException("List not found"))
+            val list = listDao.getList(listId) ?: return@withContext Result.failure(
+                IllegalArgumentException("List not found")
+            )
 
             listDao.deleteList(list)
             Result.success(Unit)
@@ -125,6 +126,41 @@ class SavedListRepository @Inject constructor(
             Result.success(list)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    suspend fun cleanupUnparentedElements() {
+        if (listDao.getRootList() == null) {
+            listDao.insertList(
+                SavedList.createList(
+                    context.getString(earth.maps.cardinal.R.string.saved_places_title_case),
+                    isRoot = true,
+                )
+            )
+        }
+        val rootList = listDao.getRootList()
+        if (rootList == null) {
+            Log.e(TAG, "Failed to find a root list immediately after ensuring one exists.")
+            return
+        }
+        val potentiallyUnparentedLists = listDao.getAllLists().map { it.id }.toMutableSet()
+        val potentiallyUnparentedPlaces = placeDao.getAllPlaces().map { it.id }.toMutableSet()
+        for (list in listDao.getAllLists()) {
+            if (list.isRoot) {
+                potentiallyUnparentedLists.remove(list.id)
+                continue
+            }
+            val listItems = listItemDao.getItemsInList(list.id)
+            for (listItem in listItems) {
+                potentiallyUnparentedLists.remove(listItem.itemId)
+                potentiallyUnparentedPlaces.remove(listItem.itemId)
+            }
+        }
+        for (unparentedList in potentiallyUnparentedLists) {
+            addItemToList(rootList.id, itemId = unparentedList, itemType = ItemType.LIST)
+        }
+        for (unparentedPlace in potentiallyUnparentedPlaces) {
+            addItemToList(rootList.id, itemId = unparentedPlace, itemType = ItemType.PLACE)
         }
     }
 
@@ -151,13 +187,11 @@ class SavedListRepository @Inject constructor(
      * Adds an item to a list.
      */
     suspend fun addItemToList(
-        listId: String,
-        itemId: String,
-        itemType: ItemType
+        listId: String, itemId: String, itemType: ItemType
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             // Get the current max position in the list
-            val currentItems = listItemDao.getItemsInList(listId).first()
+            val currentItems = listItemDao.getItemsInList(listId)
             val maxPosition = if (currentItems.isNotEmpty()) {
                 currentItems.maxByOrNull { it.position }?.position ?: -1
             } else {
@@ -184,9 +218,7 @@ class SavedListRepository @Inject constructor(
      * Removes an item from a list.
      */
     suspend fun removeItemFromList(
-        listId: String,
-        itemId: String,
-        itemType: ItemType
+        listId: String, itemId: String, itemType: ItemType
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val listItem = ListItem(
@@ -208,14 +240,11 @@ class SavedListRepository @Inject constructor(
      * Moves an item from one list to another.
      */
     suspend fun moveItem(
-        itemId: String,
-        itemType: ItemType,
-        oldListId: String,
-        newListId: String
+        itemId: String, itemType: ItemType, oldListId: String, newListId: String
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             // Get the current max position in the new list
-            val currentItems = listItemDao.getItemsInList(newListId).first()
+            val currentItems = listItemDao.getItemsInList(newListId)
             val maxPosition = if (currentItems.isNotEmpty()) {
                 currentItems.maxByOrNull { it.position }?.position ?: -1
             } else {
@@ -234,8 +263,7 @@ class SavedListRepository @Inject constructor(
      * Reorders items in a list.
      */
     suspend fun reorderItems(
-        listId: String,
-        items: List<ListItem>
+        listId: String, items: List<ListItem>
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             listItemDao.reorderItems(listId, items)
@@ -252,7 +280,7 @@ class SavedListRepository @Inject constructor(
     suspend fun getListContent(listId: String): Result<List<ListContent>> =
         withContext(Dispatchers.IO) {
             try {
-                val items = listItemDao.getItemsInList(listId).first()
+                val items = listItemDao.getItemsInList(listId)
                 val contentList = mutableListOf<ListContent>()
 
                 for (item in items) {
@@ -298,4 +326,8 @@ class SavedListRepository @Inject constructor(
                 Result.failure(e)
             }
         }
+
+    companion object {
+        private const val TAG = "SavedListRepository"
+    }
 }
