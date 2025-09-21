@@ -49,12 +49,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -63,6 +66,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R.dimen
@@ -81,8 +85,8 @@ fun HomeScreen(
     managePlacesViewModel: ManagePlacesViewModel,
     onPlaceSelected: (Place) -> Unit,
     onPeekHeightChange: (dp: Dp) -> Unit,
-    isSearchFocused: Boolean,
-    onSearchFocusChange: (Boolean) -> Unit
+    onSearchFocusChange: (Boolean) -> Unit,
+    homeInSearchScreen: Boolean,
 ) {
     val savedPlaces = viewModel.savedPlaces.value
     val geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value)
@@ -96,14 +100,14 @@ fun HomeScreen(
             onSearchQueryChange = { query ->
                 viewModel.updateSearchQuery(query)
             },
-            isSearchFocused = isSearchFocused,
             onSearchFocusChange = onSearchFocusChange,
             savedPlaces = savedPlaces,
             geocodeResults = geocodeResults,
             isSearching = isSearching,
             managePlacesViewModel = managePlacesViewModel,
             onPeekHeightChange = onPeekHeightChange,
-            onPlaceSelected = onPlaceSelected
+            onPlaceSelected = onPlaceSelected,
+            homeInSearchScreen = homeInSearchScreen
         )
     }
 }
@@ -111,16 +115,16 @@ fun HomeScreen(
 @Composable
 private fun SearchPanelContent(
     viewModel: HomeViewModel,
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit,
-    isSearchFocused: Boolean,
+    searchQuery: TextFieldValue,
+    onSearchQueryChange: (TextFieldValue) -> Unit,
     onSearchFocusChange: (Boolean) -> Unit,
     savedPlaces: List<Place>,
     geocodeResults: List<GeocodeResult>,
     isSearching: Boolean,
     managePlacesViewModel: ManagePlacesViewModel,
     onPeekHeightChange: (dp: Dp) -> Unit,
-    onPlaceSelected: (Place) -> Unit
+    onPlaceSelected: (Place) -> Unit,
+    homeInSearchScreen: Boolean
 ) {
     Column(
         modifier = Modifier
@@ -136,13 +140,14 @@ private fun SearchPanelContent(
                 .onGloballyPositioned { coordinates ->
                     val heightInDp = with(density) { coordinates.size.height.toDp() }
                     onPeekHeightChange(heightInDp)
-                }
-        ) {
+                }) {
+            val textField = remember { FocusRequester() }
             // Search box with "Where to?" placeholder
             TextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
                 modifier = Modifier
+                    .focusRequester(textField)
                     .fillMaxWidth()
                     .padding(bottom = dimensionResource(dimen.padding))
                     .onFocusChanged { focusState ->
@@ -156,9 +161,9 @@ private fun SearchPanelContent(
                     )
                 },
                 trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
+                    if (searchQuery.text.isNotEmpty()) {
                         FilledTonalIconButton(
-                            onClick = { onSearchQueryChange("") },
+                            onClick = { onSearchQueryChange(TextFieldValue()) },
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
@@ -175,6 +180,12 @@ private fun SearchPanelContent(
                 ),
                 shape = RoundedCornerShape(dimensionResource(dimen.icon_size))
             )
+
+            LaunchedEffect(homeInSearchScreen) {
+                if (homeInSearchScreen) {
+                    textField.requestFocus()
+                }
+            }
 
             // Pinned destinations.
             var showManagePlacesDialog by remember { mutableStateOf(false) }
@@ -213,14 +224,11 @@ private fun SearchPanelContent(
                 )
 
                 FilledTonalIconButton(
-                    modifier = Modifier.size(48.dp),
-                    onClick = {
+                    modifier = Modifier.size(48.dp), onClick = {
                         showManagePlacesDialog = true
-                    }
-                ) {
+                    }) {
                     Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = stringResource(
+                        imageVector = Icons.Default.Edit, contentDescription = stringResource(
                             string.content_description_edit_saved_places
                         )
                     )
@@ -239,7 +247,7 @@ private fun SearchPanelContent(
 
         // Content: either saved places or search results
         LazyColumn {
-            if (isSearchFocused) {
+            if (homeInSearchScreen) {
                 // Show search results
                 if (isSearching) {
                     item {
@@ -268,7 +276,7 @@ private fun SearchPanelContent(
             }
         }
 
-        if (isSearchFocused) {
+        if (homeInSearchScreen) {
             Spacer(modifier = Modifier.fillMaxSize())
         }
     }
@@ -281,14 +289,11 @@ private fun PlaceItem(place: Place, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(bottom = dimensionResource(dimen.padding))
             .clickable(
-                true,
-                onClick = onClick
-            ),
-        onClick = {
+                true, onClick = onClick
+            ), onClick = {
             Log.d("Place", "$place")
             onClick()
-        },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        }, elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -350,13 +355,11 @@ fun NavigationIcon(
         Row(modifier = Modifier.padding(vertical = 4.dp)) {
             Icon(
                 imageVector = icon,
-                modifier = Modifier
-                    .padding(end = 4.dp),
+                modifier = Modifier.padding(end = 4.dp),
                 contentDescription = null // This is fine because the semantic information is provided by the text.
             )
             Text(
-                modifier = Modifier.align(Alignment.CenterVertically),
-                text = text
+                modifier = Modifier.align(Alignment.CenterVertically), text = text
             )
         }
     }

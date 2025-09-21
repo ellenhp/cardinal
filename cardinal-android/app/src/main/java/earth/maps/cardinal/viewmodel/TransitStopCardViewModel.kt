@@ -65,11 +65,20 @@ class TransitStopCardViewModel @Inject constructor(
     val isRefreshingDepartures: StateFlow<Boolean> = _isRefreshingDepartures
 
 
-    suspend fun setStop(place: Place) {
+    fun setStop(place: Place) {
         this.stop.value = place
-        checkIfPlaceIsSaved(place)
-        reverseGeocodeStop(place)
-        fetchDepartures()
+    }
+
+    suspend fun initializeDepartures() {
+        val place = stop.value
+        if (place != null) {
+            checkIfPlaceIsSaved(place)
+            reverseGeocodeStop(place)
+            fetchDepartures()
+        } else {
+            Log.e(TAG, "Can't find departures for a `null` stop.")
+        }
+
     }
 
     fun checkIfPlaceIsSaved(place: Place) {

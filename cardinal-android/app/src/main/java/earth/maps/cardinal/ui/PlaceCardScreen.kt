@@ -57,10 +57,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
+import earth.maps.cardinal.viewmodel.TransitStopCardViewModel
 
 @Composable
 fun PlaceCardScreen(
@@ -94,165 +96,166 @@ fun PlaceCardScreen(
     var placeToSave by remember { mutableStateOf(place) }
 
     // Place details content
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                start = dimensionResource(dimen.padding),
-                end = dimensionResource(dimen.padding),
-            )
-            .verticalScroll(rememberScrollState())
-            .onGloballyPositioned { coordinates ->
-                val heightInDp = with(density) { coordinates.size.height.toDp() }
-                onPeekHeightChange(heightInDp)
-            },
-    ) {
-        // Place name and type
-        Text(
-            text = displayedPlace.name,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
+    Column {
 
-        Text(
-            text = displayedPlace.type,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp)
-        )
-
-        // Address information
-        displayedPlace.address?.let { address ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = null,
-                    modifier = Modifier.size(dimensionResource(dimen.icon_size))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = dimensionResource(dimen.padding),
+                    end = dimensionResource(dimen.padding),
                 )
-                Text(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = dimensionResource(dimen.padding)),
-                    text = displayedPlace.address.format()
-                        ?: stringResource(string.address_unavailable)
-                )
-            }
-        }
-
-        // Action buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Get directions button
-            Button(
-                onClick = { onGetDirections(displayedPlace) },
-                modifier = Modifier
-                    .padding(start = dimensionResource(dimen.padding_minor), end = 0.dp)
-            ) {
-                Text(stringResource(string.get_directions))
-            }
-
-            // Save/Unsave button
-            Button(
-                onClick = {
-                    if (viewModel.isPlaceSaved.value) {
-                        // Show confirmation dialog for unsaving
-                        showUnsaveConfirmationDialog = true
-                    } else {
-                        // Show dialog for saving
-                        placeToSave = displayedPlace
-                        showSavePlaceDialog = true
-                    }
+                .verticalScroll(rememberScrollState())
+                .onGloballyPositioned { coordinates ->
+                    val heightInDp = with(density) { coordinates.size.height.toDp() }
+                    onPeekHeightChange(heightInDp)
                 },
-                modifier = Modifier
-                    .padding(start = dimensionResource(dimen.padding_minor))
-            ) {
+        ) {
+            // Place name and type
+            Text(
+                text = displayedPlace.name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = displayedPlace.type,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            // Address information
+            displayedPlace.address?.let { address ->
                 Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = if (viewModel.isPlaceSaved.value) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        imageVector = Icons.Default.LocationOn,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(dimensionResource(dimen.icon_size))
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (viewModel.isPlaceSaved.value) {
-                            stringResource(string.unsave_place)
-                        } else {
-                            stringResource(string.save_place)
-                        }
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = dimensionResource(dimen.padding)),
+                        text = displayedPlace.address.format()
+                            ?: stringResource(string.address_unavailable)
                     )
                 }
             }
-        }
-        // Inset horizontal divider
-        HorizontalDivider(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = dimensionResource(dimen.padding) / 2),
-            thickness = DividerDefaults.Thickness,
-            color = MaterialTheme.colorScheme.outlineVariant
-        )
-    }
 
-    // Save Place Dialog
-    if (showSavePlaceDialog) {
-        SavePlaceDialog(
-            place = placeToSave,
-            onDismiss = { showSavePlaceDialog = false },
-            onSaveAsHome = { updatedPlace ->
-                viewModel.savePlaceAsHome(updatedPlace)
-                showSavePlaceDialog = false
-            },
-            onSaveAsWork = { updatedPlace ->
-                viewModel.savePlaceAsWork(updatedPlace)
-                showSavePlaceDialog = false
-            },
-            onSaveAsOther = { updatedPlace ->
-                viewModel.savePlace(updatedPlace)
-                showSavePlaceDialog = false
-            }
-        )
-    }
-
-    // Unsave Confirmation Dialog
-    if (showUnsaveConfirmationDialog) {
-        AlertDialog(
-            onDismissRequest = { showUnsaveConfirmationDialog = false },
-            title = { Text(stringResource(string.unsave_place)) },
-            text = {
-                Text(
-                    stringResource(
-                        string.are_you_sure_you_want_to_delete,
-                        displayedPlace.name
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Get directions button
+                Button(
+                    onClick = { onGetDirections(displayedPlace) }, modifier = Modifier.padding(
+                        start = dimensionResource(dimen.padding_minor), end = 0.dp
                     )
-                )
-            },
-            confirmButton = {
-                TextButton(
+                ) {
+                    Text(stringResource(string.get_directions))
+                }
+
+                // Save/Unsave button
+                Button(
                     onClick = {
-                        viewModel.unsavePlace(displayedPlace)
-                        showUnsaveConfirmationDialog = false
+                        if (viewModel.isPlaceSaved.value) {
+                            // Show confirmation dialog for unsaving
+                            showUnsaveConfirmationDialog = true
+                        } else {
+                            // Show dialog for saving
+                            placeToSave = displayedPlace
+                            showSavePlaceDialog = true
+                        }
+                    }, modifier = Modifier.padding(start = dimensionResource(dimen.padding_minor))
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (viewModel.isPlaceSaved.value) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (viewModel.isPlaceSaved.value) {
+                                stringResource(string.unsave_place)
+                            } else {
+                                stringResource(string.save_place)
+                            }
+                        )
                     }
-                ) {
-                    Text(stringResource(string.unsave_place))
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showUnsaveConfirmationDialog = false }
-                ) {
-                    Text(stringResource(string.cancel_button))
                 }
             }
-        )
+            // Inset horizontal divider
+            HorizontalDivider(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = dimensionResource(dimen.padding) / 2),
+                thickness = DividerDefaults.Thickness,
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+        }
+
+        if (place.isTransitStop) {
+            TransitStopInformation(viewModel = hiltViewModel<TransitStopCardViewModel>().also {
+                it.setStop(place)
+            })
+        }
+
+        // Save Place Dialog
+        if (showSavePlaceDialog) {
+            SavePlaceDialog(
+                place = placeToSave,
+                onDismiss = { showSavePlaceDialog = false },
+                onSaveAsHome = { updatedPlace ->
+                    viewModel.savePlaceAsHome(updatedPlace)
+                    showSavePlaceDialog = false
+                },
+                onSaveAsWork = { updatedPlace ->
+                    viewModel.savePlaceAsWork(updatedPlace)
+                    showSavePlaceDialog = false
+                },
+                onSaveAsOther = { updatedPlace ->
+                    viewModel.savePlace(updatedPlace)
+                    showSavePlaceDialog = false
+                })
+        }
+
+        // Unsave Confirmation Dialog
+        if (showUnsaveConfirmationDialog) {
+            AlertDialog(
+                onDismissRequest = { showUnsaveConfirmationDialog = false },
+                title = { Text(stringResource(string.unsave_place)) },
+                text = {
+                    Text(
+                        stringResource(
+                            string.are_you_sure_you_want_to_delete, displayedPlace.name
+                        )
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.unsavePlace(displayedPlace)
+                            showUnsaveConfirmationDialog = false
+                        }) {
+                        Text(stringResource(string.unsave_place))
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showUnsaveConfirmationDialog = false }) {
+                        Text(stringResource(string.cancel_button))
+                    }
+                })
+        }
     }
 }
 
@@ -309,8 +312,7 @@ fun SavePlaceDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedButton(
-                    onClick = { onSaveAsOther(place) },
-                    modifier = Modifier.fillMaxWidth()
+                    onClick = { onSaveAsOther(place) }, modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(string.save_button))
                 }
@@ -320,6 +322,5 @@ fun SavePlaceDialog(
             TextButton(onClick = onDismiss) {
                 Text(stringResource(string.cancel_button))
             }
-        }
-    )
+        })
 }
