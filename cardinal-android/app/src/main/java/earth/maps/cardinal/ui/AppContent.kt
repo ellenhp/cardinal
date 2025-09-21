@@ -92,7 +92,6 @@ import earth.maps.cardinal.viewmodel.MapViewModel
 import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
 import earth.maps.cardinal.viewmodel.SettingsViewModel
-import earth.maps.cardinal.viewmodel.TransitStopCardViewModel
 import io.github.dellisd.spatialk.geojson.BoundingBox
 import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
@@ -176,16 +175,16 @@ fun AppContent(
                                 coroutineScope.launch {
                                     imeController?.hide()
                                     focusManager.clearFocus(force = true)
-                                    homeExpanded = false
                                     homeInSearchScreen = false
+                                    homeExpanded = false
                                 }
                             }
                         }
 
                         LaunchedEffect(homeExpanded) {
                             mapPins.clear()
-                            sheetSwipeEnabled = true
                             coroutineScope.launch {
+                                sheetSwipeEnabled = !homeInSearchScreen
                                 if (homeExpanded) {
                                     scaffoldState.bottomSheetState.expand()
                                 } else {
@@ -203,11 +202,7 @@ fun AppContent(
                                     // Collapse the bottom sheet but don't touch homeExpanded.
                                     scaffoldState.bottomSheetState.collapse()
                                 }
-                                if (place.isTransitStop) {
-                                    navigationCoordinator.navigateToTransitStopCard(place)
-                                } else {
-                                    navigationCoordinator.navigateToPlaceCard(place)
-                                }
+                                navigationCoordinator.navigateToPlaceCard(place)
                             },
                             onPeekHeightChange = { peekHeight = it },
                             homeInSearchScreen = homeInSearchScreen,
@@ -259,52 +254,6 @@ fun AppContent(
                             }
 
                             PlaceCardScreen(place = place, viewModel = viewModel, onBack = {
-                                navController.popBackStack()
-                            }, onGetDirections = { place ->
-                                navigationCoordinator.navigateToDirections(toPlace = place)
-                            }, onPeekHeightChange = { peekHeight = it })
-                        }
-                    }
-
-                    composable(Screen.TransitStopCard.route) { backStackEntry ->
-                        LaunchedEffect(key1 = Unit) {
-                            sheetSwipeEnabled = true
-                            // The place card starts partially expanded.
-                            coroutineScope.launch {
-                                bottomSheetState.collapse()
-                            }
-                        }
-                        val viewModel: TransitStopCardViewModel = hiltViewModel()
-                        val stopJson = backStackEntry.arguments?.getString("stop")
-                        val stop = stopJson?.let { Gson().fromJson(it, Place::class.java) }
-                        stop?.let { stop ->
-                            LaunchedEffect(stop) {
-                                mapPins.clear()
-                                val position = Position(stop.latLng.longitude, stop.latLng.latitude)
-                                // Clear any existing pins and add the new one to ensure only one pin is shown at a time
-                                mapPins.clear()
-                                mapPins.add(position)
-
-                                val previousBackStackEntry = navController.previousBackStackEntry
-                                val shouldFlyToPoi =
-                                    previousBackStackEntry?.destination?.route == Screen.Home.route
-
-                                // Only animate if we're entering from the home screen, as opposed to e.g. popping from the
-                                // settings screen. This is brittle and may break if we end up with more entry points.
-                                if (shouldFlyToPoi) {
-                                    coroutineScope.launch {
-                                        cameraState.animateTo(
-                                            CameraPosition(
-                                                target = position, zoom = 15.0
-                                            ),
-                                            duration = appPreferenceRepository.animationSpeedDurationValue
-                                        )
-                                    }
-                                }
-                                viewModel.setStop(stop)
-                            }
-
-                            TransitStopScreen(stop = stop, viewModel = viewModel, onBack = {
                                 navController.popBackStack()
                             }, onGetDirections = { place ->
                                 navigationCoordinator.navigateToDirections(toPlace = place)
@@ -547,7 +496,7 @@ fun AppContent(
                             navigationCoordinator.navigateToPlaceCard(it)
                         },
                         onTransitStopClick = {
-                            navigationCoordinator.navigateToTransitStopCard(it)
+                            navigationCoordinator.navigateToPlaceCard(it)
                         },
                         onDropPin = {
                             val place = Place(

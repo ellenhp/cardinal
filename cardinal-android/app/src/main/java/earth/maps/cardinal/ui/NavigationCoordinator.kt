@@ -74,7 +74,7 @@ class NavigationCoordinator(
     fun navigateToPlaceCard(place: Place) {
         val placeJson = Uri.encode(Gson().toJson(place))
         bottomSheetNavController.navigate("place_card?place=$placeJson") {
-            popUpTo(Screen.Home.route) { inclusive = false }
+            popUpTo(Screen.PlaceCard.route) { inclusive = true }
         }
     }
 
@@ -90,21 +90,10 @@ class NavigationCoordinator(
 
     // Back navigation that knows which controller to use
     fun navigateBack(): Boolean {
-        return when {
-            // If we're in turn-by-turn, use main controller
-            mainNavController.currentDestination?.route == Screen.TurnByTurnNavigation.route -> {
-                mainNavController.popBackStack()
-            }
-            // Otherwise try bottom sheet controller first
-            bottomSheetNavController.popBackStack() -> true
-            // Fall back to main controller
-            else -> {
-                mainNavController.navigate("main") {
-                    popUpTo("main")
-                }
-                true
-            }
+        if (mainNavController.currentDestination?.route == Screen.TurnByTurnNavigation.route) {
+            return mainNavController.popBackStack()
         }
+        return bottomSheetNavController.popBackStack()
     }
 
     fun isInMainApp(): Boolean {
@@ -120,7 +109,7 @@ class NavigationCoordinator(
     }
 
     fun isInHomeScreen(): Boolean {
-        return isInMainApp() && bottomSheetNavController.currentDestination?.route?.startsWith("home") == true
+        return isInMainApp() && bottomSheetNavController.currentDestination?.route == Screen.Home.route
     }
 
     fun onMapInteraction() {
@@ -153,12 +142,5 @@ class NavigationCoordinator(
 
     fun navigateToAdvancedSettings() {
         bottomSheetNavController.navigate(Screen.AdvancedSettings.route)
-    }
-
-    fun navigateToTransitStopCard(stop: Place) {
-        val stopJson = Uri.encode(Gson().toJson(stop))
-        bottomSheetNavController.navigate("transit_card?stop=$stopJson") {
-            popUpTo(Screen.Home.route) { inclusive = false }
-        }
     }
 }
