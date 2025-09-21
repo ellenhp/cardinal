@@ -17,7 +17,6 @@
 package earth.maps.cardinal.ui
 
 import android.content.ClipData
-import android.util.Log
 import android.view.View
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -199,18 +198,19 @@ private fun SavedPlacesListItem(
     val baseModifier = if (item.itemType == ItemType.LIST) {
         Modifier
             .baseModifierForDragAndDropSource(
-                item.itemId,
-                viewModel
+                item.itemId, viewModel
             )
-            .clickable(onClick = { viewModel.toggleListCollapse(item.itemId) })
+            .clickable(onClick = {
+                viewModel.toggleListCollapse(item.itemId)
+            })
     } else {
-        Modifier//.baseModifierForDragAndDropSource(item.itemId, viewModel)
+        Modifier
     }
     Card(
         modifier = baseModifier
             .fillMaxWidth()
-            .padding(8.dp)
-            .clickable(onClick = { onItemClicked(item) }), elevation = CardDefaults.cardElevation(
+            .padding(8.dp),
+        elevation = CardDefaults.cardElevation(
             2.dp
         )
     ) {
@@ -229,9 +229,9 @@ private fun SavedPlacesListItem(
                 }
 
                 ItemType.LIST -> {
-                    val item by viewModel.observeList(item.itemId).collectAsState(null)
-                    val isExpanded by viewModel.observeIsExpanded().collectAsState(false)
-                    Log.d("Expanded", "$isExpanded")
+                    val itemId = item.itemId
+                    val item by viewModel.observeList(itemId).collectAsState(null)
+                    val isExpanded by viewModel.observeIsExpanded(itemId).collectAsState(false)
                     item?.let { item ->
                         SavedPlacesListListItem(
                             viewModel = hiltViewModel<SavedPlacesViewModel>().also {

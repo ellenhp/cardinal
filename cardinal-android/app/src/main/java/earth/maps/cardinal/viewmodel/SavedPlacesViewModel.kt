@@ -28,7 +28,6 @@ import earth.maps.cardinal.data.room.SavedListRepository
 import earth.maps.cardinal.data.room.SavedPlace
 import earth.maps.cardinal.data.room.SavedPlaceDao
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -67,10 +66,7 @@ class SavedPlacesViewModel @Inject constructor(
 
     fun toggleListCollapse(listId: String) {
         viewModelScope.launch {
-            savedListRepository.updateList(
-                listId,
-                isCollapsed = savedListDao.getList(listId)?.isCollapsed == false
-            )
+            savedListDao.toggleExpanded(listId)
         }
     }
 
@@ -119,10 +115,8 @@ class SavedPlacesViewModel @Inject constructor(
         return savedPlaceDao.getPlaceAsFlow(placeId)
     }
 
-    fun observeIsExpanded(): Flow<Boolean> {
-        return currentListId?.let { listId ->
-            savedListDao.getListAsFlow(listId).map { it?.isCollapsed == false }
-        } ?: MutableStateFlow(false)
+    fun observeIsExpanded(listId: String): Flow<Boolean> {
+        return savedListDao.getListAsFlow(listId).map { it?.isCollapsed == false }
     }
 }
 

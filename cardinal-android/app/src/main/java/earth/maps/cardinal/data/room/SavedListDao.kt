@@ -40,7 +40,7 @@ interface SavedListDao {
     @Query("SELECT * FROM saved_lists")
     suspend fun getAllLists(): List<SavedList>
 
-    @Query("UPDATE saved_lists SET isCollapsed = 1 - isCollapsed WHERE id = :listId")
+    @Query("UPDATE saved_lists SET isCollapsed = CASE WHEN isCollapsed = 0 THEN 1 ELSE 0 END WHERE id = :listId")
     suspend fun toggleExpanded(listId: String): Unit
 
     @Query(
