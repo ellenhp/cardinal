@@ -21,8 +21,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -38,7 +40,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DividerDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -63,6 +64,7 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import earth.maps.cardinal.R.dimen
@@ -197,58 +199,41 @@ fun RouteDepartures(stopTimes: List<StopTime>, maxDepartures: Int) {
                 .fillMaxWidth()
                 .padding(bottom = 4.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.Transparent
+                containerColor = routeColor,
+                contentColor = onRouteColor,
             )
         ) {
             val pagerState = rememberPagerState(pageCount = { headsigns.size })
             val scrollScope = rememberCoroutineScope()
+            val density = LocalDensity.current
+            var routeNamePadding = remember { mutableStateOf<Dp?>(null) }
+
             Box {
                 // Route name header
                 Text(
                     text = routeName,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                    color = onRouteColor,
+                    modifier = Modifier
+                        .padding(dimensionResource(dimen.padding))
+                        .onGloballyPositioned {
+                            routeNamePadding.value = with(density) { it.size.height.toDp() }
+                        })
 
                 Box(modifier = Modifier.align(Alignment.TopCenter)) {
                     PageIndicator(headsigns.size, currentPage = pagerState.currentPage)
                 }
-                Column(
-                    modifier = Modifier.padding(8.dp)
-                ) {
-                    // Carousel for headsigns if there are multiple headsigns
-                    if (headsigns.size > 1) {
-                        // Swipeable pager for headsigns with fixed height
-                        FixedHeightHorizontalPager(
-                            state = pagerState,
-                            departuresByHeadsign = departuresByHeadsign,
-                            headsigns = headsigns,
-                            routeColor = routeColor,
-                            onRouteColor = onRouteColor,
-                        )
-                    } else {
-                        // If there's only one headsign, display departures normally
-                        departures.take(maxDepartures).forEachIndexed { index, stopTime ->
-                            DepartureRow(
-                                stopTime = stopTime,
-                                isFirst = index == 0,
-                                routeColor = routeColor,
-                                onRouteColor = onRouteColor
-                            )
-                            // Add divider between departure rows, but not after the last one
-                            if (index < departures.size - 1) {
-                                HorizontalDivider(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    thickness = DividerDefaults.Thickness / 2,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                )
-                            }
-                        }
-                    }
+                val routeNamePaddingLocal = routeNamePadding.value
+                if (routeNamePaddingLocal != null) {
+                    // Swipeable pager for headsigns with fixed height
+                    FixedHeightHorizontalPager(
+                        state = pagerState,
+                        departuresByHeadsign = departuresByHeadsign,
+                        headsigns = headsigns,
+                        onRouteColor = onRouteColor,
+                        routeNamePaddingLocal
+                    )
                 }
             }
         }
@@ -283,11 +268,11 @@ fun PageIndicator(pageCount: Int, currentPage: Int) {
 @OptIn(ExperimentalTime::class)
 @Composable
 fun DepartureRow(
-    stopTime: StopTime, isFirst: Boolean, routeColor: Color, onRouteColor: Color,
+    stopTime: StopTime, isFirst: Boolean, onRouteColor: Color
 ) {
     val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val isoFormatter = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.systemDefault())
-    val textColor = MaterialTheme.colorScheme.onSurface
+    val textColor = onRouteColor
 
     val scheduledDepartureInstant = stopTime.place.scheduledDeparture?.let {
         try {
@@ -326,22 +311,6 @@ fun DepartureRow(
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Headsign at the beginning.
-        if (isFirst) {
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(0.6f),
-                colors = CardDefaults.cardColors(containerColor = routeColor)
-            ) {
-                Text(
-                    modifier = Modifier.padding(dimensionResource(dimen.padding)),
-                    text = stopTime.headsign,
-                    textAlign = TextAlign.Center,
-                    color = onRouteColor,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-        }
-
         val stopTimeStyle = if (isFirst) {
             MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
         } else {
@@ -393,8 +362,8 @@ fun FixedHeightHorizontalPager(
     state: PagerState,
     departuresByHeadsign: Map<String, List<StopTime>>,
     headsigns: List<String>,
-    routeColor: Color,
     onRouteColor: Color,
+    headsignTopPadding: Dp,
 ) {
     val topPadding = dimensionResource(
         dimen.padding_minor
@@ -414,35 +383,50 @@ fun FixedHeightHorizontalPager(
             val selectedHeadsign = headsigns[page]
             val departuresForSelectedHeadsign =
                 departuresByHeadsign[selectedHeadsign] ?: emptyList()
-
-            Column(
-                modifier = Modifier
-                    .padding(top = topPadding)
-                    .defaultMinSize(minHeight = maxChildHeight.value)
-                    .onGloballyPositioned({ coordinates ->
-                        val heightDp = with(density) { coordinates.size.height.toDp() }
-                        if (heightDp > maxChildHeight.value) {
-                            maxChildHeight.value = heightDp
-                        }
-                    })
-            ) {
-                departuresForSelectedHeadsign.forEachIndexed { index, stopTime ->
-                    DepartureRow(
-                        stopTime = stopTime,
-                        isFirst = index == 0,
-                        routeColor = routeColor,
-                        onRouteColor = onRouteColor
+            Row {
+                Column {
+                    Text(
+                        modifier = Modifier
+                            .padding(
+                                start = dimensionResource(dimen.padding),
+                                top = dimensionResource(dimen.padding) + headsignTopPadding,
+                            )
+                            .fillMaxWidth(0.6f),
+                        text = selectedHeadsign,
+                        textAlign = TextAlign.Start,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = onRouteColor
                     )
-                    // Add divider between departure rows, but not after the last one
-                    if (index < departuresForSelectedHeadsign.size - 1) {
-                        HorizontalDivider(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            thickness = DividerDefaults.Thickness / 2,
-                            color = onRouteColor.copy(alpha = 0.3f)
+                }
+
+                Column(
+                    modifier = Modifier
+                        .padding(top = topPadding)
+                        .defaultMinSize(minHeight = maxChildHeight.value)
+                        .onGloballyPositioned({ coordinates ->
+                            val heightDp = with(density) { coordinates.size.height.toDp() }
+                            if (heightDp > maxChildHeight.value) {
+                                maxChildHeight.value = heightDp
+                            }
+                        })
+                ) {
+                    departuresForSelectedHeadsign.forEachIndexed { index, stopTime ->
+                        DepartureRow(
+                            stopTime = stopTime,
+                            isFirst = index == 0,
+                            onRouteColor = onRouteColor,
                         )
+                        // Add divider between departure rows, but not after the last one
+                        if (index < departuresForSelectedHeadsign.size - 1) {
+                            HorizontalDivider(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                thickness = DividerDefaults.Thickness / 2,
+                            )
+                        }
                     }
+                    Spacer(modifier = Modifier.height(dimensionResource(dimen.padding_minor)))
                 }
             }
         }
