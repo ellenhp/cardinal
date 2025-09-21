@@ -22,11 +22,13 @@ import com.google.gson.Gson
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.room.RoutingProfile
+import earth.maps.cardinal.routing.RouteRepository
 import uniffi.ferrostar.Route
 
 class NavigationCoordinator(
     private val mainNavController: NavController,
-    private val bottomSheetNavController: NavController
+    private val bottomSheetNavController: NavController,
+    private val routeRepository: RouteRepository
 ) {
 
 
@@ -40,10 +42,10 @@ class NavigationCoordinator(
 
     // Navigation to turn-by-turn with Ferrostar route
     fun navigateToTurnByTurnWithFerrostarRoute(ferrostarRoute: Route, routingMode: RoutingMode) {
-        // Serialize the route and routing mode as navigation arguments
-        val routeJson = Uri.encode(Gson().toJson(ferrostarRoute))
+        // Store the route in the repository and pass only the ID
+        val routeId = routeRepository.storeRoute(ferrostarRoute)
         val modeJson = Uri.encode(Gson().toJson(routingMode))
-        val route = "turn_by_turn?ferrostarRoute=$routeJson&routingMode=$modeJson"
+        val route = "turn_by_turn?routeId=$routeId&routingMode=$modeJson"
         mainNavController.navigate(route)
     }
 
