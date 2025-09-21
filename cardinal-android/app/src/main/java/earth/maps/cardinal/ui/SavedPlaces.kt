@@ -139,7 +139,7 @@ private fun SavedPlacesContent(
     var itemToDelete by remember { mutableStateOf<ListContent?>(null) }
     val rootList by viewModel.observeRootList().collectAsState(null)
 
-    val baseModifier = Modifier.baseModifierForDragAndDropSource(rootList?.id, viewModel)
+    val baseModifier = Modifier.baseModifierForDragAndDropTarget(rootList?.id, viewModel)
 
     Box(
         modifier = baseModifier
@@ -196,13 +196,9 @@ private fun SavedPlacesListItem(
     viewModel: SavedPlacesViewModel,
 ) {
     val baseModifier = if (item.itemType == ItemType.LIST) {
-        Modifier
-            .baseModifierForDragAndDropSource(
-                item.itemId, viewModel
-            )
-            .clickable(onClick = {
-                viewModel.toggleListCollapse(item.itemId)
-            })
+        Modifier.baseModifierForDragAndDropTarget(
+            item.itemId, viewModel
+        )
     } else {
         Modifier
     }
@@ -252,7 +248,7 @@ private fun SavedPlacesListItem(
 }
 
 @Composable
-private fun Modifier.baseModifierForDragAndDropSource(
+private fun Modifier.baseModifierForDragAndDropTarget(
     itemId: String?, viewModel: SavedPlacesViewModel
 ): Modifier {
     return if (itemId == null) {
@@ -290,7 +286,13 @@ private fun SavedPlacesListListItem(
     val baseModifier = if (isRoot) {
         Modifier.fillMaxSize()
     } else {
-        Modifier
+        Modifier.dragAndDropSource(
+            transferData = {
+                DragAndDropTransferData(
+                    clipData = ClipData.newPlainText("SavedPlace", item.id),
+                    flags = View.DRAG_FLAG_GLOBAL
+                )
+            })
     }
     Column(
         modifier = baseModifier
@@ -323,6 +325,9 @@ private fun SavedPlacesListListItem(
 
             if (!isRoot) {
                 Icon(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .clickable(onClick = { viewModel.toggleListCollapse(item.id) }),
                     imageVector = if (item.isCollapsed) Icons.AutoMirrored.Filled.List else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (item.isCollapsed) "Expand" else "Collapse"
                 )
@@ -373,7 +378,6 @@ private fun SavedPlacesPlaceListItem(
                     clipData = ClipData.newPlainText("SavedPlace", item.id),
                     flags = View.DRAG_FLAG_GLOBAL
                 )
-
             })
     } else {
         Modifier
