@@ -16,7 +16,9 @@
 
 package earth.maps.cardinal.ui
 
+import android.content.ClipData
 import android.util.Log
+import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -25,22 +27,25 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.draganddrop.dragAndDropSource
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Place
@@ -58,9 +63,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draganddrop.DragAndDropEvent
+import androidx.compose.ui.draganddrop.DragAndDropTarget
+import androidx.compose.ui.draganddrop.DragAndDropTransferData
+import androidx.compose.ui.draganddrop.toAndroidDragEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
@@ -75,6 +85,7 @@ import earth.maps.cardinal.data.room.ListItem
 import earth.maps.cardinal.data.room.SavedList
 import earth.maps.cardinal.data.room.SavedPlace
 import earth.maps.cardinal.viewmodel.SavedPlacesViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun SavedPlacesList(
@@ -174,6 +185,7 @@ private fun SavedPlacesContent(
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var itemToDelete by remember { mutableStateOf<ListContent?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize()
@@ -193,11 +205,18 @@ private fun SavedPlacesContent(
                         )
                     },
                     isExpanded = true,
+                    allowCollapse = false,
                     isSelected = false,
                     isEditMode = isEditMode,
-                    onItemClicked = onItemClicked,
+                    onItemClicked = { item ->
+                        coroutineScope.launch {
+                            viewModel.maybeHandleListClick(item, fallback = onItemClicked)
+                        }
+                    },
                     onItemLongClicked = onItemLongClicked,
-                )
+                    onAddNewList = { parentId ->
+                        viewModel.addNewListToRoot("New List")
+                    })
             }
         }
     }
@@ -256,7 +275,7 @@ private fun SavedPlacesListItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp)
+                .defaultMinSize(minHeight = 80.dp)
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -265,7 +284,8 @@ private fun SavedPlacesListItem(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
                         modifier = Modifier.padding(end = 8.dp),
-                        checked = isSelected, onCheckedChange = { onItemClicked(item) })
+                        checked = isSelected,
+                        onCheckedChange = { onItemClicked(item) })
                     Icon(
                         imageVector = Icons.Default.Menu,
                         contentDescription = "Drag to reorder",
@@ -279,13 +299,13 @@ private fun SavedPlacesListItem(
             when (item.itemType) {
                 ItemType.PLACE -> {
                     val item by viewModel.observePlace(item.itemId).collectAsState(null)
-                    SavedPlacesPlaceListItem(item, isEditMode)
-
+                    SavedPlacesPlaceListItem(item, isEditMode, viewModel)
                 }
 
                 ItemType.LIST -> {
                     val item by viewModel.observeList(item.itemId).collectAsState(null)
                     val isExpanded by viewModel.observeIsExpanded().collectAsState(false)
+                    Log.d("Expanded", "$isExpanded")
                     item?.let { item ->
                         SavedPlacesListListItem(
                             viewModel = hiltViewModel<SavedPlacesViewModel>().also {
@@ -295,6 +315,7 @@ private fun SavedPlacesListItem(
                             },
                             item = item,
                             isExpanded = isExpanded,
+                            allowCollapse = true,
                             isSelected = viewModel.isItemSelected(item.id),
                             isEditMode = isEditMode,
                             onItemClicked = onItemClicked,
@@ -312,15 +333,34 @@ private fun SavedPlacesListItem(
 private fun SavedPlacesListListItem(
     item: SavedList,
     isExpanded: Boolean,
+    allowCollapse: Boolean,
     isSelected: Boolean,
     isEditMode: Boolean,
     onItemClicked: (ListItem) -> Unit,
     onItemLongClicked: (ListItem) -> Unit,
     viewModel: SavedPlacesViewModel,
     onToggleCollapse: (String, Boolean) -> Unit,
+    onAddNewList: ((String) -> Unit)? = null,
 ) {
     val expandCollapseDurationMillis = 250
-    Column {
+    Column(
+        modifier = Modifier.dragAndDropTarget(shouldStartDragAndDrop = {
+            true
+        }, object : DragAndDropTarget {
+            override fun onDrop(event: DragAndDropEvent): Boolean {
+                val androidDragEvent = event.toAndroidDragEvent()
+                val clipData = androidDragEvent.clipData
+                if (clipData != null && clipData.itemCount > 0 && isEditMode) {
+                    // Extract the place ID from the clip data
+                    val placeId = clipData.getItemAt(0).text.toString()
+                    // Call the stub method to reparent the place to this list
+                    viewModel.reparentPlaceToList(placeId, item.id)
+                    return true
+                }
+                return false
+            }
+        })
+    ) {
         Row {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -337,10 +377,22 @@ private fun SavedPlacesListListItem(
                 }
             }
 
-            Icon(
-                imageVector = if (item.isCollapsed) Icons.AutoMirrored.Filled.List else Icons.Default.KeyboardArrowDown,
-                contentDescription = if (item.isCollapsed) "Expand" else "Collapse"
-            )
+            // Add button to create a new list
+            if (onAddNewList != null) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add new list",
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .clickable { onAddNewList(item.id) })
+            }
+
+            if (allowCollapse) {
+                Icon(
+                    imageVector = if (item.isCollapsed) Icons.AutoMirrored.Filled.List else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (item.isCollapsed) "Expand" else "Collapse"
+                )
+            }
         }
         val enterTransition = remember {
             expandVertically(
@@ -351,17 +403,13 @@ private fun SavedPlacesListListItem(
         }
         val exitTransition = remember {
             shrinkVertically(
-                // Expand from the top.
                 shrinkTowards = Alignment.Top, animationSpec = tween(expandCollapseDurationMillis)
             ) + fadeOut(
-                // Fade in with the initial alpha of 0.3f.
                 animationSpec = tween(expandCollapseDurationMillis)
             )
         }
 
         val children by viewModel.observeListChildren(id = item.id).collectAsState(emptyList())
-
-        Log.d("CHILDREN", "$children")
 
         for (child in children) {
             AnimatedVisibility(
@@ -382,32 +430,49 @@ private fun SavedPlacesListListItem(
 }
 
 @Composable
-private fun RowScope.SavedPlacesPlaceListItem(item: SavedPlace?, isEditMode: Boolean) {
-    if (!isEditMode) {
-        Icon(
-            imageVector = Icons.Default.Place, contentDescription = null, tint = Color.Red
-        )
-    }
-    Spacer(modifier = Modifier.width(16.dp))
+private fun SavedPlacesPlaceListItem(
+    item: SavedPlace?, isEditMode: Boolean, viewModel: SavedPlacesViewModel? = null
+) {
+    val placeItemModifier = if (isEditMode && item != null && viewModel != null) {
+        Modifier.dragAndDropSource(
+            transferData = {
+                DragAndDropTransferData(
+                    clipData = ClipData.newPlainText("SavedPlace", item.id),
+                    flags = View.DRAG_FLAG_GLOBAL
+                )
 
-    Column(
-        modifier = Modifier.weight(1f)
-    ) {
-        val name = item?.customName ?: item?.name
-        if (name != null) {
-            Text(
-                text = name,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold
+            })
+    } else {
+        Modifier
+    }
+
+    Row(modifier = placeItemModifier) {
+        if (!isEditMode) {
+            Icon(
+                imageVector = Icons.Default.Place, contentDescription = null, tint = Color.Red
             )
         }
-        val description = item?.customDescription
-        if (description != null) {
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            val name = item?.customName ?: item?.name
+            if (name != null) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            val description = item?.customDescription
+            if (description != null) {
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

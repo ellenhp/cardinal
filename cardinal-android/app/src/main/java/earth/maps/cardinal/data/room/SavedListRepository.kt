@@ -237,29 +237,6 @@ class SavedListRepository @Inject constructor(
     }
 
     /**
-     * Moves an item from one list to another.
-     */
-    suspend fun moveItem(
-        itemId: String, itemType: ItemType, oldListId: String, newListId: String
-    ): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            // Get the current max position in the new list
-            val currentItems = listItemDao.getItemsInList(newListId)
-            val maxPosition = if (currentItems.isNotEmpty()) {
-                currentItems.maxByOrNull { it.position }?.position ?: -1
-            } else {
-                -1
-            }
-            val newPosition = maxPosition + 1
-
-            listItemDao.moveItem(itemId, itemType, oldListId, newListId, newPosition)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
      * Reorders items in a list.
      */
     suspend fun reorderItems(

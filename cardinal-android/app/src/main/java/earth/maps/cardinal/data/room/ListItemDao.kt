@@ -71,13 +71,11 @@ interface ListItemDao {
         """
         UPDATE list_items 
         SET listId = :newListId, position = :newPosition
-        WHERE itemId = :itemId AND itemType = :itemType AND listId = :oldListId
+        WHERE itemId = :itemId
     """
     )
     suspend fun moveItem(
         itemId: String,
-        itemType: ItemType,
-        oldListId: String,
         newListId: String,
         newPosition: Int
     )

@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import earth.maps.cardinal.data.room.ItemType
 import earth.maps.cardinal.data.room.ListItem
 import earth.maps.cardinal.data.room.ListItemDao
 import earth.maps.cardinal.data.room.SavedList
@@ -101,6 +102,32 @@ class SavedPlacesViewModel @Inject constructor(
     fun updateItemName(itemId: String, newName: String) {
     }
 
+    fun reparentPlaceToList(itemId: String, targetListId: String) {
+        viewModelScope.launch {
+            listItemDao.moveItem(itemId, targetListId, newPosition = 0)
+        }
+    }
+
+    fun addNewListToRoot(name: String) {
+        viewModelScope.launch {
+            // Create a new list
+            val result = savedListRepository.createList(name)
+            if (result.isSuccess) {
+                val newListId = result.getOrNull()
+                newListId?.let { id ->
+                    // Get the root list
+                    val rootList = savedListRepository.getRootList()
+                    if (rootList.isSuccess) {
+                        rootList.getOrNull()?.let { root ->
+                            // Add the new list to the root list
+                            savedListRepository.addItemToList(root.id, id, ItemType.LIST)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fun observeListChildren(id: String): Flow<List<ListItem>> {
         return listItemDao.getItemsInListAsFlow(id)
     }
@@ -125,6 +152,12 @@ class SavedPlacesViewModel @Inject constructor(
         return currentListId?.let { listId ->
             savedListDao.getListAsFlow(listId).map { it?.isCollapsed == false }
         } ?: MutableStateFlow(false)
+    }
+
+    suspend fun maybeHandleListClick(item: ListItem, fallback: (ListItem) -> Unit) {
+        if (item.itemType == ItemType.LIST) {
+            savedListDao.toggleExpanded(item.itemId)
+        }
     }
 }
 
