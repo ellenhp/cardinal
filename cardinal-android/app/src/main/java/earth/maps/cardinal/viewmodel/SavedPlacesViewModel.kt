@@ -44,9 +44,6 @@ class SavedPlacesViewModel @Inject constructor(
     private val listItemDao: ListItemDao,
 ) : ViewModel() {
 
-    var isEditMode by mutableStateOf(false)
-        private set
-
     var selectedItems by mutableStateOf<Set<String>>(emptySet())
         private set
 
@@ -54,13 +51,6 @@ class SavedPlacesViewModel @Inject constructor(
 
     fun setListId(itemId: String) {
         currentListId = itemId
-    }
-
-    fun toggleEditMode() {
-        isEditMode = !isEditMode
-        if (!isEditMode) {
-            selectedItems = emptySet()
-        }
     }
 
     fun toggleItemSelection(itemId: String) {

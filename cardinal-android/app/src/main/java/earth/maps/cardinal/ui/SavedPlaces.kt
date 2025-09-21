@@ -19,7 +19,6 @@ package earth.maps.cardinal.ui
 import android.content.ClipData
 import android.util.Log
 import android.view.View
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -28,7 +27,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.layout.Arrangement
@@ -47,18 +45,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,7 +66,6 @@ import androidx.compose.ui.draganddrop.DragAndDropEvent
 import androidx.compose.ui.draganddrop.DragAndDropTarget
 import androidx.compose.ui.draganddrop.DragAndDropTransferData
 import androidx.compose.ui.draganddrop.toAndroidDragEvent
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -95,18 +89,7 @@ fun SavedPlacesList(
     onSheetFixedChange: (Boolean) -> Unit = {}
 ) {
     val rootList by viewModel.observeRootList().collectAsState(null)
-    val isEditMode = viewModel.isEditMode
     val selectedItems = viewModel.selectedItems
-
-    LaunchedEffect(isEditMode) {
-        onSheetFixedChange(isEditMode)
-    }
-
-    if (isEditMode) {
-        BackHandler {
-            viewModel.toggleEditMode()
-        }
-    }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -119,22 +102,9 @@ fun SavedPlacesList(
                 SavedPlacesContent(
                     viewModel = viewModel,
                     savedList = rootList,
-                    isEditMode = isEditMode,
-                    selectedItems = selectedItems,
                     onItemClicked = { item ->
-                        if (isEditMode) {
-                            viewModel.toggleItemSelection(item.itemId)
-                        }
                     },
-                    onItemLongClicked = { item ->
-                        if (!isEditMode) {
-                            viewModel.toggleEditMode()
-                            viewModel.toggleItemSelection(item.itemId)
-                        }
-                    },
-                    onReorder = viewModel::reorderItems,
-                    onToggleCollapse = viewModel::toggleListCollapse,
-                    onUpdateName = viewModel::updateItemName
+                    onToggleCollapse = viewModel::toggleListCollapse
                 )
             }
         }
@@ -175,13 +145,8 @@ private fun EmptySavedPlacesContent() {
 private fun SavedPlacesContent(
     viewModel: SavedPlacesViewModel,
     savedList: SavedList,
-    isEditMode: Boolean,
-    selectedItems: Set<String>,
     onItemClicked: (ListItem) -> Unit,
-    onItemLongClicked: (ListItem) -> Unit,
-    onReorder: (List<ListItem>) -> Unit,
-    onToggleCollapse: (String, Boolean) -> Unit,
-    onUpdateName: (String, String) -> Unit
+    onToggleCollapse: (String, Boolean) -> Unit
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var itemToDelete by remember { mutableStateOf<ListContent?>(null) }
@@ -206,14 +171,11 @@ private fun SavedPlacesContent(
                     },
                     isExpanded = true,
                     allowCollapse = false,
-                    isSelected = false,
-                    isEditMode = isEditMode,
                     onItemClicked = { item ->
                         coroutineScope.launch {
                             viewModel.maybeHandleListClick(item, fallback = onItemClicked)
                         }
                     },
-                    onItemLongClicked = onItemLongClicked,
                     onAddNewList = { parentId ->
                         viewModel.addNewListToRoot("New List")
                     })
@@ -253,9 +215,7 @@ private fun SavedPlacesContent(
 private fun SavedPlacesListItem(
     item: ListItem,
     isSelected: Boolean,
-    isEditMode: Boolean,
     onItemClicked: (ListItem) -> Unit,
-    onItemLongClicked: (ListItem) -> Unit,
     viewModel: SavedPlacesViewModel,
     onToggleCollapse: (String, Boolean) -> Unit,
 ) {
@@ -263,9 +223,7 @@ private fun SavedPlacesListItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .combinedClickable(
-                onClick = { onItemClicked(item) },
-                onLongClick = { onItemLongClicked(item) }),
+            .clickable(onClick = { onItemClicked(item) }),
         elevation = if (isSelected) CardDefaults.cardElevation(
             8.dp
         ) else CardDefaults.cardElevation(
@@ -279,27 +237,11 @@ private fun SavedPlacesListItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Selection checkbox in edit mode
-            AnimatedVisibility(isEditMode) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        modifier = Modifier.padding(end = 8.dp),
-                        checked = isSelected,
-                        onCheckedChange = { onItemClicked(item) })
-                    Icon(
-                        imageVector = Icons.Default.Menu,
-                        contentDescription = "Drag to reorder",
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                }
-            }
-
-
             // Item icon
             when (item.itemType) {
                 ItemType.PLACE -> {
                     val item by viewModel.observePlace(item.itemId).collectAsState(null)
-                    SavedPlacesPlaceListItem(item, isEditMode, viewModel)
+                    SavedPlacesPlaceListItem(item, viewModel)
                 }
 
                 ItemType.LIST -> {
@@ -316,10 +258,7 @@ private fun SavedPlacesListItem(
                             item = item,
                             isExpanded = isExpanded,
                             allowCollapse = true,
-                            isSelected = viewModel.isItemSelected(item.id),
-                            isEditMode = isEditMode,
                             onItemClicked = onItemClicked,
-                            onItemLongClicked = onItemLongClicked,
                             onToggleCollapse = onToggleCollapse,
                         )
                     }
@@ -334,10 +273,7 @@ private fun SavedPlacesListListItem(
     item: SavedList,
     isExpanded: Boolean,
     allowCollapse: Boolean,
-    isSelected: Boolean,
-    isEditMode: Boolean,
     onItemClicked: (ListItem) -> Unit,
-    onItemLongClicked: (ListItem) -> Unit,
     viewModel: SavedPlacesViewModel,
     onToggleCollapse: (String, Boolean) -> Unit,
     onAddNewList: ((String) -> Unit)? = null,
@@ -350,7 +286,7 @@ private fun SavedPlacesListListItem(
             override fun onDrop(event: DragAndDropEvent): Boolean {
                 val androidDragEvent = event.toAndroidDragEvent()
                 val clipData = androidDragEvent.clipData
-                if (clipData != null && clipData.itemCount > 0 && isEditMode) {
+                if (clipData != null && clipData.itemCount > 0) {
                     // Extract the place ID from the clip data
                     val placeId = clipData.getItemAt(0).text.toString()
                     // Call the stub method to reparent the place to this list
@@ -419,9 +355,7 @@ private fun SavedPlacesListListItem(
                     viewModel = hiltViewModel<SavedPlacesViewModel>().also { it.setListId(child.itemId) },
                     isSelected = viewModel.isItemSelected(child.itemId),
                     item = child,
-                    isEditMode = isEditMode,
                     onItemClicked = onItemClicked,
-                    onItemLongClicked = onItemLongClicked,
                     onToggleCollapse = onToggleCollapse,
                 )
             }
@@ -431,9 +365,9 @@ private fun SavedPlacesListListItem(
 
 @Composable
 private fun SavedPlacesPlaceListItem(
-    item: SavedPlace?, isEditMode: Boolean, viewModel: SavedPlacesViewModel? = null
+    item: SavedPlace?, viewModel: SavedPlacesViewModel? = null
 ) {
-    val placeItemModifier = if (isEditMode && item != null && viewModel != null) {
+    val placeItemModifier = if (item != null && viewModel != null) {
         Modifier.dragAndDropSource(
             transferData = {
                 DragAndDropTransferData(
@@ -447,11 +381,6 @@ private fun SavedPlacesPlaceListItem(
     }
 
     Row(modifier = placeItemModifier) {
-        if (!isEditMode) {
-            Icon(
-                imageVector = Icons.Default.Place, contentDescription = null, tint = Color.Red
-            )
-        }
         Spacer(modifier = Modifier.width(16.dp))
 
         Column(
