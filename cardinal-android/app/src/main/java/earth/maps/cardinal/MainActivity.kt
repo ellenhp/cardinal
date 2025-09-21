@@ -49,6 +49,7 @@ import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
+import earth.maps.cardinal.routing.RouteRepository
 import earth.maps.cardinal.tileserver.LocalMapServerService
 import earth.maps.cardinal.tileserver.PermissionRequest
 import earth.maps.cardinal.tileserver.PermissionRequestManager
@@ -75,6 +76,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var locationRepository: LocationRepository
+
+    @Inject
+    lateinit var routeRepository: RouteRepository
 
     private var localMapServerService: LocalMapServerService? = null
     private var bound by mutableStateOf(false)
@@ -163,7 +167,9 @@ class MainActivity : ComponentActivity() {
 
                 val innerNavController = rememberNavController()
                 val coordinator = NavigationCoordinator(
-                    mainNavController = navController, bottomSheetNavController = innerNavController
+                    mainNavController = navController,
+                    bottomSheetNavController = innerNavController,
+                    routeRepository
                 )
                 if (!coordinator.isInHomeScreen()) {
                     BackHandler {
@@ -196,14 +202,13 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    composable("turn_by_turn?ferrostarRoute={ferrostarRoute}&routingMode={routingMode}") { backStackEntry ->
-                        val ferrostarRouteJson =
-                            backStackEntry.arguments?.getString("ferrostarRoute")
+                    composable("turn_by_turn?routeId={routeId}&routingMode={routingMode}") { backStackEntry ->
+                        val routeId = backStackEntry.arguments?.getString("routeId")
                         val routingModeJson = backStackEntry.arguments?.getString("routingMode")
 
-                        val ferrostarRoute = ferrostarRouteJson?.let {
+                        val ferrostarRoute = routeId?.let {
                             try {
-                                Gson().fromJson(it, uniffi.ferrostar.Route::class.java)
+                                routeRepository.getRoute(it)
                             } catch (_: Exception) {
                                 null
                             }
