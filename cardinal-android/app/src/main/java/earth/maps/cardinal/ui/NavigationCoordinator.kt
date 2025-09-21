@@ -99,8 +99,8 @@ class NavigationCoordinator(
             bottomSheetNavController.popBackStack() -> true
             // Fall back to main controller
             else -> {
-                mainNavController.navigate(Screen.Home.route) {
-                    popUpTo(Screen.Home.route)
+                mainNavController.navigate("main") {
+                    popUpTo("main")
                 }
                 true
             }
@@ -108,15 +108,23 @@ class NavigationCoordinator(
     }
 
     fun isInMainApp(): Boolean {
-        return mainNavController.currentDestination?.route == Screen.Home.route
+        return mainNavController.currentDestination?.route == "main"
     }
 
     fun isInPlaceCard(): Boolean {
         return isInMainApp() && bottomSheetNavController.currentDestination?.route?.startsWith("place_card") == true
     }
 
+    fun isInTransitCard(): Boolean {
+        return isInMainApp() && bottomSheetNavController.currentDestination?.route?.startsWith("transit_card") == true
+    }
+
+    fun isInHomeScreen(): Boolean {
+        return isInMainApp() && bottomSheetNavController.currentDestination?.route?.startsWith("home") == true
+    }
+
     fun onMapInteraction() {
-        if (isInPlaceCard()) {
+        if (isInPlaceCard() || isInTransitCard()) {
             bottomSheetNavController.popBackStack()
         }
     }

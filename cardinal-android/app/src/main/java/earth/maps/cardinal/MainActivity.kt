@@ -165,8 +165,10 @@ class MainActivity : ComponentActivity() {
                 val coordinator = NavigationCoordinator(
                     mainNavController = navController, bottomSheetNavController = innerNavController
                 )
-                BackHandler {
-                    coordinator.navigateBack()
+                if (!coordinator.isInHomeScreen()) {
+                    BackHandler {
+                        coordinator.navigateBack()
+                    }
                 }
 
                 val coroutineScope = rememberCoroutineScope()

@@ -184,6 +184,7 @@ fun AppContent(
 
                         LaunchedEffect(homeExpanded) {
                             mapPins.clear()
+                            sheetSwipeEnabled = true
                             coroutineScope.launch {
                                 if (homeExpanded) {
                                     scaffoldState.bottomSheetState.expand()
