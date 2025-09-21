@@ -16,9 +16,6 @@
 
 package earth.maps.cardinal.viewmodel
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -44,25 +41,10 @@ class SavedPlacesViewModel @Inject constructor(
     private val listItemDao: ListItemDao,
 ) : ViewModel() {
 
-    var selectedItems by mutableStateOf<Set<String>>(emptySet())
-        private set
-
     private var currentListId: String? = null
 
     fun setListId(itemId: String) {
         currentListId = itemId
-    }
-
-    fun toggleItemSelection(itemId: String) {
-        selectedItems = if (itemId in selectedItems) {
-            selectedItems - itemId
-        } else {
-            selectedItems + itemId
-        }
-    }
-
-    fun clearSelection() {
-        selectedItems = emptySet()
     }
 
     fun reorderItems(items: List<ListItem>) {
@@ -83,9 +65,12 @@ class SavedPlacesViewModel @Inject constructor(
         }
     }
 
-    fun toggleListCollapse(listId: String, isCollapsed: Boolean) {
+    fun toggleListCollapse(listId: String) {
         viewModelScope.launch {
-            savedListRepository.updateList(listId, isCollapsed = !isCollapsed)
+            savedListRepository.updateList(
+                listId,
+                isCollapsed = savedListDao.getList(listId)?.isCollapsed == false
+            )
         }
     }
 
@@ -134,20 +119,10 @@ class SavedPlacesViewModel @Inject constructor(
         return savedPlaceDao.getPlaceAsFlow(placeId)
     }
 
-    fun isItemSelected(itemId: String): Boolean {
-        return selectedItems.contains(itemId)
-    }
-
     fun observeIsExpanded(): Flow<Boolean> {
         return currentListId?.let { listId ->
             savedListDao.getListAsFlow(listId).map { it?.isCollapsed == false }
         } ?: MutableStateFlow(false)
-    }
-
-    suspend fun maybeHandleListClick(item: ListItem, fallback: (ListItem) -> Unit) {
-        if (item.itemType == ItemType.LIST) {
-            savedListDao.toggleExpanded(item.itemId)
-        }
     }
 }
 

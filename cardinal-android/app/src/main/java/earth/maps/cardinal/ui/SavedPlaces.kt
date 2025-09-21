@@ -40,7 +40,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
@@ -58,7 +57,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,17 +77,12 @@ import earth.maps.cardinal.data.room.ListItem
 import earth.maps.cardinal.data.room.SavedList
 import earth.maps.cardinal.data.room.SavedPlace
 import earth.maps.cardinal.viewmodel.SavedPlacesViewModel
-import kotlinx.coroutines.launch
 
 @Composable
 fun SavedPlacesList(
-    viewModel: SavedPlacesViewModel = hiltViewModel(),
-    onPlaceSelected: (String) -> Unit = {},
-    onListSelected: (String) -> Unit = {},
-    onSheetFixedChange: (Boolean) -> Unit = {}
+    viewModel: SavedPlacesViewModel = hiltViewModel()
 ) {
     val rootList by viewModel.observeRootList().collectAsState(null)
-    val selectedItems = viewModel.selectedItems
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -100,12 +93,8 @@ fun SavedPlacesList(
                 EmptySavedPlacesContent()
             } else {
                 SavedPlacesContent(
-                    viewModel = viewModel,
-                    savedList = rootList,
-                    onItemClicked = { item ->
-                    },
-                    onToggleCollapse = viewModel::toggleListCollapse
-                )
+                    viewModel = viewModel, savedList = rootList, onItemClicked = { item ->
+                    })
             }
         }
     }
@@ -146,41 +135,31 @@ private fun SavedPlacesContent(
     viewModel: SavedPlacesViewModel,
     savedList: SavedList,
     onItemClicked: (ListItem) -> Unit,
-    onToggleCollapse: (String, Boolean) -> Unit
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var itemToDelete by remember { mutableStateOf<ListContent?>(null) }
-    val coroutineScope = rememberCoroutineScope()
+    val rootList by viewModel.observeRootList().collectAsState(null)
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize()
+    val baseModifier = Modifier.baseModifierForDragAndDropSource(rootList?.id, viewModel)
+
+    Box(
+        modifier = baseModifier
+            .fillMaxWidth()
+            .padding(dimensionResource(dimen.padding_minor)),
     ) {
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(dimensionResource(dimen.padding_minor)),
-            ) {
-                SavedPlacesListListItem(
-                    savedList,
-                    onToggleCollapse = onToggleCollapse,
-                    viewModel = hiltViewModel<SavedPlacesViewModel>().also {
-                        it.setListId(
-                            savedList.id
-                        )
-                    },
-                    isExpanded = true,
-                    allowCollapse = false,
-                    onItemClicked = { item ->
-                        coroutineScope.launch {
-                            viewModel.maybeHandleListClick(item, fallback = onItemClicked)
-                        }
-                    },
-                    onAddNewList = { parentId ->
-                        viewModel.addNewListToRoot("New List")
-                    })
-            }
-        }
+        SavedPlacesListListItem(
+            savedList,
+            viewModel = hiltViewModel<SavedPlacesViewModel>().also {
+                it.setListId(
+                    savedList.id
+                )
+            },
+            isExpanded = true,
+            isRoot = true,
+            onItemClicked = onItemClicked,
+            onAddNewList = { parentId ->
+                viewModel.addNewListToRoot("New List")
+            })
     }
 
     // Delete confirmation dialog
@@ -214,19 +193,24 @@ private fun SavedPlacesContent(
 @Composable
 private fun SavedPlacesListItem(
     item: ListItem,
-    isSelected: Boolean,
     onItemClicked: (ListItem) -> Unit,
     viewModel: SavedPlacesViewModel,
-    onToggleCollapse: (String, Boolean) -> Unit,
 ) {
+    val baseModifier = if (item.itemType == ItemType.LIST) {
+        Modifier
+            .baseModifierForDragAndDropSource(
+                item.itemId,
+                viewModel
+            )
+            .clickable(onClick = { viewModel.toggleListCollapse(item.itemId) })
+    } else {
+        Modifier//.baseModifierForDragAndDropSource(item.itemId, viewModel)
+    }
     Card(
-        modifier = Modifier
+        modifier = baseModifier
             .fillMaxWidth()
             .padding(8.dp)
-            .clickable(onClick = { onItemClicked(item) }),
-        elevation = if (isSelected) CardDefaults.cardElevation(
-            8.dp
-        ) else CardDefaults.cardElevation(
+            .clickable(onClick = { onItemClicked(item) }), elevation = CardDefaults.cardElevation(
             2.dp
         )
     ) {
@@ -257,9 +241,8 @@ private fun SavedPlacesListItem(
                             },
                             item = item,
                             isExpanded = isExpanded,
-                            allowCollapse = true,
+                            isRoot = false,
                             onItemClicked = onItemClicked,
-                            onToggleCollapse = onToggleCollapse,
                         )
                     }
                 }
@@ -269,18 +252,13 @@ private fun SavedPlacesListItem(
 }
 
 @Composable
-private fun SavedPlacesListListItem(
-    item: SavedList,
-    isExpanded: Boolean,
-    allowCollapse: Boolean,
-    onItemClicked: (ListItem) -> Unit,
-    viewModel: SavedPlacesViewModel,
-    onToggleCollapse: (String, Boolean) -> Unit,
-    onAddNewList: ((String) -> Unit)? = null,
-) {
-    val expandCollapseDurationMillis = 250
-    Column(
-        modifier = Modifier.dragAndDropTarget(shouldStartDragAndDrop = {
+private fun Modifier.baseModifierForDragAndDropSource(
+    itemId: String?, viewModel: SavedPlacesViewModel
+): Modifier {
+    return if (itemId == null) {
+        this
+    } else {
+        this.dragAndDropTarget(shouldStartDragAndDrop = {
             true
         }, object : DragAndDropTarget {
             override fun onDrop(event: DragAndDropEvent): Boolean {
@@ -290,12 +268,32 @@ private fun SavedPlacesListListItem(
                     // Extract the place ID from the clip data
                     val placeId = clipData.getItemAt(0).text.toString()
                     // Call the stub method to reparent the place to this list
-                    viewModel.reparentPlaceToList(placeId, item.id)
+                    viewModel.reparentPlaceToList(placeId, itemId)
                     return true
                 }
                 return false
             }
         })
+    }
+}
+
+@Composable
+private fun SavedPlacesListListItem(
+    item: SavedList,
+    isExpanded: Boolean,
+    isRoot: Boolean,
+    onItemClicked: (ListItem) -> Unit,
+    viewModel: SavedPlacesViewModel,
+    onAddNewList: ((String) -> Unit)? = null,
+) {
+    val expandCollapseDurationMillis = 250
+    val baseModifier = if (isRoot) {
+        Modifier.fillMaxSize()
+    } else {
+        Modifier
+    }
+    Column(
+        modifier = baseModifier
     ) {
         Row {
             Column(modifier = Modifier.weight(1f)) {
@@ -323,7 +321,7 @@ private fun SavedPlacesListListItem(
                         .clickable { onAddNewList(item.id) })
             }
 
-            if (allowCollapse) {
+            if (!isRoot) {
                 Icon(
                     imageVector = if (item.isCollapsed) Icons.AutoMirrored.Filled.List else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (item.isCollapsed) "Expand" else "Collapse"
@@ -353,12 +351,13 @@ private fun SavedPlacesListListItem(
             ) {
                 SavedPlacesListItem(
                     viewModel = hiltViewModel<SavedPlacesViewModel>().also { it.setListId(child.itemId) },
-                    isSelected = viewModel.isItemSelected(child.itemId),
                     item = child,
                     onItemClicked = onItemClicked,
-                    onToggleCollapse = onToggleCollapse,
                 )
             }
+        }
+        if (isRoot) {
+            Spacer(modifier = Modifier.fillMaxSize())
         }
     }
 }

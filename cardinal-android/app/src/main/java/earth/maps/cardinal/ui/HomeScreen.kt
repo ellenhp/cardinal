@@ -261,12 +261,7 @@ private fun SearchPanelContent(
             }
         } else {
             SavedPlacesList(
-                viewModel = savedPlacesViewModel,
-                onPlaceSelected = {},
-                onListSelected = {},
-                onSheetFixedChange = {
-                    onSheetFixedChange(it)
-                }
+                viewModel = savedPlacesViewModel
             )
         }
     }
