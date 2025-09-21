@@ -109,15 +109,17 @@ android {
 
     // Define a single UniFFI binding generation task outside of applicationVariants.all to avoid duplication
     val generateUniFFIBindings = tasks.register<Exec>("generateUniFFIBindings") {
-        workingDir = file("../../cardinal-geocoder")
+        workingDir = file("../..")  // Workspace root directory
         commandLine = listOf(
             "cargo",
             "run",
             "--bin",
             "uniffi-bindgen",
+            "-p",
+            "cardinal-geocoder",
             "generate",
             "--library",
-            "../cardinal-android/app/src/main/jniLibs/arm64-v8a/libcardinal_geocoder.so",
+            "cardinal-android/app/src/main/jniLibs/arm64-v8a/libcardinal_geocoder.so",
             "--language",
             "kotlin",
             "--out-dir",
@@ -145,9 +147,10 @@ android {
 
 cargoNdk {
     targets = arrayListOf("arm64", "x86_64")
-    module = "../cardinal-geocoder"  // Directory containing Cargo.toml
+    module = ".."  // Point to workspace root directory
     librariesNames = arrayListOf("libcardinal_geocoder.so")
     buildType = "release"
+    extraCargoBuildArguments = arrayListOf("-p", "cardinal-geocoder")
 }
 
 dependencies {
