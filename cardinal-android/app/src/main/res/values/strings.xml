@@ -65,7 +65,7 @@
     <string name="download_new_area">Download current viewport</string>
     <string name="downloading">Downloading</string>
     <string name="downloading_area">Downloading %1$s</string>
-    <string name="preparing_download">Preparing download...</string>
+    <string name="preparing_download">Preparing download…</string>
     <string name="download_progress">%1$d / %2$d tiles</string>
     <string name="saved_offline_areas">Saved Offline Areas</string>
     <string name="no_offline_areas">No offline areas downloaded yet</string>
@@ -160,7 +160,7 @@
     <string name="accessibility_settings_summary">Adjust accessibility settings for better usability</string>
     <string name="advanced_settings_summary">Configure advanced settings for the app</string>
     <string name="app_name_long">Cardinal Maps</string>
-    <string name="call_to_action">If you\'re enjoying the app please consider contributing bug reports, feature requests, storage/compute resources, or sponsoring the project.</string>
+    <string name="call_to_action">If you\'re enjoying the app please consider contributing bug reports, feature requests, storage/compute resources, or sponsoring the project. Map data from OpenStreetMap.</string>
     <string name="open_cardinal_maps_github_repository_in_browser">Open cardinal maps GitHub repository in browser</string>
     <string name="no_routing_profiles_configured_yet">No routing profiles configured yet.</string>
     <string name="unnamed_location">Unnamed Location</string>
