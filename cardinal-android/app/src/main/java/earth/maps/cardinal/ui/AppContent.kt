@@ -22,7 +22,9 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -413,7 +415,14 @@ fun AppContent(
             }
         }
 
-        composable(Screen.SETTINGS) {
+        composable(
+            Screen.SETTINGS,
+            // These transitions differ from the rest of them because it feels unnatural for the screen to enter from the end.
+            enterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+        ) {
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -439,7 +448,13 @@ fun AppContent(
                 })
         }
 
-        composable(Screen.OFFLINE_SETTINGS) {
+        composable(
+            Screen.OFFLINE_SETTINGS,
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
+        ) {
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -470,7 +485,13 @@ fun AppContent(
             })
         }
 
-        composable(Screen.ACCESSIBILITY_SETTINGS) {
+        composable(
+            Screen.ACCESSIBILITY_SETTINGS,
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
+        ) {
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -494,7 +515,13 @@ fun AppContent(
             })
         }
 
-        composable(Screen.ADVANCED_SETTINGS) {
+        composable(
+            Screen.ADVANCED_SETTINGS,
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
+        ) {
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -518,7 +545,13 @@ fun AppContent(
             })
         }
 
-        composable(Screen.ROUTING_PROFILES) {
+        composable(
+            Screen.ROUTING_PROFILES,
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
+        ) {
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
                 // The routing profiles screen is always fully expanded.
@@ -535,7 +568,13 @@ fun AppContent(
             })
         }
 
-        composable(Screen.PROFILE_EDITOR) { backStackEntry ->
+        composable(
+            Screen.PROFILE_EDITOR,
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
+        ) { backStackEntry ->
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }

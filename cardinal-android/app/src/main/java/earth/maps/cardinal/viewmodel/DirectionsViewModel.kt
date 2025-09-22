@@ -341,7 +341,10 @@ class DirectionsViewModel @Inject constructor(
         routeState.route?.let { route ->
             NavigationUtils.navigate(
                 navController,
-                Screen.TurnByTurnNavigation(routeRepository.storeRoute(route))
+                Screen.TurnByTurnNavigation(
+                    routeId = routeRepository.storeRoute(route),
+                    routingMode = selectedRoutingMode
+                )
             )
         }
     }

@@ -21,6 +21,7 @@ import android.util.Log
 import androidx.navigation.NavController
 import com.google.gson.Gson
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.RoutingMode
 
 /**
  * Type-safe navigation destinations with typed parameters.
@@ -37,7 +38,7 @@ sealed class Screen(val route: String) {
         const val ROUTING_PROFILES = "routing_profile_settings"
         const val PROFILE_EDITOR = "edit_routing_profile?profileId={profileId}"
         const val DIRECTIONS = "directions?fromPlace={fromPlace}&toPlace={toPlace}"
-        const val TURN_BY_TURN = "turn_by_turn?routeId={routeId}"
+        const val TURN_BY_TURN = "turn_by_turn?routeId={routeId}&routingMode={routingMode}"
     }
 
     object Home : Screen(HOME)
@@ -62,7 +63,8 @@ sealed class Screen(val route: String) {
     data class Directions(val fromPlace: Place?, val toPlace: Place?) :
         Screen(DIRECTIONS)
 
-    data class TurnByTurnNavigation(val routeId: String) : Screen(TURN_BY_TURN)
+    data class TurnByTurnNavigation(val routeId: String, val routingMode: RoutingMode) :
+        Screen(TURN_BY_TURN)
 }
 
 /**
@@ -102,7 +104,7 @@ object NavigationUtils {
                 "directions?fromPlace=$fromPlaceJson&toPlace=$toPlaceJson"
             }
 
-            is Screen.TurnByTurnNavigation -> "turn_by_turn?${Uri.encode(screen.routeId)}"
+            is Screen.TurnByTurnNavigation -> "turn_by_turn?routeId=${Uri.encode(screen.routeId)}&routingMode=${screen.routingMode.value}"
         }
     }
 
