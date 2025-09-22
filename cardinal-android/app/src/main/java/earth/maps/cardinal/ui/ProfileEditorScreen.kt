@@ -64,6 +64,7 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.routing.AutoOptions
@@ -83,7 +84,7 @@ import kotlin.math.ln
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileEditorScreen(
-    navigationCoordinator: NavigationCoordinator,
+    navController: NavController,
     profileId: String? = null,
     snackBarHostState: SnackbarHostState,
     viewModel: ProfileEditorViewModel = hiltViewModel()
@@ -114,7 +115,7 @@ fun ProfileEditorScreen(
         if (!isNewProfile && hasUnsavedChanges) {
             showUnsavedChangesDialog = true
         } else {
-            navigationCoordinator.navigateBack()
+            navController.popBackStack()
         }
     }
 
@@ -147,7 +148,7 @@ fun ProfileEditorScreen(
                 IconButton(
                     onClick = {
                         viewModel.saveProfile {
-                            navigationCoordinator.navigateBack()
+                            navController.popBackStack()
                         }
                     }
                 ) {
@@ -246,7 +247,7 @@ fun ProfileEditorScreen(
                 Text("You have unsaved changes. What would you like to do?")
                 BackHandler {
                     showUnsavedChangesDialog = false
-                    navigationCoordinator.navigateBack()
+                    navController.popBackStack()
                 }
             },
             confirmButton = {
@@ -254,7 +255,7 @@ fun ProfileEditorScreen(
                     onClick = {
                         showUnsavedChangesDialog = false
                         viewModel.saveProfile {
-                            navigationCoordinator.navigateBack()
+                            navController.popBackStack()
                         }
                     }
                 ) {
@@ -265,7 +266,7 @@ fun ProfileEditorScreen(
                 TextButton(
                     onClick = {
                         showUnsavedChangesDialog = false
-                        navigationCoordinator.navigateBack()
+                        navController.popBackStack()
                     }
                 ) {
                     Text("Discard")

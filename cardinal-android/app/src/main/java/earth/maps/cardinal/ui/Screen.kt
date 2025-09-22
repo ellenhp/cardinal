@@ -16,17 +16,110 @@
 
 package earth.maps.cardinal.ui
 
+import android.net.Uri
+import androidx.navigation.NavController
+import com.google.gson.Gson
+import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.RoutingMode
+
+/**
+ * Type-safe navigation destinations with typed parameters.
+ */
 sealed class Screen(val route: String) {
-    object Home : Screen("home")
-    object PlaceCard : Screen("place_card?place={place}")
-    object TransitStopCard : Screen("transit_card?stop={stop}")
-    object OfflineAreas : Screen("offline_areas")
-    object Settings : Screen("settings")
-    object PrivacySettings : Screen("privacy_settings")
-    object AccessibilitySettings : Screen("accessibility_settings")
-    object AdvancedSettings : Screen("advanced_settings")
-    object RoutingProfiles : Screen("routing_profiles")
-    object ProfileEditor : Screen("profile_editor?profileId={profileId}")
-    object Directions : Screen("directions?fromPlace={fromPlace}&toPlace={toPlace}")
-    object TurnByTurnNavigation : Screen("turn_by_turn")
+    companion object {
+        const val HOME = "home"
+        const val PLACE_CARD = "place_card?place={place}"
+        const val OFFLINE_AREAS = "offline_areas"
+        const val SETTINGS = "settings"
+        const val OFFLINE_SETTINGS = "offline_settings"
+        const val ACCESSIBILITY_SETTINGS = "accessibility_settings"
+        const val ADVANCED_SETTINGS = "advanced_settings"
+        const val ROUTING_PROFILES = "routing_profile_settings"
+        const val PROFILE_EDITOR = "edit_routing_profile?profileId={profileId}"
+        const val DIRECTIONS = "directions?fromPlace={fromPlace}&toPlace={toPlace}"
+        const val TURN_BY_TURN = "turn_by_turn?routeId={routeId}&routingMode={routingMode}"
+    }
+
+    object Home : Screen(HOME)
+
+    data class PlaceCard(val place: Place) : Screen(PLACE_CARD)
+
+    object OfflineAreas : Screen(OFFLINE_AREAS)
+
+    object Settings : Screen(SETTINGS)
+
+    object OfflineSettings : Screen(OFFLINE_SETTINGS)
+
+    object AccessibilitySettings : Screen(ACCESSIBILITY_SETTINGS)
+
+    object AdvancedSettings : Screen(ADVANCED_SETTINGS)
+
+    object RoutingProfiles : Screen(ROUTING_PROFILES)
+
+    data class ProfileEditor(val profileId: String?) :
+        Screen(PROFILE_EDITOR)
+
+    data class Directions(val fromPlace: Place?, val toPlace: Place?) :
+        Screen(DIRECTIONS)
+
+    data class TurnByTurnNavigation(val routeId: String, val routingMode: RoutingMode) :
+        Screen(TURN_BY_TURN)
+}
+
+/**
+ * Navigation utilities for type-safe navigation.
+ */
+object NavigationUtils {
+    private val gson = Gson()
+
+    /**
+     * Convert a Screen to a route string that can be used with NavController.
+     */
+    fun toRoute(screen: Screen): String {
+        return when (screen) {
+            is Screen.Home -> screen.route
+            is Screen.PlaceCard -> {
+                val placeJson = Uri.encode(gson.toJson(screen.place))
+                "place_card?place=$placeJson"
+            }
+
+            is Screen.OfflineAreas -> screen.route
+            is Screen.Settings -> screen.route
+            is Screen.OfflineSettings -> screen.route
+            is Screen.AccessibilitySettings -> screen.route
+            is Screen.AdvancedSettings -> screen.route
+            is Screen.RoutingProfiles -> screen.route
+            is Screen.ProfileEditor -> {
+                val profileId = screen.profileId
+                "edit_routing_profile?profileId=${
+                    Uri.encode(profileId)
+                }"
+            }
+
+            is Screen.Directions -> {
+                val fromPlaceJson = screen.fromPlace?.let { Uri.encode(gson.toJson(it)) } ?: ""
+                val toPlaceJson = screen.toPlace?.let { Uri.encode(gson.toJson(it)) } ?: ""
+                "directions?fromPlace=$fromPlaceJson&toPlace=$toPlaceJson"
+            }
+
+            is Screen.TurnByTurnNavigation -> "turn_by_turn?routeId=${Uri.encode(screen.routeId)}&routingMode=${screen.routingMode.value}"
+        }
+    }
+
+    /**
+     * Navigate to a screen using NavController.
+     */
+    fun navigate(
+        navController: NavController,
+        screen: Screen,
+        avoidCycles: Boolean = true,
+    ) {
+        navController.navigate(toRoute(screen)) {
+            if (avoidCycles) {
+                popUpTo(screen.route) {
+                    inclusive = true
+                }
+            }
+        }
+    }
 }

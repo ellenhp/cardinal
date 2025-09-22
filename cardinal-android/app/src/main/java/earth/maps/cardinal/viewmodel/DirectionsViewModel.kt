@@ -22,19 +22,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.room.PlaceDao
 import earth.maps.cardinal.data.RoutingMode
+import earth.maps.cardinal.data.ViewportRepository
+import earth.maps.cardinal.data.room.PlaceDao
 import earth.maps.cardinal.data.room.RoutingProfile
 import earth.maps.cardinal.data.room.RoutingProfileRepository
-import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
-import earth.maps.cardinal.ui.NavigationCoordinator
+import earth.maps.cardinal.routing.RouteRepository
+import earth.maps.cardinal.ui.NavigationUtils
+import earth.maps.cardinal.ui.Screen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,7 +72,8 @@ class DirectionsViewModel @Inject constructor(
     private val viewportRepository: ViewportRepository,
     private val placeDao: PlaceDao,
     private val locationRepository: LocationRepository,
-    private val routingProfileRepository: RoutingProfileRepository
+    private val routingProfileRepository: RoutingProfileRepository,
+    private val routeRepository: RouteRepository,
 ) : ViewModel() {
 
     // Search query flow for debouncing
@@ -333,9 +337,15 @@ class DirectionsViewModel @Inject constructor(
     }
 
 
-    fun startNavigation(navigationCoordinator: NavigationCoordinator) {
+    fun startNavigation(navController: NavController) {
         routeState.route?.let { route ->
-            navigationCoordinator.navigateToTurnByTurnWithFerrostarRoute(route, selectedRoutingMode)
+            NavigationUtils.navigate(
+                navController,
+                Screen.TurnByTurnNavigation(
+                    routeId = routeRepository.storeRoute(route),
+                    routingMode = selectedRoutingMode
+                )
+            )
         }
     }
 

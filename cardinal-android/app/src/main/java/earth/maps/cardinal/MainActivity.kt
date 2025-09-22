@@ -26,7 +26,6 @@ import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,12 +33,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.google.gson.Gson
 import dagger.hilt.android.AndroidEntryPoint
@@ -47,15 +43,12 @@ import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
 import earth.maps.cardinal.routing.RouteRepository
 import earth.maps.cardinal.tileserver.LocalMapServerService
 import earth.maps.cardinal.tileserver.PermissionRequest
 import earth.maps.cardinal.tileserver.PermissionRequestManager
 import earth.maps.cardinal.ui.AppContent
-import earth.maps.cardinal.ui.NavigationCoordinator
-import earth.maps.cardinal.ui.TurnByTurnNavigationScreen
 import earth.maps.cardinal.ui.theme.AppTheme
 import earth.maps.cardinal.viewmodel.MapViewModel
 import kotlinx.coroutines.launch
@@ -162,73 +155,26 @@ class MainActivity : ComponentActivity() {
         setContent {
             val contrastLevel by appPreferenceRepository.contrastLevel.collectAsState()
             AppTheme(contrastLevel = contrastLevel) {
-                val navController = rememberNavController()
                 val mapViewModel: MapViewModel = hiltViewModel()
 
-                val innerNavController = rememberNavController()
-                val coordinator = NavigationCoordinator(
-                    mainNavController = navController,
-                    bottomSheetNavController = innerNavController,
-                    routeRepository
-                )
-                if (!coordinator.isInHomeScreen()) {
-                    BackHandler {
-                        coordinator.navigateBack()
-                    }
-                }
+                val navController = rememberNavController()
 
-                val coroutineScope = rememberCoroutineScope()
                 LaunchedEffect(key1 = deepLinkDestination) {
                     deepLinkDestination?.let {
                         Log.d(TAG, "Deep link: $it")
 
-                        coroutineScope.launch {
-                            coordinator.navigateRaw(it)
-                        }
+                        navController.navigate(it)
                     }
                 }
-                NavHost(
-                    navController = navController, startDestination = "main"
-                ) {
-                    composable("main") {
-                        AppContent(
-                            navController = innerNavController,
-                            mapViewModel = mapViewModel,
-                            port = port,
-                            onRequestLocationPermission = { requestLocationPermission() },
-                            hasLocationPermission = hasLocationPermission,
-                            appPreferenceRepository = appPreferenceRepository,
-                            navigationCoordinator = coordinator,
-                        )
-                    }
-
-                    composable("turn_by_turn?routeId={routeId}&routingMode={routingMode}") { backStackEntry ->
-                        val routeId = backStackEntry.arguments?.getString("routeId")
-                        val routingModeJson = backStackEntry.arguments?.getString("routingMode")
-
-                        val ferrostarRoute = routeId?.let {
-                            try {
-                                routeRepository.getRoute(it)
-                            } catch (_: Exception) {
-                                null
-                            }
-                        }
-
-                        val routingMode = routingModeJson?.let {
-                            try {
-                                Gson().fromJson(it, RoutingMode::class.java)
-                            } catch (_: Exception) {
-                                RoutingMode.AUTO
-                            }
-                        } ?: RoutingMode.AUTO
-
-                        port?.let { port ->
-                            TurnByTurnNavigationScreen(
-                                port = port, mode = routingMode, route = ferrostarRoute
-                            )
-                        }
-                    }
-                }
+                AppContent(
+                    navController = navController,
+                    mapViewModel = mapViewModel,
+                    port = port,
+                    onRequestLocationPermission = { requestLocationPermission() },
+                    hasLocationPermission = hasLocationPermission,
+                    routeRepository = routeRepository,
+                    appPreferenceRepository = appPreferenceRepository,
+                )
             }
         }
     }

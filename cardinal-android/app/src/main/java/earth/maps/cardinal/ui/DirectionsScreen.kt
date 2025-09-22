@@ -67,6 +67,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.data.AppPreferenceRepository
@@ -94,7 +95,7 @@ fun DirectionsScreen(
     onPeekHeightChange: (dp: Dp) -> Unit,
     onBack: () -> Unit,
     onFullExpansionRequired: () -> Job,
-    navigationCoordinator: NavigationCoordinator,
+    navController: NavController,
     hasLocationPermission: Boolean,
     onRequestLocationPermission: () -> Unit,
     appPreferences: AppPreferenceRepository
@@ -285,7 +286,7 @@ fun DirectionsScreen(
                         ferrostarRoute = routeState.route,
                         viewModel = viewModel,
                         modifier = Modifier.fillMaxWidth(),
-                        navigationCoordinator = navigationCoordinator,
+                        navController = navController,
                         distanceUnit = appPreferences.distanceUnit.collectAsState().value,
                         availableProfiles = viewModel.getAvailableProfilesForCurrentMode()
                             .collectAsState(initial = emptyList()).value
@@ -719,7 +720,7 @@ private fun FerrostarRouteResults(
     ferrostarRoute: Route,
     viewModel: DirectionsViewModel,
     modifier: Modifier = Modifier,
-    navigationCoordinator: NavigationCoordinator,
+    navController: NavController,
     distanceUnit: Int,
     availableProfiles: List<RoutingProfile>
 ) {
@@ -809,7 +810,7 @@ private fun FerrostarRouteResults(
 
                     Button(
                         onClick = {
-                            viewModel.startNavigation(navigationCoordinator)
+                            viewModel.startNavigation(navController)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = true
