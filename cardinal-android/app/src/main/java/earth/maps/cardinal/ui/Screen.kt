@@ -17,7 +17,6 @@
 package earth.maps.cardinal.ui
 
 import android.net.Uri
-import android.util.Log
 import androidx.navigation.NavController
 import com.google.gson.Gson
 import earth.maps.cardinal.data.Place
@@ -100,7 +99,6 @@ object NavigationUtils {
             is Screen.Directions -> {
                 val fromPlaceJson = screen.fromPlace?.let { Uri.encode(gson.toJson(it)) } ?: ""
                 val toPlaceJson = screen.toPlace?.let { Uri.encode(gson.toJson(it)) } ?: ""
-                Log.d("TAG", toPlaceJson)
                 "directions?fromPlace=$fromPlaceJson&toPlace=$toPlaceJson"
             }
 

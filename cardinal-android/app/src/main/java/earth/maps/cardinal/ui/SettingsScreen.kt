@@ -206,7 +206,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { NavigationUtils.navigate(navController, Screen.OfflineAreas) }
+                .clickable { NavigationUtils.navigate(navController, Screen.OfflineSettings) }
                 .padding(
                     horizontal = dimensionResource(dimen.padding),
                     vertical = dimensionResource(dimen.padding_minor)
