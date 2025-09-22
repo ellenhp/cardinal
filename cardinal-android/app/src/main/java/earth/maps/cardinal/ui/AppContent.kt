@@ -193,16 +193,16 @@ fun AppContent(
             )
         } else {
             LaunchedEffect(key1 = port) {
-                Log.d("AppContent", "Tileserver port is $port, can't display a map!")
+                Log.e("AppContent", "Tileserver port is $port, can't display a map!")
             }
         }
 
         Box(
             modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
-        ) {}
+        ) {
+            BirdSettingsFab(navController)
+        }
     }
-
-
 
     NavHost(
         navController = navController, startDestination = Screen.HOME
@@ -247,8 +247,8 @@ fun AppContent(
                 scaffoldState = scaffoldState,
                 peekHeight = peekHeight,
                 sheetGesturesEnabled = !homeInSearchScreen,
-                mapOverlayContent = @Composable {
-                    MapOverlayContent(navController)
+                fabHeightCallback = {
+                    fabHeight = it
                 },
                 content = {
                     HomeScreen(
@@ -322,17 +322,21 @@ fun AppContent(
                     }
                 }
 
-                CardinalScaffold(scaffoldState = scaffoldState, peekHeight = peekHeight, content = {
-                    PlaceCardScreen(place = place, viewModel = viewModel, onBack = {
-                        navController.popBackStack()
-                    }, onGetDirections = { place ->
-                        NavigationUtils.navigate(
-                            navController, Screen.Directions(fromPlace = null, toPlace = place)
-                        )
-                    }, onPeekHeightChange = { peekHeight = it })
-                }, mapOverlayContent = {
-                    MapOverlayContent(navController)
-                })
+                CardinalScaffold(
+                    scaffoldState = scaffoldState, peekHeight = peekHeight,
+                    content = {
+                        PlaceCardScreen(place = place, viewModel = viewModel, onBack = {
+                            navController.popBackStack()
+                        }, onGetDirections = { place ->
+                            NavigationUtils.navigate(
+                                navController, Screen.Directions(fromPlace = null, toPlace = place)
+                            )
+                        }, onPeekHeightChange = { peekHeight = it })
+                    },
+                    fabHeightCallback = {
+                        fabHeight = it
+                    },
+                )
             }
         }
 
@@ -374,7 +378,9 @@ fun AppContent(
                 CardinalScaffold(
                     scaffoldState = scaffoldState,
                     peekHeight = peekHeight,
-                    mapOverlayContent = { MapOverlayContent(navController) },
+                    fabHeightCallback = {
+                        fabHeight = it
+                    },
                     content = {
                         OfflineAreasScreen(
                             currentViewport = visibleRegion,
@@ -449,21 +455,19 @@ fun AppContent(
             }
 
             val viewModel: SettingsViewModel = hiltViewModel()
-            Scaffold(
-                snackbarHost = { SnackbarHost(snackBarHostState) },
-                content = { padding ->
-                    Box(modifier = Modifier.padding(padding)) {
-                        PrivacySettingsScreen(
-                            viewModel = viewModel,
-                            onDismiss = { navController.popBackStack() },
-                            onNavigateToOfflineAreas = {
-                                NavigationUtils.navigate(
-                                    navController, Screen.OfflineAreas
-                                )
-                            },
-                        )
-                    }
-                })
+            Scaffold(snackbarHost = { SnackbarHost(snackBarHostState) }, content = { padding ->
+                Box(modifier = Modifier.padding(padding)) {
+                    PrivacySettingsScreen(
+                        viewModel = viewModel,
+                        onDismiss = { navController.popBackStack() },
+                        onNavigateToOfflineAreas = {
+                            NavigationUtils.navigate(
+                                navController, Screen.OfflineAreas
+                            )
+                        },
+                    )
+                }
+            })
         }
 
         composable(Screen.ACCESSIBILITY_SETTINGS) {
@@ -482,14 +486,12 @@ fun AppContent(
             }
 
             val viewModel: SettingsViewModel = hiltViewModel()
-            Scaffold(
-                snackbarHost = { SnackbarHost(snackBarHostState) },
-                content = { padding ->
-                    Box(modifier = Modifier.padding(padding)) {
-                        AccessibilitySettingsScreen(
-                            viewModel = viewModel, onDismiss = { navController.popBackStack() })
-                    }
-                })
+            Scaffold(snackbarHost = { SnackbarHost(snackBarHostState) }, content = { padding ->
+                Box(modifier = Modifier.padding(padding)) {
+                    AccessibilitySettingsScreen(
+                        viewModel = viewModel, onDismiss = { navController.popBackStack() })
+                }
+            })
         }
 
         composable(Screen.ADVANCED_SETTINGS) {
@@ -508,14 +510,12 @@ fun AppContent(
             }
 
             val viewModel: SettingsViewModel = hiltViewModel()
-            Scaffold(
-                snackbarHost = { SnackbarHost(snackBarHostState) },
-                content = { padding ->
-                    Box(modifier = Modifier.padding(padding)) {
-                        AdvancedSettingsScreen(
-                            viewModel = viewModel, onDismiss = { navController.popBackStack() })
-                    }
-                })
+            Scaffold(snackbarHost = { SnackbarHost(snackBarHostState) }, content = { padding ->
+                Box(modifier = Modifier.padding(padding)) {
+                    AdvancedSettingsScreen(
+                        viewModel = viewModel, onDismiss = { navController.popBackStack() })
+                }
+            })
         }
 
         composable(Screen.ROUTING_PROFILES) {
@@ -526,9 +526,13 @@ fun AppContent(
                     bottomSheetState.expand()
                 }
             }
-            RoutingProfilesScreen(
-                navController = navController
-            )
+            Scaffold(content = { padding ->
+                Box(modifier = Modifier.padding(padding)) {
+                    RoutingProfilesScreen(
+                        navController = navController
+                    )
+                }
+            })
         }
 
         composable(Screen.PROFILE_EDITOR) { backStackEntry ->
@@ -547,17 +551,15 @@ fun AppContent(
             }
 
             val profileId = backStackEntry.arguments?.getString("profileId")
-            Scaffold(
-                snackbarHost = { SnackbarHost(snackBarHostState) },
-                content = { padding ->
-                    Box(modifier = Modifier.padding(padding)) {
-                        ProfileEditorScreen(
-                            navController = navController,
-                            profileId = profileId,
-                            snackBarHostState = snackBarHostState
-                        )
-                    }
-                })
+            Scaffold(snackbarHost = { SnackbarHost(snackBarHostState) }, content = { padding ->
+                Box(modifier = Modifier.padding(padding)) {
+                    ProfileEditorScreen(
+                        navController = navController,
+                        profileId = profileId,
+                        snackBarHostState = snackBarHostState
+                    )
+                }
+            })
         }
 
         composable(
@@ -589,7 +591,6 @@ fun AppContent(
                 val toPlaceJson = backStackEntry.arguments?.getString("toPlace")
                 val toPlace =
                     toPlaceJson?.let { Gson().fromJson(Uri.decode(it), Place::class.java) }
-                Log.d("TAG", "${backStackEntry.arguments?.keySet()?.toList()}")
 
                 if (fromPlace != null) {
                     viewModel.updateFromPlace(fromPlace)
@@ -626,22 +627,28 @@ fun AppContent(
                 }
             }
 
-            CardinalScaffold(scaffoldState = scaffoldState, peekHeight = peekHeight, content = {
-                DirectionsScreen(
-                    viewModel = viewModel,
-                    onPeekHeightChange = { peekHeight = it },
-                    onBack = { navController.popBackStack() },
-                    onFullExpansionRequired = {
-                        coroutineScope.launch {
-                            scaffoldState.bottomSheetState.expand()
-                        }
-                    },
-                    navController = navController,
-                    hasLocationPermission = hasLocationPermission,
-                    onRequestLocationPermission = onRequestLocationPermission,
-                    appPreferences = appPreferenceRepository
-                )
-            }, mapOverlayContent = { MapOverlayContent(navController) })
+            CardinalScaffold(
+                scaffoldState = scaffoldState, peekHeight = peekHeight,
+                content = {
+                    DirectionsScreen(
+                        viewModel = viewModel,
+                        onPeekHeightChange = { peekHeight = it },
+                        onBack = { navController.popBackStack() },
+                        onFullExpansionRequired = {
+                            coroutineScope.launch {
+                                scaffoldState.bottomSheetState.expand()
+                            }
+                        },
+                        navController = navController,
+                        hasLocationPermission = hasLocationPermission,
+                        onRequestLocationPermission = onRequestLocationPermission,
+                        appPreferences = appPreferenceRepository
+                    )
+                },
+                fabHeightCallback = {
+                    fabHeight = it
+                },
+            )
         }
         composable(Screen.TURN_BY_TURN) { backStackEntry ->
             val routeId = backStackEntry.arguments?.getString("routeId")
@@ -680,10 +687,9 @@ fun CardinalScaffold(
     scaffoldState: BottomSheetScaffoldState,
     peekHeight: Dp,
     content: @Composable () -> Unit,
-    mapOverlayContent: @Composable () -> Unit,
+    fabHeightCallback: (Dp) -> Unit,
     sheetGesturesEnabled: Boolean = true
 ) {
-    var fabHeight by remember { mutableStateOf(0.dp) }
     val density = LocalDensity.current
 
     val snackBarHostState = remember { SnackbarHostState() }
@@ -703,7 +709,7 @@ fun CardinalScaffold(
                 modifier = Modifier
                     .fillMaxWidth()
                     .onGloballyPositioned {
-                        fabHeight = with(density) { it.positionInRoot().y.toDp() }
+                        fabHeightCallback(with(density) { it.positionInRoot().y.toDp() })
                     }) {
                 Box(
                     modifier = Modifier
@@ -718,24 +724,13 @@ fun CardinalScaffold(
             }
             Spacer(modifier = Modifier.height(bottomInset))
         },
-        content = { padding ->
-            Box(modifier = Modifier.padding(padding)) {
-                mapOverlayContent()
-            }
-        })
-}
-
-@Composable
-fun MapOverlayContent(navController: NavController) {
+        content = {})
 }
 
 @Composable
 fun BirdSettingsFab(navController: NavController) {
     // Avatar icon button in top left
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
+    Box {
         FloatingActionButton(
             onClick = { NavigationUtils.navigate(navController, Screen.Settings) },
             modifier = Modifier

@@ -171,7 +171,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { NavigationUtils }
+                .clickable { NavigationUtils.navigate(navController, Screen.RoutingProfiles) }
                 .padding(
                     horizontal = dimensionResource(dimen.padding),
                     vertical = dimensionResource(dimen.padding_minor)

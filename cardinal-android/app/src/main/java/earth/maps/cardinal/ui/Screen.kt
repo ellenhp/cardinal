@@ -90,7 +90,7 @@ object NavigationUtils {
             is Screen.RoutingProfiles -> screen.route
             is Screen.ProfileEditor -> {
                 val profileId = screen.profileId
-                "profile_editor?profileId=${
+                "edit_routing_profile?profileId=${
                     Uri.encode(profileId)
                 }"
             }
