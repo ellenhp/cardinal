@@ -22,7 +22,12 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.util.Log
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
+import androidx.compose.ui.unit.times
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -94,6 +99,10 @@ class MapViewModel @Inject constructor(
 
     // Permission tracking
     private val previousPermissionState = AtomicBoolean(false)
+
+    var peekHeight: Dp = 0.dp
+    var screenHeight: Dp = 0.dp
+    var screenWidth: Dp = 0.dp
 
     val savedPlacesFlow: Flow<FeatureCollection> = placeDao.getAllPlaces().map { placeList ->
         FeatureCollection(placeList.map {
@@ -246,7 +255,9 @@ class MapViewModel @Inject constructor(
      * Fetches the current location and returns a CameraPosition to animate to.
      * Returns null if location cannot be determined.
      */
-    suspend fun fetchLocationAndCreateCameraPosition(context: Context): CameraPosition? {
+    suspend fun fetchLocationAndCreateCameraPosition(
+        context: Context,
+    ): CameraPosition? {
         val location = locationRepository.getCurrentLocation(context)
         return location?.let { createCameraPosition(it) }
     }
@@ -256,7 +267,16 @@ class MapViewModel @Inject constructor(
      */
     private fun createCameraPosition(location: Location): CameraPosition {
         return CameraPosition(
-            target = Position(location.longitude, location.latitude), zoom = 15.0
+            target = Position(location.longitude, location.latitude),
+            zoom = 15.0,
+            padding = PaddingValues(
+                start = screenWidth / 8,
+                top = screenHeight / 8,
+                end = screenWidth / 8,
+                bottom = min(
+                    3f * screenHeight / 4, peekHeight + screenHeight / 8
+                )
+            )
         )
     }
 
