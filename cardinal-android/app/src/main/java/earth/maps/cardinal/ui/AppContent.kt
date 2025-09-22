@@ -77,11 +77,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
+import androidx.compose.ui.unit.times
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.google.gson.Gson
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
@@ -142,13 +145,29 @@ fun AppContent(
     val droppedPinName = stringResource(R.string.dropped_pin)
     var screenHeightDp by remember { mutableStateOf(0.dp) }
     var screenWidthDp by remember { mutableStateOf(0.dp) }
+    var peekHeight by remember { mutableStateOf(0.dp) }
 
+    // This is used by nav destinations to determine if it is appropriate of them to update peekHeight.
+    val topOfBackStack by navController.currentBackStackEntryAsState()
+
+    // See comment below in onGloballyPositioned for why this is necessary. I'm not happy about it either.
+    LaunchedEffect(peekHeight) {
+        mapViewModel.peekHeight = peekHeight
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .onGloballyPositioned {
                 screenHeightDp = with(density) { it.size.height.toDp() }
                 screenWidthDp = with(density) { it.size.width.toDp() }
+                // For very annoying reasons, this ViewModel needs to know the size of the screen.
+                // Specifically, it is responsible for tracking the state of the "locate me" button across
+                // a permission request lifecycle. When the permission request is done, it has zero
+                // business calling back into the view to perform the animateTo operation, and in order
+                // to perform the animateTo you need to calculate padding based on screen size and peek
+                // height. :(
+                mapViewModel.screenWidth = screenWidthDp
+                mapViewModel.screenHeight = screenHeightDp
             },
 
         ) {
@@ -212,9 +231,9 @@ fun AppContent(
         composable(
             Screen.HOME,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
-            exitTransition = { fadeOut(animationSpec = tween(600)) }) {
+            exitTransition = { fadeOut(animationSpec = tween(600)) })
+        { backStackEntry ->
             var homeInSearchScreen by rememberSaveable { mutableStateOf(false) }
-            var peekHeight by remember { mutableStateOf(0.dp) }
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
             )
@@ -264,7 +283,11 @@ fun AppContent(
                             }
                             NavigationUtils.navigate(navController, Screen.PlaceCard(place))
                         },
-                        onPeekHeightChange = { peekHeight = it },
+                        onPeekHeightChange = {
+                            if (topOfBackStack == backStackEntry) {
+                                peekHeight = it
+                            }
+                        },
                         homeInSearchScreen = homeInSearchScreen,
                         onSearchFocusChange = {
                             if (it) {
@@ -281,7 +304,6 @@ fun AppContent(
             Screen.PLACE_CARD,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            var peekHeight by remember { mutableStateOf(0.dp) }
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
             )
@@ -317,8 +339,16 @@ fun AppContent(
                         coroutineScope.launch {
                             cameraState.animateTo(
                                 CameraPosition(
-                                    target = position, zoom = 15.0
-                                ), duration = appPreferenceRepository.animationSpeedDurationValue
+                                    target = position, zoom = 15.0, padding = PaddingValues(
+                                        start = screenWidthDp / 8,
+                                        top = screenHeightDp / 8,
+                                        end = screenWidthDp / 8,
+                                        bottom = min(
+                                            3f * screenHeightDp / 4, peekHeight + screenHeightDp / 8
+                                        )
+                                    )
+                                ),
+                                duration = appPreferenceRepository.animationSpeedDurationValue,
                             )
                         }
                     }
@@ -333,7 +363,11 @@ fun AppContent(
                             NavigationUtils.navigate(
                                 navController, Screen.Directions(fromPlace = null, toPlace = place)
                             )
-                        }, onPeekHeightChange = { peekHeight = it })
+                        }, onPeekHeightChange = {
+                            if (topOfBackStack == backStackEntry) {
+                                peekHeight = it
+                            }
+                        })
                     },
                     fabHeightCallback = {
                         fabHeight = it
@@ -346,7 +380,6 @@ fun AppContent(
             Screen.OFFLINE_AREAS,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) {
-            var peekHeight by remember { mutableStateOf(0.dp) }
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
             )
@@ -400,10 +433,13 @@ fun AppContent(
                                             area.west, area.south, area.east, area.north
                                         ),
                                         padding = PaddingValues(
-                                            screenWidthDp / 4,
-                                            screenHeightDp / 4,
-                                            screenWidthDp / 4,
-                                            screenHeightDp / 2
+                                            start = screenWidthDp / 8,
+                                            top = screenHeightDp / 8,
+                                            end = screenWidthDp / 8,
+                                            bottom = min(
+                                                3f * screenHeightDp / 4,
+                                                peekHeight + screenHeightDp / 8
+                                            )
                                         ),
                                         duration = appPreferenceRepository.animationSpeedDurationValue
                                     )
@@ -605,7 +641,6 @@ fun AppContent(
             Screen.DIRECTIONS,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            var peekHeight by remember { mutableStateOf(0.dp) }
             val bottomSheetState =
                 rememberBottomSheetState(initialValue = BottomSheetValue.Collapsed)
             val scaffoldState =
@@ -639,10 +674,10 @@ fun AppContent(
             }
 
             val polylinePadding = PaddingValues(
-                start = screenWidthDp / 4,
-                top = screenHeightDp / 4,
-                end = screenWidthDp / 4,
-                bottom = screenHeightDp / 2
+                start = screenWidthDp / 8,
+                top = screenHeightDp / 8,
+                end = screenWidthDp / 8,
+                bottom = min(3f * screenHeightDp / 4, peekHeight + screenHeightDp / 8)
             )
 
             // Handle route display and camera animation
@@ -663,7 +698,11 @@ fun AppContent(
                 content = {
                     DirectionsScreen(
                         viewModel = viewModel,
-                        onPeekHeightChange = { peekHeight = it },
+                        onPeekHeightChange = {
+                            if (topOfBackStack == backStackEntry) {
+                                peekHeight = it
+                            }
+                        },
                         onBack = { navController.popBackStack() },
                         onFullExpansionRequired = {
                             coroutineScope.launch {
