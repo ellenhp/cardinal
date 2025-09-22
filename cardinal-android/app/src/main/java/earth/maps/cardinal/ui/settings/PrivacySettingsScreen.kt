@@ -52,7 +52,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
-import earth.maps.cardinal.ui.NavigationCoordinator
 import earth.maps.cardinal.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,7 +60,6 @@ fun PrivacySettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel<SettingsViewModel>(),
     onDismiss: () -> Unit,
     onNavigateToOfflineAreas: () -> Unit,
-    navigationCoordinator: NavigationCoordinator
 ) {
     Column(
         modifier = Modifier
@@ -192,7 +190,11 @@ fun PrivacySettingsScreen(
                 )
 
                 val currentAllowTransitInOfflineMode by viewModel.allowTransitInOfflineMode.collectAsState()
-                var isAllowTransitInOfflineModeEnabled by remember { mutableStateOf(currentAllowTransitInOfflineMode) }
+                var isAllowTransitInOfflineModeEnabled by remember {
+                    mutableStateOf(
+                        currentAllowTransitInOfflineMode
+                    )
+                }
 
                 // Update selected state when preference changes from outside
                 LaunchedEffect(currentAllowTransitInOfflineMode) {
@@ -212,7 +214,8 @@ fun PrivacySettingsScreen(
                         ), style = MaterialTheme.typography.bodyMedium
                     )
                     Switch(
-                        checked = isAllowTransitInOfflineModeEnabled, onCheckedChange = { newValue ->
+                        checked = isAllowTransitInOfflineModeEnabled,
+                        onCheckedChange = { newValue ->
                             isAllowTransitInOfflineModeEnabled = newValue
                             viewModel.setAllowTransitInOfflineMode(newValue)
                         })

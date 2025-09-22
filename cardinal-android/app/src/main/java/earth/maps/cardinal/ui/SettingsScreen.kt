@@ -50,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
@@ -86,9 +87,8 @@ fun <T> PreferenceOption(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onDismiss: () -> Unit,
+    navController: NavController,
     viewModel: SettingsViewModel,
-    navigationCoordinator: NavigationCoordinator
 ) {
     Column(
         modifier = Modifier
@@ -118,7 +118,9 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.fillMaxWidth())
 
-                IconButton(onClick = onDismiss) {
+                IconButton(onClick = {
+                    navController.popBackStack()
+                }) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = stringResource(string.close)
@@ -169,7 +171,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { navigationCoordinator.navigateToRoutingProfiles() }
+                .clickable { NavigationUtils }
                 .padding(
                     horizontal = dimensionResource(dimen.padding),
                     vertical = dimensionResource(dimen.padding_minor)
@@ -204,7 +206,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { navigationCoordinator.navigateToPrivacySettings() }
+                .clickable { NavigationUtils.navigate(navController, Screen.OfflineAreas) }
                 .padding(
                     horizontal = dimensionResource(dimen.padding),
                     vertical = dimensionResource(dimen.padding_minor)
@@ -239,7 +241,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { navigationCoordinator.navigateToAccessibilitySettings() }
+                .clickable { NavigationUtils.navigate(navController, Screen.AccessibilitySettings) }
                 .padding(
                     horizontal = dimensionResource(dimen.padding),
                     vertical = dimensionResource(dimen.padding_minor)
@@ -275,7 +277,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { navigationCoordinator.navigateToAdvancedSettings() }
+                .clickable { NavigationUtils.navigate(navController, Screen.AdvancedSettings) }
                 .padding(
                     horizontal = dimensionResource(dimen.padding),
                     vertical = dimensionResource(dimen.padding_minor)

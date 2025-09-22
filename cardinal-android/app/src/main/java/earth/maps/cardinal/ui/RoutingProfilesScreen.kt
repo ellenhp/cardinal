@@ -59,6 +59,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
@@ -69,8 +70,8 @@ import earth.maps.cardinal.viewmodel.RoutingProfilesViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutingProfilesScreen(
-    navigationCoordinator: NavigationCoordinator,
-    viewModel: RoutingProfilesViewModel = hiltViewModel()
+    viewModel: RoutingProfilesViewModel = hiltViewModel(),
+    navController: NavController
 ) {
     val allProfiles by viewModel.allProfiles.collectAsState()
 
@@ -95,7 +96,7 @@ fun RoutingProfilesScreen(
                 fontWeight = FontWeight.Bold
             )
 
-            IconButton(onClick = { navigationCoordinator.navigateBack() }) {
+            IconButton(onClick = { navController.popBackStack() }) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = stringResource(string.close)
@@ -121,7 +122,7 @@ fun RoutingProfilesScreen(
                     RoutingModeSection(
                         routingMode = mode,
                         profiles = modeProfiles,
-                        navigationCoordinator = navigationCoordinator,
+                        navController = navController,
                         onSetDefault = { profile ->
                             viewModel.setDefaultProfile(profile.id)
                         },
@@ -140,7 +141,7 @@ fun RoutingProfilesScreen(
     ) {
         // Floating Action Button positioned at bottom right
         FloatingActionButton(
-            onClick = { navigationCoordinator.navigateToRoutingProfileEditor() },
+            onClick = { NavigationUtils.navigate(navController, Screen.ProfileEditor(null)) },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(dimensionResource(dimen.padding))
@@ -154,7 +155,7 @@ fun RoutingProfilesScreen(
 private fun RoutingModeSection(
     routingMode: RoutingMode,
     profiles: List<RoutingProfile>,
-    navigationCoordinator: NavigationCoordinator,
+    navController: NavController,
     onSetDefault: (RoutingProfile) -> Unit,
     onDelete: (RoutingProfile) -> Unit
 ) {
@@ -176,7 +177,12 @@ private fun RoutingModeSection(
             profiles.forEach { profile ->
                 ProfileCard(
                     profile = profile,
-                    onClick = { navigationCoordinator.navigateToRoutingProfileEditor(profile) },
+                    onClick = {
+                        NavigationUtils.navigate(
+                            navController,
+                            Screen.ProfileEditor(profile.id)
+                        )
+                    },
                     onSetDefault = { onSetDefault(profile) },
                     onDelete = { onDelete(profile) })
             }
