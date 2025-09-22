@@ -146,7 +146,12 @@ fun MapView(
                 baseStyle = BaseStyle.Uri("http://127.0.0.1:$port/style_$styleVariant.json"),
                 styleState = styleState,
                 options = MapOptions(
-                    ornamentOptions = OrnamentOptions.AllDisabled, renderOptions = RenderOptions()
+                    ornamentOptions = OrnamentOptions.AllDisabled.copy(
+                        padding = fabInsets,
+                        isAttributionEnabled = true,
+                        attributionAlignment = Alignment.BottomStart
+                    ),
+                    renderOptions = RenderOptions()
                 ),
                 onMapClick = { position, dpOffset ->
                     mapViewModel.handleMapTap(

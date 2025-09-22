@@ -12,7 +12,8 @@
       "tiles": [
         "http://127.0.0.1:{port}/openmaptiles/{z}/{x}/{y}.pbf"
       ],
-      "maxzoom": 14
+      "maxzoom": 14,
+      "attribution": "© OpenStreetMap contributors"
     },
     "landcover": {
       "type": "vector",
@@ -3710,8 +3711,16 @@
       "minzoom": 7,
       "filter": [
         "all",
-        ["<=", "ref_length", 6],
-        ["!=", "subclass", "junction"]
+        [
+          "<=",
+          "ref_length",
+          6
+        ],
+        [
+          "!=",
+          "subclass",
+          "junction"
+        ]
       ],
       "layout": {
         "icon-image": "default_{ref_length}",
