@@ -190,8 +190,12 @@ fun DirectionsScreen(
                         viewModel.updateSearchQuery(it)
                     },
                     onTextFieldFocusChange = {
-                        fieldFocusState = if (it) FieldFocusState.FROM else FieldFocusState.NONE
-                        onFullExpansionRequired()
+                        fieldFocusState = if (it) {
+                            onFullExpansionRequired()
+                            FieldFocusState.FROM
+                        } else {
+                            FieldFocusState.NONE
+                        }
                     },
                     isFocused = fieldFocusState == FieldFocusState.FROM,
                     showRecalculateButton = viewModel.fromPlace != null && viewModel.toPlace != null,
@@ -212,8 +216,12 @@ fun DirectionsScreen(
                         viewModel.updateSearchQuery(it)
                     },
                     onTextFieldFocusChange = {
-                        fieldFocusState = if (it) FieldFocusState.TO else FieldFocusState.NONE
-                        onFullExpansionRequired()
+                        fieldFocusState = if (it) {
+                            onFullExpansionRequired()
+                            FieldFocusState.TO
+                        } else {
+                            FieldFocusState.NONE
+                        }
                     },
                     isFocused = fieldFocusState == FieldFocusState.TO,
                     showFlipButton = viewModel.fromPlace != null && viewModel.toPlace != null,

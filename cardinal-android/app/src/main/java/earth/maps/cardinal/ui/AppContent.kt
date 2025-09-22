@@ -606,18 +606,10 @@ fun AppContent(
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
             var peekHeight by remember { mutableStateOf(0.dp) }
-            val bottomSheetState = rememberBottomSheetState(
-                initialValue = BottomSheetValue.Collapsed
-            )
+            val bottomSheetState =
+                rememberBottomSheetState(initialValue = BottomSheetValue.Collapsed)
             val scaffoldState =
                 rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
-
-            LaunchedEffect(key1 = Unit) {
-                // The directions screen starts partially expanded.
-                coroutineScope.launch {
-                    scaffoldState.bottomSheetState.collapse()
-                }
-            }
 
             val viewModel: DirectionsViewModel = hiltViewModel()
             val currentLocation = mapViewModel.locationFlow.collectAsState().value
