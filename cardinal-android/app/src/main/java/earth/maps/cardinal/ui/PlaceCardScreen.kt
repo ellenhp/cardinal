@@ -27,12 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DividerDefaults
@@ -53,14 +47,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
+import earth.maps.cardinal.data.AddressFormatter
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.format
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
 import earth.maps.cardinal.viewmodel.TransitStopCardViewModel
 
@@ -73,6 +71,7 @@ fun PlaceCardScreen(
     onPeekHeightChange: (dp: Dp) -> Unit
 ) {
     val density = LocalDensity.current
+    val addressFormatter = remember { AddressFormatter() }
 
     // Check if place is saved when screen is opened
     LaunchedEffect(place) {
@@ -134,7 +133,7 @@ fun PlaceCardScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.LocationOn,
+                        painter = painterResource(drawable.ic_location_on),
                         contentDescription = null,
                         modifier = Modifier.size(dimensionResource(dimen.icon_size))
                     )
@@ -142,7 +141,7 @@ fun PlaceCardScreen(
                         modifier = Modifier
                             .weight(1f)
                             .padding(start = dimensionResource(dimen.padding)),
-                        text = displayedPlace.address.format()
+                        text = displayedPlace.address.format(addressFormatter)
                             ?: stringResource(string.address_unavailable)
                     )
                 }
@@ -178,7 +177,10 @@ fun PlaceCardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = if (viewModel.isPlaceSaved.value) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            painter = if (viewModel.isPlaceSaved.value)
+                                painterResource(drawable.ic_heart_minus)
+                            else
+                                painterResource(drawable.ic_heart),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
@@ -206,7 +208,7 @@ fun PlaceCardScreen(
         if (place.isTransitStop) {
             TransitStopInformation(viewModel = hiltViewModel<TransitStopCardViewModel>().also {
                 it.setStop(place)
-            })
+            }, onRouteClicked = {})
         }
 
         // Save Place Dialog
@@ -281,7 +283,7 @@ fun SavePlaceDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Home,
+                            painter = painterResource(drawable.ic_home),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
@@ -300,7 +302,7 @@ fun SavePlaceDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Place,
+                            painter = painterResource(drawable.ic_location_on),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )

@@ -23,15 +23,16 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.room.PlaceDao
-import earth.maps.cardinal.data.room.PlaceEntity
 import earth.maps.cardinal.transit.StopTime
 import earth.maps.cardinal.transit.TransitStop
 import earth.maps.cardinal.transit.TransitousService
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
 class TransitStopCardViewModel @Inject constructor(
@@ -64,6 +65,14 @@ class TransitStopCardViewModel @Inject constructor(
      */
     val isRefreshingDepartures: StateFlow<Boolean> = _isRefreshingDepartures
 
+    init {
+        viewModelScope.launch {
+            while (true) {
+                refreshDepartures()
+                delay(30.seconds)
+            }
+        }
+    }
 
     fun setStop(place: Place) {
         this.stop.value = place
@@ -143,20 +152,6 @@ class TransitStopCardViewModel @Inject constructor(
             }
         } finally {
             _isRefreshingDepartures.value = false
-        }
-    }
-
-    fun savePlace(place: Place) {
-        viewModelScope.launch {
-            placeDao.insertPlace(PlaceEntity.fromPlace(place))
-            isPlaceSaved.value = true
-        }
-    }
-
-    fun unsavePlace(place: Place) {
-        viewModelScope.launch {
-            placeDao.deletePlace(PlaceEntity.fromPlace(place))
-            isPlaceSaved.value = false
         }
     }
 

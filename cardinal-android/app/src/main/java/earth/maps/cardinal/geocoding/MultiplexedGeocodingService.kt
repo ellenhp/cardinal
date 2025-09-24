@@ -45,4 +45,12 @@ class MultiplexedGeocodingService(
             onlineGeocodingService.reverseGeocode(latitude, longitude)
         }
     }
+
+    override suspend fun nearby(latitude: Double, longitude: Double): Flow<List<GeocodeResult>> {
+        return if (appPreferenceRepository.offlineMode.value) {
+            offlineGeocodingService.nearby(latitude, longitude)
+        } else {
+            onlineGeocodingService.nearby(latitude, longitude)
+        }
+    }
 }

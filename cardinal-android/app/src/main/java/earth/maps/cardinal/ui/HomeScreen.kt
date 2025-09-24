@@ -27,16 +27,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DividerDefaults
@@ -50,43 +43,48 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
+import earth.maps.cardinal.data.AddressFormatter
 import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.deduplicateSearchResults
 import earth.maps.cardinal.viewmodel.HomeViewModel
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
+import earth.maps.cardinal.viewmodel.TransitScreenViewModel
 import kotlin.math.abs
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    homeBottomSheetState: HomeBottomSheetState,
     managePlacesViewModel: ManagePlacesViewModel,
     onPlaceSelected: (Place) -> Unit,
     onPeekHeightChange: (dp: Dp) -> Unit,
     onSearchFocusChange: (Boolean) -> Unit,
     homeInSearchScreen: Boolean,
+    transitScreenViewModel: TransitScreenViewModel,
+    showManagePlacesDialog: Boolean,
+    onDismissShowPlaces: () -> Unit,
 ) {
     val savedPlaces = viewModel.savedPlaces.value
     val geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value)
@@ -102,13 +100,33 @@ fun HomeScreen(
             },
             onSearchFocusChange = onSearchFocusChange,
             savedPlaces = savedPlaces,
-            geocodeResults = geocodeResults,
-            isSearching = isSearching,
             managePlacesViewModel = managePlacesViewModel,
             onPeekHeightChange = onPeekHeightChange,
             onPlaceSelected = onPlaceSelected,
-            homeInSearchScreen = homeInSearchScreen
+            homeInSearchScreen = homeInSearchScreen,
+            showManagePlacesDialog = showManagePlacesDialog,
+            onDismissShowPlaces = onDismissShowPlaces,
         )
+        when (homeBottomSheetState) {
+            HomeBottomSheetState.SAVED -> {
+                SavedPlacesSheetContent(
+                    homeInSearchScreen,
+                    isSearching,
+                    geocodeResults,
+                    viewModel,
+                    onPlaceSelected,
+                    savedPlaces
+                )
+            }
+
+            HomeBottomSheetState.NEARBY -> {
+                NearbyScreenContent(onPlaceSelected)
+            }
+
+            HomeBottomSheetState.TRANSIT -> {
+                TransitScreenContent(transitScreenViewModel, onRouteClicked = onPlaceSelected)
+            }
+        }
     }
 }
 
@@ -119,13 +137,14 @@ private fun SearchPanelContent(
     onSearchQueryChange: (TextFieldValue) -> Unit,
     onSearchFocusChange: (Boolean) -> Unit,
     savedPlaces: List<Place>,
-    geocodeResults: List<GeocodeResult>,
-    isSearching: Boolean,
     managePlacesViewModel: ManagePlacesViewModel,
     onPeekHeightChange: (dp: Dp) -> Unit,
     onPlaceSelected: (Place) -> Unit,
-    homeInSearchScreen: Boolean
+    homeInSearchScreen: Boolean,
+    showManagePlacesDialog: Boolean,
+    onDismissShowPlaces: () -> Unit,
 ) {
+    val addressFormatter = remember { AddressFormatter() }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -156,7 +175,7 @@ private fun SearchPanelContent(
                 placeholder = { Text(stringResource(string.where_to)) },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        painter = painterResource(drawable.ic_search),
                         contentDescription = stringResource(string.content_description_search)
                     )
                 },
@@ -167,7 +186,7 @@ private fun SearchPanelContent(
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Close,
+                                painter = painterResource(drawable.ic_close),
                                 contentDescription = stringResource(string.content_description_clear_search)
                             )
                         }
@@ -187,14 +206,10 @@ private fun SearchPanelContent(
                 }
             }
 
-            // Pinned destinations.
-            var showManagePlacesDialog by remember { mutableStateOf(false) }
-
             if (showManagePlacesDialog) {
                 ManagePlacesDialog(
-                    onDismiss = { showManagePlacesDialog = false },
+                    onDismiss = { onDismissShowPlaces() },
                     onPlaceSelected = { place ->
-                        showManagePlacesDialog = false
                         onPlaceSelected(place)
                     },
                     viewModel = managePlacesViewModel
@@ -212,27 +227,16 @@ private fun SearchPanelContent(
             ) {
                 NavigationIcon(
                     text = stringResource(string.home),
-                    icon = Icons.Default.Home,
+                    painter = painterResource(drawable.ic_home),
                     place = homePlace,
                     onPlaceSelected = onPlaceSelected
                 )
                 NavigationIcon(
                     text = stringResource(string.work),
-                    icon = Icons.Default.AccountCircle,
+                    painter = painterResource(drawable.ic_work),
                     place = workPlace,
                     onPlaceSelected = onPlaceSelected
                 )
-
-                FilledTonalIconButton(
-                    modifier = Modifier.size(48.dp), onClick = {
-                        showManagePlacesDialog = true
-                    }) {
-                    Icon(
-                        imageVector = Icons.Default.Edit, contentDescription = stringResource(
-                            string.content_description_edit_saved_places
-                        )
-                    )
-                }
             }
 
             // Inset horizontal divider
@@ -245,39 +249,81 @@ private fun SearchPanelContent(
             )
         }
 
-        // Content: either saved places or search results
-        LazyColumn {
-            if (homeInSearchScreen) {
-                // Show search results
-                if (isSearching) {
-                    item {
-                        Text(
-                            text = stringResource(string.searching_in_progress),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(dimensionResource(dimen.padding))
-                        )
-                    }
-                } else {
-                    items(geocodeResults) { result ->
-                        SearchResultItem(
-                            place = viewModel.geocodeResultToPlace(result),
-                            onPlaceSelected = onPlaceSelected
-                        )
-                    }
-                }
-            } else {
-                // Show saved places
-                items(savedPlaces) { place ->
-                    PlaceItem(place = place, onClick = {
-                        onPlaceSelected(place)
-                    })
-                }
-            }
+        viewModel.geocodeResults.value.forEach {
+            SearchResultItem(
+                addressFormatter = addressFormatter,
+                viewModel.geocodeResultToPlace(it),
+                onPlaceSelected
+            )
         }
 
         if (homeInSearchScreen) {
             Spacer(modifier = Modifier.fillMaxSize())
+        }
+    }
+}
+
+@Composable
+private fun SavedPlacesSheetContent(
+    homeInSearchScreen: Boolean,
+    isSearching: Boolean,
+    geocodeResults: List<GeocodeResult>,
+    viewModel: HomeViewModel,
+    onPlaceSelected: (Place) -> Unit,
+    savedPlaces: List<Place>
+) {
+    val addressFormatter = remember { AddressFormatter() }
+    val scrollState = rememberScrollState()
+    // Content: either saved places or search results
+    Column(
+        modifier = Modifier
+            .verticalScroll(scrollState)
+            .fillMaxWidth()
+    ) {
+        if (homeInSearchScreen) {
+            // Show search results
+            if (isSearching) {
+                Text(
+                    text = stringResource(string.searching_in_progress),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(dimensionResource(dimen.padding))
+                )
+            } else {
+                for (result in geocodeResults) {
+                    SearchResultItem(
+                        addressFormatter = addressFormatter,
+                        place = viewModel.geocodeResultToPlace(result),
+                        onPlaceSelected = onPlaceSelected
+                    )
+                }
+            }
+        } else {
+            if (savedPlaces.isEmpty()) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.align(
+                        Alignment.CenterHorizontally
+                    )
+                ) {
+                    Text(
+                        stringResource(string.no_saved_places_yet),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Icon(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .padding(dimensionResource(dimen.padding)),
+                        painter = painterResource(drawable.ic_add_location),
+                        contentDescription = stringResource(string.add_save_places_and_they_ll_show_up_here)
+                    )
+                }
+            }
+            // Show saved places
+            for (place in savedPlaces) {
+                PlaceItem(place = place, onClick = {
+                    onPlaceSelected(place)
+                })
+            }
         }
     }
 }
@@ -309,11 +355,13 @@ private fun PlaceItem(place: Place, onClick: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = when (place.icon) {
-                        "home" -> Icons.Default.Home
-                        "work" -> Icons.Default.AccountCircle
-                        else -> Icons.Default.LocationOn
-                    },
+                    painter = painterResource(
+                        when (place.icon) {
+                            "home" -> drawable.ic_home
+                            "work" -> drawable.ic_work
+                            else -> drawable.ic_location_on
+                        }
+                    ),
                     contentDescription = place.name,
                     modifier = Modifier.size(dimensionResource(dimen.icon_size))
                 )
@@ -342,7 +390,7 @@ private fun PlaceItem(place: Place, onClick: () -> Unit) {
 
 @Composable
 fun NavigationIcon(
-    icon: ImageVector,
+    painter: Painter,
     text: String,
     place: Place?,
     onPlaceSelected: (Place) -> Unit,
@@ -354,7 +402,7 @@ fun NavigationIcon(
     ) {
         Row(modifier = Modifier.padding(vertical = 4.dp)) {
             Icon(
-                imageVector = icon,
+                painter = painter,
                 modifier = Modifier.padding(end = 4.dp),
                 contentDescription = null // This is fine because the semantic information is provided by the text.
             )

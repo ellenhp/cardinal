@@ -39,6 +39,9 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.pow
@@ -90,8 +93,7 @@ class LocalMapServer(
                         val styleJson = readAssetFile("style_light.json")
                         val modifiedStyleJson = styleJson.replace("{port}", port.toString())
                         call.respondText(
-                            modifiedStyleJson,
-                            contentType = ContentType.Application.Json
+                            modifiedStyleJson, contentType = ContentType.Application.Json
                         )
                     } catch (e: Exception) {
                         Log.e(TAG, "Error reading style_light.json", e)
@@ -107,8 +109,7 @@ class LocalMapServer(
                         val styleJson = readAssetFile("style_dark.json")
                         val modifiedStyleJson = styleJson.replace("{port}", port.toString())
                         call.respondText(
-                            modifiedStyleJson,
-                            contentType = ContentType.Application.Json
+                            modifiedStyleJson, contentType = ContentType.Application.Json
                         )
                     } catch (e: Exception) {
                         Log.e(TAG, "Error reading style_dark.json", e)
@@ -129,8 +130,7 @@ class LocalMapServer(
 
                         // Return the route response
                         call.respondText(
-                            routeJson,
-                            contentType = ContentType.Application.Json
+                            routeJson, contentType = ContentType.Application.Json
                         )
 
                     } catch (e: Exception) {
@@ -153,8 +153,7 @@ class LocalMapServer(
 
                     if (z == null || x == null || y == null) {
                         call.respondText(
-                            "Invalid tile coordinates",
-                            status = HttpStatusCode.BadRequest
+                            "Invalid tile coordinates", status = HttpStatusCode.BadRequest
                         )
                         return@get
                     }
@@ -186,8 +185,7 @@ class LocalMapServer(
 
                     if (z == null || x == null || y == null) {
                         call.respondText(
-                            "Invalid tile coordinates",
-                            status = HttpStatusCode.BadRequest
+                            "Invalid tile coordinates", status = HttpStatusCode.BadRequest
                         )
                         return@get
                     }
@@ -218,8 +216,7 @@ class LocalMapServer(
                     if (z == null || x == null || y == null) {
                         Log.w(TAG, "Invalid tile coordinates: z=$z, x=$x, y=$y")
                         call.respondText(
-                            "Invalid tile coordinates",
-                            status = HttpStatusCode.BadRequest
+                            "Invalid tile coordinates", status = HttpStatusCode.BadRequest
                         )
                         return@get
                     }
@@ -270,15 +267,18 @@ class LocalMapServer(
                                 TAG,
                                 "Tile not found in local caches, attempting to fetch from internet"
                             )
-                            tileData = fetchTileFromInternet(z, x, y)
+                            tileData = CoroutineScope(Dispatchers.IO).async {
+                                fetchTileFromInternet(
+                                    z, x, y
+                                )
+                            }.await()
                             if (tileData != null) {
                                 Log.d(
                                     TAG,
                                     "Successfully fetched tile from internet: /openmaptiles/$z/$x/$y.pbf, size: ${tileData.size} bytes"
                                 )
                                 call.respondBytes(
-                                    tileData,
-                                    contentType = ContentType.Application.ProtoBuf
+                                    tileData, contentType = ContentType.Application.ProtoBuf
                                 )
                                 return@get
                             }
@@ -383,32 +383,21 @@ class LocalMapServer(
             val basemapFile = copyDatabaseToStorage("basemap.mbtiles") ?: return
 
             Log.d(TAG, "Opening databases.")
-            terrainDatabase =
-                SQLiteDatabase.openDatabase(
-                    terrainFile.absolutePath,
-                    null,
-                    SQLiteDatabase.OPEN_READONLY
-                )
-            landcoverDatabase =
-                SQLiteDatabase.openDatabase(
-                    landcoverFile.absolutePath,
-                    null,
-                    SQLiteDatabase.OPEN_READONLY
-                )
-            basemapDatabase =
-                SQLiteDatabase.openDatabase(
-                    basemapFile.absolutePath,
-                    null,
-                    SQLiteDatabase.OPEN_READONLY
-                )
+            terrainDatabase = SQLiteDatabase.openDatabase(
+                terrainFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY
+            )
+            landcoverDatabase = SQLiteDatabase.openDatabase(
+                landcoverFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY
+            )
+            basemapDatabase = SQLiteDatabase.openDatabase(
+                basemapFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY
+            )
 
             // Open or create the offline areas database
             val offlineAreasFile = File(context.filesDir, OFFLINE_DATABASE_NAME)
-            offlineAreasDatabase =
-                SQLiteDatabase.openOrCreateDatabase(
-                    offlineAreasFile.absolutePath,
-                    null
-                )
+            offlineAreasDatabase = SQLiteDatabase.openOrCreateDatabase(
+                offlineAreasFile.absolutePath, null
+            )
 
             // Initialize the schema if needed
             initializeOfflineAreasSchema(offlineAreasDatabase!!)
@@ -470,18 +459,14 @@ class LocalMapServer(
     }
 
     private fun getTileData(
-        database: SQLiteDatabase,
-        zoomLevel: Int,
-        tileColumn: Long,
-        tileRow: Long
+        database: SQLiteDatabase, zoomLevel: Int, tileColumn: Long, tileRow: Long
     ): ByteArray? {
         var cursor: android.database.Cursor? = null
         return try {
             val query =
                 "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?"
             cursor = database.rawQuery(
-                query,
-                arrayOf(zoomLevel.toString(), tileColumn.toString(), tileRow.toString())
+                query, arrayOf(zoomLevel.toString(), tileColumn.toString(), tileRow.toString())
             )
 
             if (cursor.moveToFirst()) {
@@ -489,8 +474,7 @@ class LocalMapServer(
                 if (blobIndex != -1) {
                     val blob = cursor.getBlob(blobIndex)
                     Log.v(
-                        TAG,
-                        "Found tile $zoomLevel/$tileColumn/$tileRow, size: ${blob.size} bytes"
+                        TAG, "Found tile $zoomLevel/$tileColumn/$tileRow, size: ${blob.size} bytes"
                     )
                     blob
                 } else {
@@ -513,9 +497,7 @@ class LocalMapServer(
      * Get tile data from offline area databases
      */
     private fun getTileDataFromOfflineDatabases(
-        zoomLevel: Int,
-        tileColumn: Long,
-        tileRow: Long
+        zoomLevel: Int, tileColumn: Long, tileRow: Long
     ): ByteArray? {
         // Try the offline areas database
         if (offlineAreasDatabase != null) {
@@ -581,9 +563,7 @@ class LocalMapServer(
     private suspend fun fetchTileFromInternet(z: Int, x: Long, y: Long): ByteArray? {
         return try {
             val urlTemplate = context.getString(R.string.tile_url_template)
-            val url = urlTemplate
-                .replace("{z}", z.toString())
-                .replace("{x}", x.toString())
+            val url = urlTemplate.replace("{z}", z.toString()).replace("{x}", x.toString())
                 .replace("{y}", y.toString())
             Log.d(TAG, "Fetching tile from internet: $url")
 

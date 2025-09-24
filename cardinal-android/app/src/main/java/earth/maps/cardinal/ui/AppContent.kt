@@ -30,12 +30,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
@@ -43,16 +43,19 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FlexibleBottomAppBar
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -64,6 +67,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,15 +84,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.times
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.google.gson.Gson
-import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
+import earth.maps.cardinal.R.string
 import earth.maps.cardinal.bottomsheet.BottomSheetScaffold
 import earth.maps.cardinal.bottomsheet.BottomSheetScaffoldState
 import earth.maps.cardinal.bottomsheet.BottomSheetValue
@@ -110,6 +115,7 @@ import earth.maps.cardinal.viewmodel.MapViewModel
 import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
 import earth.maps.cardinal.viewmodel.SettingsViewModel
+import earth.maps.cardinal.viewmodel.TransitScreenViewModel
 import io.github.dellisd.spatialk.geojson.BoundingBox
 import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
@@ -142,10 +148,11 @@ fun AppContent(
     val bottomSheetState = rememberBottomSheetState(
         initialValue = BottomSheetValue.Collapsed
     )
-    val droppedPinName = stringResource(R.string.dropped_pin)
+    val droppedPinName = stringResource(string.dropped_pin)
     var screenHeightDp by remember { mutableStateOf(0.dp) }
     var screenWidthDp by remember { mutableStateOf(0.dp) }
     var peekHeight by remember { mutableStateOf(0.dp) }
+
 
     // This is used by nav destinations to determine if it is appropriate of them to update peekHeight.
     val topOfBackStack by navController.currentBackStackEntryAsState()
@@ -231,73 +238,20 @@ fun AppContent(
         composable(
             Screen.HOME,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
-            exitTransition = { fadeOut(animationSpec = tween(600)) })
-        { backStackEntry ->
-            var homeInSearchScreen by rememberSaveable { mutableStateOf(false) }
-            val bottomSheetState = rememberBottomSheetState(
-                initialValue = BottomSheetValue.Collapsed
-            )
-            val scaffoldState =
-                rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
-
-            val viewModel: HomeViewModel = hiltViewModel()
-            val managePlacesViewModel: ManagePlacesViewModel = hiltViewModel()
-            val focusManager = LocalFocusManager.current
-            val imeController = LocalSoftwareKeyboardController.current
-            if (bottomSheetState.isExpanded) {
-                BackHandler {
-                    homeInSearchScreen = false
-                }
-            }
-
-            LaunchedEffect(homeInSearchScreen) {
-                if (homeInSearchScreen) {
-                    bottomSheetState.expand()
-                } else {
-                    imeController?.hide()
-                    focusManager.clearFocus(force = true)
-                    bottomSheetState.collapse()
-                }
-            }
-
-            LaunchedEffect(Unit) {
-                mapPins.clear()
-            }
-
-            CardinalScaffold(
-                scaffoldState = scaffoldState,
+            exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            HomeScreenComposable(
+                mapPins = mapPins,
                 peekHeight = peekHeight,
-                sheetGesturesEnabled = !homeInSearchScreen,
-                fabHeightCallback = {
+                navController = navController,
+                onPeekHeightChange = {
+                    peekHeight = it
+                },
+                onFabHeightChange = {
                     fabHeight = it
                 },
-                content = {
-                    HomeScreen(
-                        viewModel = viewModel,
-                        managePlacesViewModel = managePlacesViewModel,
-                        onPlaceSelected = { place ->
-                            coroutineScope.launch {
-                                imeController?.hide()
-                                // Collapse the bottom sheet but don't touch homeExpanded.
-                                scaffoldState.bottomSheetState.collapse()
-                            }
-                            NavigationUtils.navigate(navController, Screen.PlaceCard(place))
-                        },
-                        onPeekHeightChange = {
-                            if (topOfBackStack == backStackEntry) {
-                                peekHeight = it
-                            }
-                        },
-                        homeInSearchScreen = homeInSearchScreen,
-                        onSearchFocusChange = {
-                            if (it) {
-                                coroutineScope.launch {
-                                    bottomSheetState.expand()
-                                }
-                                homeInSearchScreen = true
-                            }
-                        })
-                })
+                topOfBackStack = topOfBackStack,
+                backStackEntry = backStackEntry,
+            )
         }
 
         composable(
@@ -370,7 +324,9 @@ fun AppContent(
                         })
                     },
                     fabHeightCallback = {
-                        fabHeight = it
+                        if (topOfBackStack == backStackEntry) {
+                            fabHeight = it
+                        }
                     },
                 )
             }
@@ -379,7 +335,7 @@ fun AppContent(
         composable(
             Screen.OFFLINE_AREAS,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
-            exitTransition = { fadeOut(animationSpec = tween(600)) }) {
+            exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
             )
@@ -414,7 +370,9 @@ fun AppContent(
                     scaffoldState = scaffoldState,
                     peekHeight = peekHeight,
                     fabHeightCallback = {
-                        fabHeight = it
+                        if (topOfBackStack == backStackEntry) {
+                            fabHeight = it
+                        }
                     },
                     content = {
                         OfflineAreasScreen(
@@ -716,7 +674,9 @@ fun AppContent(
                     )
                 },
                 fabHeightCallback = {
-                    fabHeight = it
+                    if (topOfBackStack == backStackEntry) {
+                        fabHeight = it
+                    }
                 },
             )
         }
@@ -750,14 +710,177 @@ fun AppContent(
     }
 }
 
+enum class HomeBottomSheetState(val value: Int, val label: Int) {
+    SAVED(0, string.favorites_screen), NEARBY(1, string.nearby_screen), TRANSIT(
+        2,
+        string.transit_screen
+    );
 
-@OptIn(ExperimentalMaterial3Api::class)
+    companion object {
+        fun fromValue(value: Int): HomeBottomSheetState {
+            return when (value) {
+                0 -> SAVED
+                1 -> NEARBY
+                2 -> TRANSIT
+                else -> SAVED
+            }
+        }
+
+        const val COUNT = 3
+    }
+}
+
+@Composable
+private fun HomeScreenComposable(
+    mapPins: SnapshotStateList<Position>,
+    peekHeight: Dp,
+    navController: NavHostController,
+    onPeekHeightChange: (Dp) -> Unit,
+    onFabHeightChange: (Dp) -> Unit,
+    topOfBackStack: NavBackStackEntry?,
+    backStackEntry: NavBackStackEntry,
+) {
+    val coroutineScope = rememberCoroutineScope()
+    var homeInSearchScreen by rememberSaveable { mutableStateOf(false) }
+    var homeBottomSheetState by rememberSaveable { mutableStateOf(HomeBottomSheetState.SAVED) }
+    val bottomSheetState = rememberBottomSheetState(
+        initialValue = BottomSheetValue.Collapsed
+    )
+    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
+
+    val viewModel: HomeViewModel = hiltViewModel()
+    val transitScreenViewModel = hiltViewModel<TransitScreenViewModel>()
+    val managePlacesViewModel: ManagePlacesViewModel = hiltViewModel()
+    val focusManager = LocalFocusManager.current
+    val imeController = LocalSoftwareKeyboardController.current
+
+    var showManagePlacesDialog by remember { mutableStateOf(false) }
+
+    if (bottomSheetState.isExpanded) {
+        BackHandler {
+            homeInSearchScreen = false
+            coroutineScope.launch {
+                bottomSheetState.collapse()
+            }
+        }
+    }
+
+    LaunchedEffect(homeInSearchScreen) {
+        if (homeInSearchScreen) {
+            bottomSheetState.expand()
+        } else {
+            imeController?.hide()
+            focusManager.clearFocus(force = true)
+            bottomSheetState.collapse()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        mapPins.clear()
+    }
+
+    CardinalScaffold(
+        scaffoldState = scaffoldState,
+        peekHeight = peekHeight,
+        sheetGesturesEnabled = !homeInSearchScreen,
+        fabHeightCallback = {
+            if (topOfBackStack == backStackEntry) {
+                onFabHeightChange(it)
+            }
+        },
+        toolbarContent = {
+            val prev = remember(homeBottomSheetState) {
+                HomeBottomSheetState.fromValue((homeBottomSheetState.value + HomeBottomSheetState.COUNT - 1) % HomeBottomSheetState.COUNT)
+            }
+            val next = remember(homeBottomSheetState) {
+                HomeBottomSheetState.fromValue((homeBottomSheetState.value + 1) % HomeBottomSheetState.COUNT)
+            }
+            OutlinedButton(onClick = {
+                homeBottomSheetState = prev
+            }) {
+                Icon(
+                    painter = painterResource(drawable.ic_arrow_back),
+                    contentDescription = stringResource(string.content_description_previous_page)
+                )
+                Text(
+                    modifier = Modifier.padding(start = 4.dp), text = stringResource(prev.label)
+                )
+            }
+            when (homeBottomSheetState) {
+                HomeBottomSheetState.SAVED -> {
+                    IconButton(onClick = {
+                        showManagePlacesDialog = true
+                    }) {
+                        Icon(
+                            painter = painterResource(drawable.ic_edit),
+                            contentDescription = stringResource(string.content_description_edit_saved_places)
+                        )
+                    }
+                }
+
+                HomeBottomSheetState.NEARBY -> {
+                }
+
+                HomeBottomSheetState.TRANSIT -> {
+
+                }
+            }
+            OutlinedButton(onClick = {
+                homeBottomSheetState = next
+            }) {
+                Text(
+                    modifier = Modifier.padding(end = 4.dp), text = stringResource(next.label)
+                )
+                Icon(
+                    painter = painterResource(drawable.ic_arrow_forward),
+                    contentDescription = stringResource(string.content_description_next_page)
+                )
+            }
+        },
+        content = {
+            HomeScreen(
+                viewModel = viewModel,
+                showManagePlacesDialog = showManagePlacesDialog,
+                transitScreenViewModel = transitScreenViewModel,
+                homeBottomSheetState = homeBottomSheetState,
+                managePlacesViewModel = managePlacesViewModel,
+                onPlaceSelected = { place ->
+                    coroutineScope.launch {
+                        imeController?.hide()
+                        // Collapse the bottom sheet but don't touch homeExpanded.
+                        scaffoldState.bottomSheetState.collapse()
+                    }
+                    NavigationUtils.navigate(navController, Screen.PlaceCard(place))
+                },
+                onPeekHeightChange = {
+                    if (topOfBackStack == backStackEntry) {
+                        onPeekHeightChange(it)
+                    }
+                },
+                homeInSearchScreen = homeInSearchScreen,
+                onSearchFocusChange = {
+                    if (it) {
+                        coroutineScope.launch {
+                            bottomSheetState.expand()
+                        }
+                        homeInSearchScreen = true
+                    }
+                },
+                onDismissShowPlaces = {
+                    showManagePlacesDialog = false
+                })
+        })
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CardinalScaffold(
     scaffoldState: BottomSheetScaffoldState,
     peekHeight: Dp,
     content: @Composable () -> Unit,
     fabHeightCallback: (Dp) -> Unit,
+    toolbarContent: (@Composable () -> Unit)? = null,
     sheetGesturesEnabled: Boolean = true
 ) {
     val density = LocalDensity.current
@@ -768,19 +891,26 @@ fun CardinalScaffold(
     }
     val handleHeight = 48.dp
 
+    val toolbar: (@Composable ColumnScope.() -> Unit)? = toolbarContent?.let {
+        {
+            FlexibleBottomAppBar {
+                toolbarContent()
+            }
+        }
+    }
+
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetGesturesEnabled = sheetGesturesEnabled,
         sheetPeekHeight = peekHeight + bottomInset + handleHeight,
         snackbarHost = { SnackbarHost(snackBarHostState) },
         sheetBackgroundColor = BottomSheetDefaults.ContainerColor,
+        dockedToolbar = toolbar,
         sheetContent = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onGloballyPositioned {
-                        fabHeightCallback(with(density) { it.positionInRoot().y.toDp() })
-                    }) {
+                modifier = Modifier.onGloballyPositioned {
+                    fabHeightCallback(with(density) { it.positionInRoot().y.toDp() })
+                }) {
                 Box(
                     modifier = Modifier
                         .defaultMinSize(minHeight = handleHeight)
@@ -833,7 +963,7 @@ fun BirdSettingsFab(navController: NavController) {
             )
             Icon(
                 modifier = Modifier.padding(4.dp),
-                imageVector = Icons.Default.Settings,
+                painter = painterResource(drawable.ic_settings),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface
             )

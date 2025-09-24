@@ -16,13 +16,17 @@
 
 package earth.maps.cardinal.data
 
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
 import kotlin.math.roundToInt
-import kotlin.math.*
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * Utility functions for formatting distances based on unit preferences.
  */
-object DistanceUtils {
+object GeoUtils {
 
     private const val METERS_TO_KILOMETERS = 1000.0
     private const val METERS_TO_MILES = 1609.34
@@ -128,5 +132,29 @@ object DistanceUtils {
         val earthRadius = 6371000.0
 
         return earthRadius * c
+    }
+
+    /**
+     * Creates a bounding box with an approximate radius around a specified LatLng point.
+     *
+     * @param center The center point around which to create the bounding box
+     * @param radiusMeters The radius in meters
+     * @return A BoundingBox representing the area around the center point
+     */
+    fun createBoundingBoxAroundPoint(center: LatLng, radiusMeters: Double): BoundingBox {
+        // Earth's radius in meters
+        val earthRadius = 6371000.0
+
+        // Calculate the approximate delta in degrees for the given radius
+        val latDelta = Math.toDegrees(radiusMeters / earthRadius)
+        val lonDelta = Math.toDegrees(radiusMeters / (earthRadius * cos(Math.toRadians(center.latitude))))
+
+        // Create the bounding box with north, south, east, west boundaries
+        return BoundingBox(
+            north = center.latitude + latDelta,
+            south = center.latitude - latDelta,
+            east = center.longitude + lonDelta,
+            west = center.longitude - lonDelta
+        )
     }
 }

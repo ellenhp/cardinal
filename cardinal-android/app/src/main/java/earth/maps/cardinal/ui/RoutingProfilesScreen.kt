@@ -29,13 +29,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -55,13 +48,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.room.RoutingProfile
@@ -70,8 +64,7 @@ import earth.maps.cardinal.viewmodel.RoutingProfilesViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutingProfilesScreen(
-    viewModel: RoutingProfilesViewModel = hiltViewModel(),
-    navController: NavController
+    viewModel: RoutingProfilesViewModel = hiltViewModel(), navController: NavController
 ) {
     val allProfiles by viewModel.allProfiles.collectAsState()
 
@@ -98,7 +91,7 @@ fun RoutingProfilesScreen(
 
             IconButton(onClick = { navController.popBackStack() }) {
                 Icon(
-                    imageVector = Icons.Default.Close,
+                    painter = painterResource(drawable.ic_close),
                     contentDescription = stringResource(string.close)
                 )
             }
@@ -111,7 +104,7 @@ fun RoutingProfilesScreen(
         ) {
             if (allProfiles.isEmpty()) {
                 Text(
-                    text = stringResource(R.string.no_routing_profiles_configured_yet)
+                    text = stringResource(string.no_routing_profiles_configured_yet)
                 )
             }
             // Group profiles by routing mode
@@ -146,7 +139,10 @@ fun RoutingProfilesScreen(
                 .align(Alignment.BottomEnd)
                 .padding(dimensionResource(dimen.padding))
         ) {
-            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_profile))
+            Icon(
+                painter = painterResource(drawable.ic_add),
+                contentDescription = stringResource(string.add_profile)
+            )
         }
     }
 }
@@ -175,16 +171,11 @@ private fun RoutingModeSection(
             )
         } else {
             profiles.forEach { profile ->
-                ProfileCard(
-                    profile = profile,
-                    onClick = {
-                        NavigationUtils.navigate(
-                            navController,
-                            Screen.ProfileEditor(profile.id)
-                        )
-                    },
-                    onSetDefault = { onSetDefault(profile) },
-                    onDelete = { onDelete(profile) })
+                ProfileCard(profile = profile, onClick = {
+                    NavigationUtils.navigate(
+                        navController, Screen.ProfileEditor(profile.id)
+                    )
+                }, onSetDefault = { onSetDefault(profile) }, onDelete = { onDelete(profile) })
             }
         }
 
@@ -221,7 +212,7 @@ private fun ProfileCard(
                     )
                     if (profile.isDefault) {
                         Icon(
-                            imageVector = Icons.Filled.Star,
+                            painter = painterResource(drawable.ic_star),
                             contentDescription = "Default",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(start = 8.dp)
@@ -242,15 +233,24 @@ private fun ProfileCard(
             Row {
                 IconButton(onClick = onSetDefault) {
                     Icon(
-                        imageVector = if (profile.isDefault) Icons.Filled.Star else Icons.Outlined.Star,
-                        contentDescription = if (profile.isDefault) "Remove as default" else "Set as default"
+                        painter = painterResource(drawable.ic_star),
+                        contentDescription = if (profile.isDefault) stringResource(string.remove_as_default) else stringResource(
+                            string.set_as_default
+                        )
                     )
                 }
                 IconButton(onClick = onClick) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    Icon(
+
+                        painter = painterResource(drawable.ic_edit),
+                        contentDescription = stringResource(string.content_description_edit_routing_profile)
+                    )
                 }
                 IconButton(onClick = { showDeleteDialog.value = true }) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                    Icon(
+                        painter = painterResource(drawable.ic_delete),
+                        contentDescription = stringResource(string.content_description_delete_routing_profile)
+                    )
                 }
             }
         }
@@ -266,12 +266,12 @@ private fun ProfileCard(
                     onDelete()
                     showDeleteDialog.value = false
                 }) {
-                    Text("Delete")
+                    Text(stringResource(string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog.value = false }) {
-                    Text("Cancel")
+                    Text(stringResource(string.cancel))
                 }
             })
     }

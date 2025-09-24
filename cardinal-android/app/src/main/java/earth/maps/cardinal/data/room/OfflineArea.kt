@@ -18,7 +18,7 @@ package earth.maps.cardinal.data.room
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import earth.maps.cardinal.ui.BoundingBox
+import earth.maps.cardinal.data.BoundingBox
 
 /**
  * Data class representing an offline area that has been downloaded for offline use.

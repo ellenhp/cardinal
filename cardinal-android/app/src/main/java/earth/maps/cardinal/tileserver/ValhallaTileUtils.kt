@@ -16,7 +16,7 @@
 
 package earth.maps.cardinal.tileserver
 
-import earth.maps.cardinal.ui.BoundingBox
+import earth.maps.cardinal.data.BoundingBox
 
 /**
  * Valhalla tile coordinate system utilities
