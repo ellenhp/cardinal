@@ -30,6 +30,7 @@ import earth.maps.cardinal.transit.StopTime
 import earth.maps.cardinal.transit.TransitStop
 import earth.maps.cardinal.transit.TransitousService
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,6 +52,8 @@ class TransitScreenViewModel @Inject constructor(
         private const val DEFAULT_RADIUS_METERS = 1000
         private const val NUM_EVENTS = 200
     }
+
+    private var refreshJob: Job? = null
 
     val stop = mutableStateOf<String?>(null)
     val reverseGeocodedStop = mutableStateOf<TransitStop?>(null)
@@ -84,7 +87,7 @@ class TransitScreenViewModel @Inject constructor(
         locationRepository.startContinuousLocationUpdates(context)
         observeLocationUpdates()
 
-        viewModelScope.launch {
+        refreshJob = viewModelScope.launch {
             while (true) {
                 refreshData()
                 delay(60.seconds)
@@ -100,7 +103,6 @@ class TransitScreenViewModel @Inject constructor(
     private fun observeLocationUpdates() {
         viewModelScope.launch {
             locationRepository.locationFlow.distinctUntilChanged { old, new ->
-                Log.d("TAG", "$old $new")
                 // Only update if location changed significantly (more than 100 meters)
                 if (new != null) {
                     (old?.distanceTo(new) ?: 1000f) < 100f
@@ -110,7 +112,6 @@ class TransitScreenViewModel @Inject constructor(
             }.collectLatest { location ->
                 location?.let {
                     lastLocation = it
-                    Log.d("TAG", "$lastLocation")
                     refreshData()
                 }
             }
@@ -194,6 +195,11 @@ class TransitScreenViewModel @Inject constructor(
                 fetchDepartures()
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        refreshJob?.cancel()
     }
 }
 

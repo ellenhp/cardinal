@@ -26,6 +26,7 @@ import earth.maps.cardinal.data.room.PlaceDao
 import earth.maps.cardinal.transit.StopTime
 import earth.maps.cardinal.transit.TransitStop
 import earth.maps.cardinal.transit.TransitousService
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +39,8 @@ import kotlin.time.Duration.Companion.seconds
 class TransitStopCardViewModel @Inject constructor(
     private val placeDao: PlaceDao, private val transitousService: TransitousService
 ) : ViewModel() {
+
+    private var refreshJob: Job? = null
 
     val isPlaceSaved = mutableStateOf(false)
     val stop = mutableStateOf<Place?>(null)
@@ -66,7 +69,7 @@ class TransitStopCardViewModel @Inject constructor(
     val isRefreshingDepartures: StateFlow<Boolean> = _isRefreshingDepartures
 
     init {
-        viewModelScope.launch {
+        refreshJob = viewModelScope.launch {
             while (true) {
                 refreshDepartures()
                 delay(30.seconds)
@@ -153,6 +156,11 @@ class TransitStopCardViewModel @Inject constructor(
         } finally {
             _isRefreshingDepartures.value = false
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        refreshJob?.cancel()
     }
 
     companion object {

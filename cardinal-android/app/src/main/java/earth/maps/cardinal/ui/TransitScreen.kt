@@ -66,6 +66,7 @@ import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.isYellow
 import earth.maps.cardinal.transit.StopTime
 import earth.maps.cardinal.viewmodel.TransitScreenViewModel
 import kotlinx.coroutines.launch
@@ -168,25 +169,7 @@ fun TransitScreenRouteDepartures(
             Color("#$it".toColorInt())
         } ?: MaterialTheme.colorScheme.surfaceVariant
 
-        fun isYellow(color: Color): Boolean {
-            val r = color.red
-            val g = color.green
-            val b = color.blue
-            val max = maxOf(r, g, b)
-            val min = minOf(r, g, b)
-            if (max == min) return false // gray
-            val delta = max - min
-            val h = when (max) {
-                r -> 60 * (g - b) / delta
-                g -> 60 * (2 + (b - r) / delta)
-                b -> 60 * (4 + (r - g) / delta)
-                else -> 0f
-            }
-            val hue = if (h < 0) h + 360f else h
-            return hue in 30f..75f
-        }
-
-        val cardContainerColor = if (isYellow(routeColor)) {
+        val cardContainerColor = if (routeColor.isYellow()) {
             MaterialTheme.colorScheme.surfaceVariant
         } else {
             routeColor
