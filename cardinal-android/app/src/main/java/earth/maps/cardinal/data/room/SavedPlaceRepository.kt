@@ -47,14 +47,11 @@ class SavedPlaceRepository @Inject constructor(
      * Saves a place.
      */
     suspend fun savePlace(
-        place: Place,
-        customName: String? = null,
-        customDescription: String? = null
+        place: Place, customName: String? = null, customDescription: String? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             val savedPlace = SavedPlace.fromPlace(place).copy(
-                customName = customName,
-                customDescription = customDescription
+                customName = customName, customDescription = customDescription
             )
 
             placeDao.insertPlace(savedPlace)
@@ -68,13 +65,12 @@ class SavedPlaceRepository @Inject constructor(
      * Updates a saved place.
      */
     suspend fun updatePlace(
-        placeId: String,
-        customName: String? = null,
-        customDescription: String? = null
+        placeId: String, customName: String? = null, customDescription: String? = null
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val existingPlace = placeDao.getPlace(placeId)
-                ?: return@withContext Result.failure(IllegalArgumentException("Place not found"))
+            val existingPlace = placeDao.getPlace(placeId) ?: return@withContext Result.failure(
+                IllegalArgumentException("Place not found")
+            )
 
             val updatedPlace = existingPlace.copy(
                 customName = customName ?: existingPlace.customName,
@@ -94,8 +90,9 @@ class SavedPlaceRepository @Inject constructor(
      */
     suspend fun deletePlace(placeId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val place = placeDao.getPlace(placeId)
-                ?: return@withContext Result.failure(IllegalArgumentException("Place not found"))
+            val place = placeDao.getPlace(placeId) ?: return@withContext Result.failure(
+                IllegalArgumentException("Place not found")
+            )
 
             placeDao.deletePlace(place)
             Result.success(Unit)
@@ -133,13 +130,9 @@ class SavedPlaceRepository @Inject constructor(
             description = savedPlace.type,
             icon = savedPlace.icon,
             latLng = earth.maps.cardinal.data.LatLng(
-                latitude = savedPlace.latitude,
-                longitude = savedPlace.longitude
+                latitude = savedPlace.latitude, longitude = savedPlace.longitude
             ),
-            address = if (savedPlace.houseNumber != null || savedPlace.road != null || savedPlace.city != null ||
-                savedPlace.state != null || savedPlace.postcode != null || savedPlace.country != null ||
-                savedPlace.countryCode != null
-            ) {
+            address = if (savedPlace.houseNumber != null || savedPlace.road != null || savedPlace.city != null || savedPlace.state != null || savedPlace.postcode != null || savedPlace.country != null || savedPlace.countryCode != null) {
                 earth.maps.cardinal.data.Address(
                     houseNumber = savedPlace.houseNumber,
                     road = savedPlace.road,
@@ -152,7 +145,8 @@ class SavedPlaceRepository @Inject constructor(
             } else {
                 null
             },
-            isTransitStop = savedPlace.isTransitStop
+            isTransitStop = savedPlace.isTransitStop,
+            transitStopId = savedPlace.transitStopId,
         )
     }
 }

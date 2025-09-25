@@ -25,5 +25,6 @@ data class Place(
     val address: Address? = null,
     val isMyLocation: Boolean = false,
     val isTransitStop: Boolean = false,
+    val transitStopId: String? = null,
 )
 

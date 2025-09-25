@@ -147,11 +147,9 @@ fun TransitScreenContent(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         } else {
-            val maxDeparturesPerHeadsign = 3
             // List of departures grouped by route and headsign
             TransitScreenRouteDepartures(
                 stopTimes = viewModel.departures.value,
-                maxDepartures = maxDeparturesPerHeadsign,
                 onRouteClicked = onRouteClicked,
             )
         }
@@ -162,7 +160,7 @@ fun TransitScreenContent(
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
 fun TransitScreenRouteDepartures(
-    stopTimes: List<StopTime>, maxDepartures: Int, onRouteClicked: (Place) -> Unit
+    stopTimes: List<StopTime>, onRouteClicked: (Place) -> Unit
 ) {
     // Group departures by route name
     val departuresByRoute = stopTimes.groupBy { it.routeShortName }
@@ -182,7 +180,7 @@ fun TransitScreenRouteDepartures(
 
         // Group departures by headsign within each route
         val departuresByHeadsign = departures.groupBy { it.headsign }.map { (key, value) ->
-            (key to value.take(maxDepartures))
+            (key to value.take(1))
         }.toMap()
         val headsigns = departuresByHeadsign.keys.toList().sorted()
 
@@ -194,7 +192,8 @@ fun TransitScreenRouteDepartures(
                         name = departure.place.name,
                         description = transitStopString,
                         latLng = LatLng(departure.place.lat, departure.place.lon),
-                        isTransitStop = true
+                        isTransitStop = true,
+                        transitStopId = departure.place.stopId,
                     )
                 }
             }.toMap()

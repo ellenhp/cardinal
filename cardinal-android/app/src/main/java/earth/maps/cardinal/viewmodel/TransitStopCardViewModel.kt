@@ -24,7 +24,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.room.SavedPlaceDao
 import earth.maps.cardinal.transit.StopTime
-import earth.maps.cardinal.transit.TransitStop
 import earth.maps.cardinal.transit.TransitousService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -44,7 +43,6 @@ class TransitStopCardViewModel @Inject constructor(
 
     val isPlaceSaved = mutableStateOf(false)
     val stop = mutableStateOf<Place?>(null)
-    val reverseGeocodedStop = mutableStateOf<TransitStop?>(null)
     val departures = mutableStateOf<List<StopTime>>(emptyList())
 
     private val _didLoadingFail = MutableStateFlow(false)
@@ -85,7 +83,6 @@ class TransitStopCardViewModel @Inject constructor(
         val place = stop.value
         if (place != null) {
             checkIfPlaceIsSaved(place)
-            reverseGeocodeStop(place)
             fetchDepartures()
         } else {
             Log.e(TAG, "Can't find departures for a `null` stop.")
@@ -102,34 +99,11 @@ class TransitStopCardViewModel @Inject constructor(
         }
     }
 
-    private suspend fun reverseGeocodeStop(place: Place) {
-        _isLoading.value = true
-        try {
-            transitousService.reverseGeocode(
-                name = place.name,
-                latitude = place.latLng.latitude,
-                longitude = place.latLng.longitude,
-                type = "STOP"
-            ).collectLatest { stops ->
-                reverseGeocodedStop.value = stops.firstOrNull()
-                Log.d(TAG, "$reverseGeocodedStop")
-                // Update the place with the reverse-geocoded name if available
-                reverseGeocodedStop.value?.let { stop ->
-                    this@TransitStopCardViewModel.stop.value = place.copy(
-                        name = stop.name
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to reverse geocode stop $place", e)
-        }
-    }
-
     private suspend fun fetchDepartures() {
+        _isLoading.value = true
         _isRefreshingDepartures.value = true
         try {
-            // We need to get the stop ID from the reverse geocoded result
-            reverseGeocodedStop.value?.id?.let { stopId ->
+            stop.value?.transitStopId?.let { stopId ->
                 if (stopId.isNotEmpty()) {
                     transitousService.getStopTimes(stopId).collectLatest { response ->
                         departures.value = response.stopTimes
@@ -138,7 +112,7 @@ class TransitStopCardViewModel @Inject constructor(
             }
             _didLoadingFail.value = false
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to fetch departures for $reverseGeocodedStop", e)
+            Log.e(TAG, "Failed to fetch departures for $stop", e)
             _didLoadingFail.value = true
         } finally {
             _isRefreshingDepartures.value = false

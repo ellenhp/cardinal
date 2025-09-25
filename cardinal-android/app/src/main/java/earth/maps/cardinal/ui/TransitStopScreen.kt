@@ -161,7 +161,7 @@ fun TransitStopInformation(viewModel: TransitStopCardViewModel, onRouteClicked: 
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         } else {
-            val maxDeparturesPerHeadsign = 3
+            val maxDeparturesPerHeadsign = 5
             // List of departures grouped by route and headsign
             RouteDepartures(
                 stopTimes = viewModel.departures.value,
