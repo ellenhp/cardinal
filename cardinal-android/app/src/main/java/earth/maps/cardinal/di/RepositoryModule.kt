@@ -22,9 +22,11 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import earth.maps.cardinal.data.room.AppDatabase
 import earth.maps.cardinal.data.room.DownloadedTileDao
 import earth.maps.cardinal.data.room.OfflineAreaDao
 import earth.maps.cardinal.data.room.OfflineAreaRepository
+import earth.maps.cardinal.data.room.SavedPlaceRepository
 import earth.maps.cardinal.geocoding.TileProcessor
 import earth.maps.cardinal.tileserver.TileDownloadManager
 import javax.inject.Singleton
@@ -48,5 +50,11 @@ object RepositoryModule {
         tileProcessor: TileProcessor
     ): TileDownloadManager {
         return TileDownloadManager(context, downloadedTileDao, offlineAreaDao, tileProcessor)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSavedPlaceRepository(appDatabase: AppDatabase): SavedPlaceRepository {
+        return SavedPlaceRepository(appDatabase)
     }
 }

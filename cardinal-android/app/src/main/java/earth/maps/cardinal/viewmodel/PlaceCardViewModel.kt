@@ -21,14 +21,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.room.PlaceDao
-import earth.maps.cardinal.data.room.PlaceEntity
+import earth.maps.cardinal.data.room.SavedPlace
+import earth.maps.cardinal.data.room.SavedPlaceDao
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class PlaceCardViewModel @Inject constructor(
-    private val placeDao: PlaceDao
+    private val placeDao: SavedPlaceDao
 ) : ViewModel() {
 
     val isPlaceSaved = mutableStateOf(false)
@@ -42,7 +42,7 @@ class PlaceCardViewModel @Inject constructor(
     fun checkIfPlaceIsSaved(place: Place) {
         viewModelScope.launch {
             if (place.id != null) {
-                val existingPlace = placeDao.getPlaceById(place.id)
+                val existingPlace = placeDao.getPlace(place.id)
                 isPlaceSaved.value = existingPlace != null
             }
         }
@@ -50,28 +50,16 @@ class PlaceCardViewModel @Inject constructor(
 
     fun savePlace(place: Place) {
         viewModelScope.launch {
-            placeDao.insertPlace(PlaceEntity.fromPlace(place))
-            isPlaceSaved.value = true
-        }
-    }
-
-    fun savePlaceAsHome(place: Place) {
-        viewModelScope.launch {
-            placeDao.insertPlace(PlaceEntity.fromPlace(place.copy(icon = "home")))
-            isPlaceSaved.value = true
-        }
-    }
-
-    fun savePlaceAsWork(place: Place) {
-        viewModelScope.launch {
-            placeDao.insertPlace(PlaceEntity.fromPlace(place.copy(icon = "work")))
+            placeDao.insertPlace(SavedPlace.fromPlace(place))
             isPlaceSaved.value = true
         }
     }
 
     fun unsavePlace(place: Place) {
         viewModelScope.launch {
-            placeDao.deletePlace(PlaceEntity.fromPlace(place))
+            place.id?.let { id ->
+                placeDao.getPlace(id)?.let { placeDao.deletePlace(it) }
+            }
             isPlaceSaved.value = false
         }
     }

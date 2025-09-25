@@ -202,7 +202,7 @@ fun RouteDepartures(
                 value.firstOrNull()?.let { departure ->
                     Place(
                         name = departure.place.name,
-                        type = transitStopString,
+                        description = transitStopString,
                         latLng = LatLng(departure.place.lat, departure.place.lon),
                         isTransitStop = true
                     )

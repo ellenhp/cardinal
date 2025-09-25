@@ -18,20 +18,22 @@ package earth.maps.cardinal.data.room
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import earth.maps.cardinal.data.Address
-import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
-import kotlin.math.absoluteValue
-import kotlin.random.Random
+import java.util.UUID
 
-@Entity(tableName = "places")
-data class PlaceEntity(
-    @PrimaryKey val id: Int,
+@Entity(tableName = "saved_places")
+data class SavedPlace(
+    @PrimaryKey val id: String,  // UUID string
+    @Deprecated("Update references to placeId to point to new ID field.") val placeId: Int?,  // Reference to original place ID if from search
+    val customName: String? = null,  // User can override name
+    val customDescription: String? = null,  // User can add notes
+    val isPinned: Boolean = false,
     val name: String,
     val type: String,
     val icon: String,
     val latitude: Double,
     val longitude: Double,
+    // Address fields
     val houseNumber: String? = null,
     val road: String? = null,
     val city: String? = null,
@@ -40,40 +42,21 @@ data class PlaceEntity(
     val country: String? = null,
     val countryCode: String? = null,
     val isTransitStop: Boolean = false,
+    val createdAt: Long,
+    val updatedAt: Long
 ) {
-    fun toPlace(): Place {
-        return Place(
-            id = id,
-            name = name,
-            type = type,
-            icon = icon,
-            latLng = LatLng(
-                latitude = latitude,
-                longitude = longitude,
-            ),
-            address = if (houseNumber != null || road != null || city != null || state != null || postcode != null || country != null || countryCode != null) {
-                Address(
-                    houseNumber = houseNumber,
-                    road = road,
-                    city = city,
-                    state = state,
-                    postcode = postcode,
-                    country = country,
-                    countryCode = countryCode
-                )
-            } else {
-                null
-            },
-            isTransitStop = isTransitStop,
-        )
-    }
-
     companion object {
-        fun fromPlace(place: Place): PlaceEntity {
-            return PlaceEntity(
-                id = place.id ?: -Random.nextInt().absoluteValue,
+        fun fromPlace(place: Place): SavedPlace {
+            val timestamp = System.currentTimeMillis()
+
+            return SavedPlace(
+                id = UUID.randomUUID().toString(),
+                placeId = 0,
+                customName = null,
+                customDescription = null,
+                isPinned = false,
                 name = place.name,
-                type = place.type,
+                type = place.description.ifEmpty { "place" },
                 icon = place.icon,
                 latitude = place.latLng.latitude,
                 longitude = place.latLng.longitude,
@@ -85,6 +68,8 @@ data class PlaceEntity(
                 country = place.address?.country,
                 countryCode = place.address?.countryCode,
                 isTransitStop = place.isTransitStop,
+                createdAt = timestamp,
+                updatedAt = timestamp
             )
         }
     }

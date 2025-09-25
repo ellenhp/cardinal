@@ -44,7 +44,10 @@
     <string name="are_you_sure_you_want_to_delete">Are you sure you want to delete \"%1$s\"?</string>
     <string name="delete_place">Delete Place</string>
     <string name="no_saved_places_yet">No saved places yet</string>
-    <string name="saved_places">Saved Places</string>
+    <string name="no_pinned_places_yet">No pinned places yet</string>
+    <string name="manage_favorites">Manage Favorites</string>
+    <string name="saved_places_title_case">Saved Places</string>
+    <string name="pinned_places_title_case">Pinned Places</string>
     <string name="close_button">Close</string>
 
     <!-- Manage Places Dialog -->
@@ -52,8 +55,7 @@
     <string name="place_name">Place Name</string>
     <string name="place_description">Place Description</string>
     <string name="save_button">Save</string>
-    <string name="set_as_home">Set as Home</string>
-    <string name="set_as_work">Set as Work</string>
+    <string name="pin_place">Pin Place</string>
 
     <!-- Offline Areas -->
     <string name="offline_areas_title">Manage Offline Map Downloads</string>
@@ -193,4 +195,9 @@
     <string name="remove_as_default">Remove as default</string>
     <string name="set_as_default">Set as default</string>
     <string name="add_save_places_and_they_ll_show_up_here">Favorite places and they\'ll show up here.</string>
+    <string name="content_description_select_all">Select all</string>
+    <string name="content_description_drag_to_reorder">Drag to reorder</string>
+    <string name="done">Done</string>
+    <string name="are_you_sure_you_want_to_delete_this_saved_place">Are you sure you want to delete this saved place?</string>
+    <string name="add_new_list">Add new list</string>
 </resources>

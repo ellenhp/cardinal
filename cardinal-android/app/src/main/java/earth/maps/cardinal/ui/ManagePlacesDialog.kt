@@ -26,12 +26,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Divider
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,10 +55,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.room.SavedPlace
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import kotlinx.coroutines.launch
 
@@ -66,10 +67,12 @@ import kotlinx.coroutines.launch
 fun ManagePlacesDialog(
     onDismiss: () -> Unit,
     onPlaceSelected: (Place) -> Unit,
-    viewModel: ManagePlacesViewModel = viewModel()
+    viewModel: ManagePlacesViewModel
 ) {
-    val places = viewModel.places.value
+    val pinnedPlaces by viewModel.pinnedPlaces().collectAsState(emptyList())
+    val unpinnedPlaces by viewModel.unpinnedPlaces().collectAsState(emptyList())
     val sheetState = rememberModalBottomSheetState()
+    val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
 
     ModalBottomSheet(
@@ -80,6 +83,7 @@ fun ManagePlacesDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(scrollState)
                 .padding(dimensionResource(R.dimen.padding))
         ) {
             // Header
@@ -89,8 +93,8 @@ fun ManagePlacesDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.saved_places),
-                    style = MaterialTheme.typography.headlineSmall,
+                    text = stringResource(R.string.manage_favorites),
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
 
@@ -111,7 +115,7 @@ fun ManagePlacesDialog(
             Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding)))
 
             // Places list
-            if (places.isEmpty()) {
+            if (unpinnedPlaces.isEmpty() && pinnedPlaces.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -125,25 +129,71 @@ fun ManagePlacesDialog(
                         textAlign = TextAlign.Center
                     )
                 }
+            } else if (pinnedPlaces.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.no_pinned_places_yet),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
             } else {
-                LazyColumn {
-                    items(places) { place ->
+                Text(
+                    text = stringResource(R.string.pinned_places_title_case),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Column {
+                    for (place in pinnedPlaces) {
                         PlaceItemWithActions(
                             place = place,
                             onPlaceSelected = {
                                 viewModel.selectPlace(place)
-                                onPlaceSelected(place)
+                                onPlaceSelected(viewModel.convertToPlace(place))
                             },
                             onEditPlace = { viewModel.startEditingPlace(place) },
                             onDeletePlace = { viewModel.startDeletingPlace(place) }
                         )
-                        if (place != places.last()) {
-                            Divider(
+                        if (place != pinnedPlaces.last()) {
+                            HorizontalDivider(
                                 modifier = Modifier.padding(vertical = dimensionResource(R.dimen.padding_minor))
                             )
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding)))
+            }
+            Text(
+                text = stringResource(R.string.saved_places_title_case),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Column {
+                for (place in unpinnedPlaces) {
+                    PlaceItemWithActions(
+                        place = place,
+                        onPlaceSelected = {
+                            viewModel.selectPlace(place)
+                            onPlaceSelected(viewModel.convertToPlace(place))
+                        },
+                        onEditPlace = { viewModel.startEditingPlace(place) },
+                        onDeletePlace = { viewModel.startDeletingPlace(place) }
+                    )
+                    if (place != unpinnedPlaces.last()) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = dimensionResource(R.dimen.padding_minor))
+                        )
+                    }
+                }
+
             }
 
             Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding)))
@@ -189,8 +239,8 @@ fun ManagePlacesDialog(
 
 @Composable
 private fun PlaceItemWithActions(
-    place: Place,
-    onPlaceSelected: (Place) -> Unit,
+    place: SavedPlace,
+    onPlaceSelected: (SavedPlace) -> Unit,
     onEditPlace: () -> Unit,
     onDeletePlace: () -> Unit
 ) {
@@ -268,14 +318,15 @@ private fun PlaceItemWithActions(
 
 @Composable
 private fun EditPlaceDialog(
-    place: Place,
+    place: SavedPlace,
     onDismiss: () -> Unit,
-    onEdit: (Place) -> Unit
+    onEdit: (SavedPlace) -> Unit
 ) {
     var name by remember { mutableStateOf(place.name) }
     var type by remember { mutableStateOf(place.type) }
     var isHome by remember { mutableStateOf(place.icon == "home") }
     var isWork by remember { mutableStateOf(place.icon == "work") }
+    var isPinned by remember { mutableStateOf(place.isPinned) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -300,32 +351,13 @@ private fun EditPlaceDialog(
 
                 Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding)))
 
-                // Home/Work toggle buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    TextButton(
-                        onClick = {
-                            isHome = true
-                            isWork = false
-                        },
-                        enabled = !isHome
-                    ) {
-                        Text(stringResource(R.string.set_as_home))
-                    }
-
-                    Spacer(modifier = Modifier.width(dimensionResource(R.dimen.padding)))
-
-                    TextButton(
-                        onClick = {
-                            isWork = true
-                            isHome = false
-                        },
-                        enabled = !isWork
-                    ) {
-                        Text(stringResource(R.string.set_as_work))
-                    }
+                // Pinned checkbox
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = isPinned,
+                        onCheckedChange = { isPinned = it }
+                    )
+                    Text(text = stringResource(R.string.pin_place))
                 }
             }
         },
@@ -339,7 +371,8 @@ private fun EditPlaceDialog(
                             isHome -> "home"
                             isWork -> "work"
                             else -> place.icon
-                        }
+                        },
+                        isPinned = isPinned
                     )
                     onEdit(updatedPlace)
                 }

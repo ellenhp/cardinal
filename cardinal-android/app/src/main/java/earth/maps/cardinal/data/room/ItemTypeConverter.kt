@@ -14,16 +14,18 @@
  *    limitations under the License.
  */
 
-package earth.maps.cardinal.data
+package earth.maps.cardinal.data.room
 
-data class Place(
-    val id: String? = null,
-    val name: String,
-    val description: String = "",
-    val icon: String = "place",
-    val latLng: LatLng,
-    val address: Address? = null,
-    val isMyLocation: Boolean = false,
-    val isTransitStop: Boolean = false,
-)
+import androidx.room.TypeConverter
 
+class ItemTypeConverter {
+    @TypeConverter
+    fun fromItemType(itemType: ItemType?): String? {
+        return itemType?.name
+    }
+
+    @TypeConverter
+    fun toItemType(name: String?): ItemType? {
+        return if (name == null) null else ItemType.valueOf(name)
+    }
+}
