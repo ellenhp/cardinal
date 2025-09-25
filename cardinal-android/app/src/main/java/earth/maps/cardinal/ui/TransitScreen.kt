@@ -99,8 +99,11 @@ fun TransitScreenContent(
         ) {
             Text(
                 text = stringResource(string.next_departures),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .padding(bottom = dimensionResource(dimen.padding))
+                    .weight(1f)
             )
             // Refresh button for departures
             IconButton(onClick = { coroutineScope.launch { viewModel.refreshData() } }) {
@@ -207,102 +210,119 @@ fun TransitScreenRouteDepartures(
                     }
                 }),
         ) {
-            Box {
-                // Route name at top
-                Text(
-                    text = routeName,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(dimensionResource(dimen.padding_minor))
-                )
+            Card(modifier = Modifier.padding(bottom = dimensionResource(dimen.padding_minor))) {
+                Box {
+                    // Route name at top
+                    Text(
+                        text = routeName,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(dimensionResource(dimen.padding_minor))
+                    )
 
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    // Page indicator
-                    PageIndicator(headsigns.size, currentPage = pagerState.currentPage)
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // Page indicator
+                        PageIndicator(headsigns.size, currentPage = pagerState.currentPage)
 
-                    // Horizontal pager for headsigns
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
-                    ) { page ->
-                        val selectedHeadsign = headsigns[page]
-                        val departuresForHeadsign =
-                            departuresByHeadsign[selectedHeadsign] ?: emptyList()
-                        val soonestDeparture = departuresForHeadsign.minByOrNull {
-                            val dep = it.place.departure ?: it.place.scheduledDeparture
-                            dep ?: ""
-                        } ?: return@HorizontalPager
+                        // Horizontal pager for headsigns
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxSize(),
+                        ) { page ->
+                            val selectedHeadsign = headsigns[page]
+                            val departuresForHeadsign =
+                                departuresByHeadsign[selectedHeadsign] ?: emptyList()
+                            val soonestDeparture = departuresForHeadsign.minByOrNull {
+                                val dep = it.place.departure ?: it.place.scheduledDeparture
+                                dep ?: ""
+                            } ?: return@HorizontalPager
 
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(
-                                    bottom = dimensionResource(dimen.padding)
-                                ),
-                        ) {
-                            // Left side: headsign and stop
-                            Column(
+                            Row(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .padding(top = 24.dp)
-                                    .align(Alignment.Bottom)
-                            ) {
-                                Spacer(modifier = Modifier.weight(1f))
-                                Text(
-                                    modifier = Modifier.basicMarquee(),
-                                    text = selectedHeadsign,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    maxLines = 1,
-                                )
-                                Text(
-                                    text = soonestDeparture.place.name,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
-                            // Right side: departure time
-                            val bestDepartureTime = formatDepartureTime(soonestDeparture)
-                            Card(
-                                modifier = Modifier
-                                    .align(Alignment.CenterVertically)
-                                    .defaultMinSize(minWidth = 50.dp, minHeight = 50.dp),
-                                colors = CardDefaults.cardColors(containerColor = cardContainerColor)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(
-                                        dimensionResource(
-                                            dimen.padding
-                                        )
+                                    .fillMaxWidth()
+                                    .padding(
+                                        start = dimensionResource(dimen.padding),
+                                        bottom = dimensionResource(dimen.padding)
                                     ),
-                                    verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Left side: headsign and stop
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(top = 24.dp)
+                                        .align(Alignment.Bottom)
                                 ) {
-                                    if (soonestDeparture.realTime) {
-                                        val infiniteTransition =
-                                            rememberInfiniteTransition(label = "alpha animation")
-                                        val animatedAlpha by infiniteTransition.animateFloat(
-                                            initialValue = 0.5f,
-                                            targetValue = 1f,
-                                            animationSpec = infiniteRepeatable(
-                                                animation = tween(
-                                                    durationMillis = 750, easing = LinearEasing
-                                                ), repeatMode = RepeatMode.Reverse
-                                            ),
-                                            label = "alpha"
-                                        )
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Text(
+                                        modifier = Modifier.basicMarquee(),
+                                        text = selectedHeadsign,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        maxLines = 1,
+                                    )
+                                    Text(
+                                        text = soonestDeparture.place.name,
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                                // Right side: departure time
+                                val bestDepartureTime = formatDepartureTime(soonestDeparture)
+                                val containerContent = @Composable {
+                                    Row(
+                                        modifier = Modifier.padding(
+                                            dimensionResource(dimen.padding),
+                                        ),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        if (soonestDeparture.realTime) {
+                                            val infiniteTransition =
+                                                rememberInfiniteTransition(label = "alpha animation")
+                                            val animatedAlpha by infiniteTransition.animateFloat(
+                                                initialValue = 0.5f,
+                                                targetValue = 1f,
+                                                animationSpec = infiniteRepeatable(
+                                                    animation = tween(
+                                                        durationMillis = 750, easing = LinearEasing
+                                                    ), repeatMode = RepeatMode.Reverse
+                                                ),
+                                                label = "alpha"
+                                            )
+                                            Text(
+                                                modifier = Modifier.padding(end = 4.dp),
+                                                text = stringResource(string.live_indicator_short),
+                                                color = onRouteColor.copy(alpha = animatedAlpha),
+                                                style = MaterialTheme.typography.headlineSmall
+                                            )
+                                        }
                                         Text(
-                                            modifier = Modifier.padding(end = 4.dp),
-                                            text = stringResource(string.live_indicator_short),
-                                            color = onRouteColor.copy(alpha = animatedAlpha),
-                                            style = MaterialTheme.typography.headlineSmall
+                                            text = bestDepartureTime,
+                                            style = MaterialTheme.typography.bodyLarge.copy(
+                                                fontWeight = if (soonestDeparture.realTime) FontWeight.Bold else FontWeight.Normal
+                                            ),
+                                            color = onRouteColor.copy(alpha = if (soonestDeparture.realTime) 1f else 0.5f),
+                                            textAlign = TextAlign.End
                                         )
                                     }
-                                    Text(
-                                        text = bestDepartureTime,
-                                        style = MaterialTheme.typography.bodyLarge.copy(
-                                            fontWeight = if (soonestDeparture.realTime) FontWeight.Bold else FontWeight.Normal
-                                        ),
-                                        color = onRouteColor.copy(alpha = if (soonestDeparture.realTime) 1f else 0.5f),
-                                        textAlign = TextAlign.End
-                                    )
+                                }
+
+                                if (routeColor.isYellow()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.CenterVertically)
+                                            .padding(end = dimensionResource(dimen.padding))
+                                            .defaultMinSize(minWidth = 50.dp, minHeight = 50.dp),
+                                    ) {
+                                        containerContent()
+                                    }
+                                } else {
+                                    Card(
+                                        modifier = Modifier
+                                            .align(Alignment.CenterVertically)
+                                            .padding(end = dimensionResource(dimen.padding))
+                                            .defaultMinSize(minWidth = 50.dp, minHeight = 50.dp),
+                                        colors = CardDefaults.cardColors(containerColor = cardContainerColor)
+                                    ) {
+                                        containerContent()
+                                    }
                                 }
                             }
                         }

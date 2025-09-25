@@ -278,6 +278,7 @@ private fun SavedPlacesSheetContent(
     Column(
         modifier = Modifier
             .verticalScroll(scrollState)
+            .padding(horizontal = dimensionResource(dimen.padding))
             .fillMaxWidth()
     ) {
         if (homeInSearchScreen) {
