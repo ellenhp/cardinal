@@ -94,7 +94,7 @@ fun TransitStopInformation(viewModel: TransitStopCardViewModel, onRouteClicked: 
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
     val isRefreshingDepartures = viewModel.isRefreshingDepartures.collectAsState()
-    val isInitiallyLoading = viewModel.isLoading.collectAsState()
+    val isLoading = viewModel.isLoading.collectAsState()
     val didLoadingFail = viewModel.didLoadingFail.collectAsState()
 
     LaunchedEffect(Unit) {
@@ -134,7 +134,14 @@ fun TransitStopInformation(viewModel: TransitStopCardViewModel, onRouteClicked: 
             }
         }
 
-        if (isInitiallyLoading.value) {
+        if (didLoadingFail.value) {
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                text = stringResource(string.failed_to_load_departures)
+            )
+        } else if (isLoading.value && viewModel.departures.value.isEmpty()) {
             Text(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -146,13 +153,6 @@ fun TransitStopInformation(viewModel: TransitStopCardViewModel, onRouteClicked: 
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
-            )
-        } else if (didLoadingFail.value) {
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                text = stringResource(string.failed_to_load_departures)
             )
         } else if (viewModel.departures.value.isEmpty()) {
             Text(

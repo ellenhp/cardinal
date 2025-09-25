@@ -788,54 +788,58 @@ private fun HomeScreenComposable(
                 onFabHeightChange(it)
             }
         },
-        toolbarContent = {
-            val prev = remember(homeBottomSheetState) {
-                HomeBottomSheetState.fromValue((homeBottomSheetState.value + HomeBottomSheetState.COUNT - 1) % HomeBottomSheetState.COUNT)
-            }
-            val next = remember(homeBottomSheetState) {
-                HomeBottomSheetState.fromValue((homeBottomSheetState.value + 1) % HomeBottomSheetState.COUNT)
-            }
-            OutlinedButton(onClick = {
-                homeBottomSheetState = prev
-            }) {
-                Icon(
-                    painter = painterResource(drawable.ic_arrow_back),
-                    contentDescription = stringResource(string.content_description_previous_page)
-                )
-                Text(
-                    modifier = Modifier.padding(start = 4.dp), text = stringResource(prev.label)
-                )
-            }
-            when (homeBottomSheetState) {
-                HomeBottomSheetState.SAVED -> {
-                    IconButton(onClick = {
-                        showManagePlacesDialog = true
-                    }) {
-                        Icon(
-                            painter = painterResource(drawable.ic_edit),
-                            contentDescription = stringResource(string.content_description_edit_saved_places)
-                        )
+        toolbarContent = if (!homeInSearchScreen) {
+            {
+                val prev = remember(homeBottomSheetState) {
+                    HomeBottomSheetState.fromValue((homeBottomSheetState.value + HomeBottomSheetState.COUNT - 1) % HomeBottomSheetState.COUNT)
+                }
+                val next = remember(homeBottomSheetState) {
+                    HomeBottomSheetState.fromValue((homeBottomSheetState.value + 1) % HomeBottomSheetState.COUNT)
+                }
+                OutlinedButton(onClick = {
+                    homeBottomSheetState = prev
+                }) {
+                    Icon(
+                        painter = painterResource(drawable.ic_arrow_back),
+                        contentDescription = stringResource(string.content_description_previous_page)
+                    )
+                    Text(
+                        modifier = Modifier.padding(start = 4.dp), text = stringResource(prev.label)
+                    )
+                }
+                when (homeBottomSheetState) {
+                    HomeBottomSheetState.SAVED -> {
+                        IconButton(onClick = {
+                            showManagePlacesDialog = true
+                        }) {
+                            Icon(
+                                painter = painterResource(drawable.ic_edit),
+                                contentDescription = stringResource(string.content_description_edit_saved_places)
+                            )
+                        }
+                    }
+
+                    HomeBottomSheetState.NEARBY -> {
+                    }
+
+                    HomeBottomSheetState.TRANSIT -> {
+
                     }
                 }
-
-                HomeBottomSheetState.NEARBY -> {
-                }
-
-                HomeBottomSheetState.TRANSIT -> {
-
+                OutlinedButton(onClick = {
+                    homeBottomSheetState = next
+                }) {
+                    Text(
+                        modifier = Modifier.padding(end = 4.dp), text = stringResource(next.label)
+                    )
+                    Icon(
+                        painter = painterResource(drawable.ic_arrow_forward),
+                        contentDescription = stringResource(string.content_description_next_page)
+                    )
                 }
             }
-            OutlinedButton(onClick = {
-                homeBottomSheetState = next
-            }) {
-                Text(
-                    modifier = Modifier.padding(end = 4.dp), text = stringResource(next.label)
-                )
-                Icon(
-                    painter = painterResource(drawable.ic_arrow_forward),
-                    contentDescription = stringResource(string.content_description_next_page)
-                )
-            }
+        } else {
+            null
         },
         content = {
             HomeScreen(
@@ -859,12 +863,7 @@ private fun HomeScreenComposable(
                 },
                 homeInSearchScreen = homeInSearchScreen,
                 onSearchFocusChange = {
-                    if (it) {
-                        coroutineScope.launch {
-                            bottomSheetState.expand()
-                        }
-                        homeInSearchScreen = true
-                    }
+                    homeInSearchScreen = it
                 },
                 onDismissShowPlaces = {
                     showManagePlacesDialog = false

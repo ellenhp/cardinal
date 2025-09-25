@@ -48,10 +48,14 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -69,7 +73,9 @@ import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.isYellow
 import earth.maps.cardinal.transit.StopTime
 import earth.maps.cardinal.viewmodel.TransitScreenViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
 
 @Composable
@@ -77,11 +83,24 @@ fun TransitScreenContent(
     viewModel: TransitScreenViewModel,
     onRouteClicked: (Place) -> Unit,
 ) {
+    var secondsSinceStart by rememberSaveable(viewModel) { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1.seconds)
+            secondsSinceStart++
+        }
+    }
     val coroutineScope = rememberCoroutineScope()
     val isRefreshingDepartures = viewModel.isRefreshingDepartures.collectAsState()
-    val isInitiallyLoading = viewModel.isLoading.collectAsState()
+    val isLoading = viewModel.isLoading.collectAsState()
     val didLoadingFail = viewModel.didLoadingFail.collectAsState()
     val scrollState = rememberScrollState()
+
+    LaunchedEffect(secondsSinceStart) {
+        if (secondsSinceStart % 30 == 0) {
+            viewModel.refreshData()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -120,7 +139,14 @@ fun TransitScreenContent(
             }
         }
 
-        if (isInitiallyLoading.value) {
+        if (didLoadingFail.value) {
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                text = stringResource(string.failed_to_load_departures)
+            )
+        } else if (isLoading.value && viewModel.departures.value.isEmpty()) {
             Text(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -132,13 +158,6 @@ fun TransitScreenContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
-            )
-        } else if (didLoadingFail.value) {
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                text = stringResource(string.failed_to_load_departures)
             )
         } else if (viewModel.departures.value.isEmpty()) {
             Text(

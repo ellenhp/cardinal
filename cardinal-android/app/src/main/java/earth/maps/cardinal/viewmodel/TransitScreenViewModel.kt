@@ -30,15 +30,12 @@ import earth.maps.cardinal.transit.StopTime
 import earth.maps.cardinal.transit.TransitStop
 import earth.maps.cardinal.transit.TransitousService
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
 class TransitScreenViewModel @Inject constructor(
@@ -52,8 +49,6 @@ class TransitScreenViewModel @Inject constructor(
         private const val DEFAULT_RADIUS_METERS = 1000
         private const val NUM_EVENTS = 200
     }
-
-    private var refreshJob: Job? = null
 
     val stop = mutableStateOf<String?>(null)
     val reverseGeocodedStop = mutableStateOf<TransitStop?>(null)
@@ -86,13 +81,6 @@ class TransitScreenViewModel @Inject constructor(
         // Start observing location updates
         locationRepository.startContinuousLocationUpdates(context)
         observeLocationUpdates()
-
-        refreshJob = viewModelScope.launch {
-            while (true) {
-                refreshData()
-                delay(60.seconds)
-            }
-        }
     }
 
     /**
@@ -195,11 +183,6 @@ class TransitScreenViewModel @Inject constructor(
                 fetchDepartures()
             }
         }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        refreshJob?.cancel()
     }
 }
 

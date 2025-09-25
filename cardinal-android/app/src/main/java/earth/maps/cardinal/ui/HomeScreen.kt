@@ -28,6 +28,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -234,16 +236,19 @@ private fun SearchPanelContent(
             )
         }
 
-        viewModel.geocodeResults.value.forEach {
-            SearchResultItem(
-                addressFormatter = addressFormatter,
-                viewModel.geocodeResultToPlace(it),
-                onPlaceSelected
-            )
-        }
-
         if (homeInSearchScreen) {
-            Spacer(modifier = Modifier.fillMaxSize())
+            LazyColumn {
+                items(viewModel.geocodeResults.value) {
+                    SearchResultItem(
+                        addressFormatter = addressFormatter,
+                        viewModel.geocodeResultToPlace(it),
+                        onPlaceSelected
+                    )
+                }
+            }
+            if (searchQuery.text.isNotEmpty()) {
+                Spacer(modifier = Modifier.fillMaxSize())
+            }
         }
     }
 }
