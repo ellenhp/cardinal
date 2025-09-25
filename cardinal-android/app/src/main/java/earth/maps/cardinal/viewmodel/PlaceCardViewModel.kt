@@ -55,23 +55,11 @@ class PlaceCardViewModel @Inject constructor(
         }
     }
 
-    fun savePlaceAsHome(place: Place) {
-        viewModelScope.launch {
-            placeDao.insertPlace(SavedPlace.fromPlace(place.copy(icon = "home")))
-            isPlaceSaved.value = true
-        }
-    }
-
-    fun savePlaceAsWork(place: Place) {
-        viewModelScope.launch {
-            placeDao.insertPlace(SavedPlace.fromPlace(place.copy(icon = "work")))
-            isPlaceSaved.value = true
-        }
-    }
-
     fun unsavePlace(place: Place) {
         viewModelScope.launch {
-            placeDao.deletePlace(SavedPlace.fromPlace(place))
+            place.id?.let { id ->
+                placeDao.getPlace(id)?.let { placeDao.deletePlace(it) }
+            }
             isPlaceSaved.value = false
         }
     }

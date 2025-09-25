@@ -22,7 +22,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.room.SavedPlace
 import earth.maps.cardinal.data.room.SavedPlaceDao
 import earth.maps.cardinal.transit.StopTime
 import earth.maps.cardinal.transit.TransitStop
@@ -162,20 +161,6 @@ class TransitStopCardViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         refreshJob?.cancel()
-    }
-
-    fun savePlace(place: Place) {
-        viewModelScope.launch {
-            placeDao.insertPlace(SavedPlace.fromPlace(place))
-            isPlaceSaved.value = true
-        }
-    }
-
-    fun unsavePlace(place: Place) {
-        viewModelScope.launch {
-            placeDao.deletePlace(SavedPlace.fromPlace(place))
-            isPlaceSaved.value = false
-        }
     }
 
     companion object {

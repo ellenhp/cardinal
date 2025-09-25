@@ -26,10 +26,10 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SavedPlaceDao {
     @Query("SELECT * FROM saved_places WHERE id = :placeId")
-    suspend fun getPlace(placeId: String): SavedPlace?
+    fun getPlaceAsFlow(placeId: String): Flow<SavedPlace>
 
-    @Query("SELECT * FROM saved_places WHERE placeId = :originalId LIMIT 1")
-    suspend fun getPlaceByOriginalId(originalId: Int): SavedPlace?
+    @Query("SELECT * FROM saved_places WHERE id = :placeId")
+    suspend fun getPlace(placeId: String): SavedPlace?
 
     @Query(
         """
@@ -42,7 +42,10 @@ interface SavedPlaceDao {
     fun getPlacesInList(listId: String): Flow<List<SavedPlace>>
 
     @Query("SELECT * FROM saved_places")
-    fun getAllPlaces(): Flow<List<SavedPlace>>
+    fun getAllPlacesAsFlow(): Flow<List<SavedPlace>>
+
+    @Query("SELECT * FROM saved_places")
+    suspend fun getAllPlaces(): List<SavedPlace>
 
     @Insert
     suspend fun insertPlace(place: SavedPlace)

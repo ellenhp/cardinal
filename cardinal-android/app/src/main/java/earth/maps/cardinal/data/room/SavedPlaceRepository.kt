@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -129,7 +128,7 @@ class SavedPlaceRepository @Inject constructor(
      */
     fun toPlace(savedPlace: SavedPlace): Place {
         return Place(
-            id = savedPlace.placeId?.toString(),
+            id = savedPlace.id,
             name = savedPlace.customName ?: savedPlace.name,
             description = savedPlace.type,
             icon = savedPlace.icon,

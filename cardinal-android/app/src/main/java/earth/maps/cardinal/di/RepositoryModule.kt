@@ -26,7 +26,6 @@ import earth.maps.cardinal.data.room.AppDatabase
 import earth.maps.cardinal.data.room.DownloadedTileDao
 import earth.maps.cardinal.data.room.OfflineAreaDao
 import earth.maps.cardinal.data.room.OfflineAreaRepository
-import earth.maps.cardinal.data.room.SavedListRepository
 import earth.maps.cardinal.data.room.SavedPlaceRepository
 import earth.maps.cardinal.geocoding.TileProcessor
 import earth.maps.cardinal.tileserver.TileDownloadManager
@@ -51,12 +50,6 @@ object RepositoryModule {
         tileProcessor: TileProcessor
     ): TileDownloadManager {
         return TileDownloadManager(context, downloadedTileDao, offlineAreaDao, tileProcessor)
-    }
-
-    @Provides
-    @Singleton
-    fun provideSavedListRepository(appDatabase: AppDatabase): SavedListRepository {
-        return SavedListRepository(appDatabase)
     }
 
     @Provides

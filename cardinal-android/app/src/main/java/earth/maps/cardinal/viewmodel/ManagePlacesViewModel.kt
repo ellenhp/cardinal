@@ -24,6 +24,8 @@ import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.room.SavedPlace
 import earth.maps.cardinal.data.room.SavedPlaceDao
 import earth.maps.cardinal.data.room.SavedPlaceRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -33,26 +35,11 @@ class ManagePlacesViewModel @Inject constructor(
     private val savedPlaceRepository: SavedPlaceRepository,
 ) : ViewModel() {
 
-    val places = mutableStateOf<List<SavedPlace>>(emptyList())
     val selectedPlace = mutableStateOf<SavedPlace?>(null)
     val isEditingPlace = mutableStateOf(false)
     val placeToEdit = mutableStateOf<SavedPlace?>(null)
     val placeToDelete = mutableStateOf<SavedPlace?>(null)
     private val listId = mutableStateOf<String?>(null)
-
-    private fun setListId(id: String) {
-        listId.value = id
-    }
-
-    private fun loadPlaces() {
-        listId.value?.let { listId ->
-            viewModelScope.launch {
-                placeDao.getPlacesInList(listId).collect { placeEntities ->
-                    places.value = placeEntities
-                }
-            }
-        }
-    }
 
     fun selectPlace(place: SavedPlace) {
         selectedPlace.value = place
@@ -77,8 +64,6 @@ class ManagePlacesViewModel @Inject constructor(
             placeDao.updatePlace(updatedPlace)
             isEditingPlace.value = false
             placeToEdit.value = null
-            // Reload places to reflect changes
-            loadPlaces()
         }
     }
 
@@ -94,9 +79,15 @@ class ManagePlacesViewModel @Inject constructor(
         viewModelScope.launch {
             placeDao.deletePlace(place)
             placeToDelete.value = null
-            // Reload places to reflect changes
-            loadPlaces()
         }
+    }
+
+    fun pinnedPlaces(): Flow<List<SavedPlace>> {
+        return placeDao.getAllPlacesAsFlow().map { list -> list.filter { it.isPinned } }
+    }
+
+    fun unpinnedPlaces(): Flow<List<SavedPlace>> {
+        return placeDao.getAllPlacesAsFlow().map { list -> list.filter { !it.isPinned } }
     }
 
     fun clearSelection() {

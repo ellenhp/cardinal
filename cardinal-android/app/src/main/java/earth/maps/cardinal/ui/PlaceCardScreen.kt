@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,7 +32,6 @@ import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -85,14 +83,8 @@ fun PlaceCardScreen(
     // Use the loaded place from viewModel if available
     val displayedPlace = viewModel.place.value ?: place
 
-    // State for save place dialog
-    var showSavePlaceDialog by remember { mutableStateOf(false) }
-
     // State for unsave confirmation dialog
     var showUnsaveConfirmationDialog by remember { mutableStateOf(false) }
-
-    // Temporary place to save (used in dialog)
-    var placeToSave by remember { mutableStateOf(place) }
 
     // Place details content
     Column {
@@ -167,9 +159,7 @@ fun PlaceCardScreen(
                             // Show confirmation dialog for unsaving
                             showUnsaveConfirmationDialog = true
                         } else {
-                            // Show dialog for saving
-                            placeToSave = displayedPlace
-                            showSavePlaceDialog = true
+                            viewModel.savePlace(place)
                         }
                     }, modifier = Modifier.padding(start = dimensionResource(dimen.padding_minor))
                 ) {
@@ -211,25 +201,6 @@ fun PlaceCardScreen(
             }, onRouteClicked = {})
         }
 
-        // Save Place Dialog
-        if (showSavePlaceDialog) {
-            SavePlaceDialog(
-                place = placeToSave,
-                onDismiss = { showSavePlaceDialog = false },
-                onSaveAsHome = { updatedPlace ->
-                    viewModel.savePlaceAsHome(updatedPlace)
-                    showSavePlaceDialog = false
-                },
-                onSaveAsWork = { updatedPlace ->
-                    viewModel.savePlaceAsWork(updatedPlace)
-                    showSavePlaceDialog = false
-                },
-                onSaveAsOther = { updatedPlace ->
-                    viewModel.savePlace(updatedPlace)
-                    showSavePlaceDialog = false
-                })
-        }
-
         // Unsave Confirmation Dialog
         if (showUnsaveConfirmationDialog) {
             AlertDialog(
@@ -259,70 +230,4 @@ fun PlaceCardScreen(
                 })
         }
     }
-}
-
-@Composable
-fun SavePlaceDialog(
-    place: Place,
-    onDismiss: () -> Unit,
-    onSaveAsHome: (Place) -> Unit,
-    onSaveAsWork: (Place) -> Unit,
-    onSaveAsOther: (Place) -> Unit
-) {
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(string.save_place)) },
-        text = {
-            Column {
-                OutlinedButton(
-                    onClick = { onSaveAsHome(place.copy(icon = "home")) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(drawable.ic_home),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(string.set_as_home))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedButton(
-                    onClick = { onSaveAsWork(place.copy(icon = "work")) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(drawable.ic_location_on),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(string.set_as_work))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedButton(
-                    onClick = { onSaveAsOther(place) }, modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(string.save_button))
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(string.cancel_button))
-            }
-        })
 }

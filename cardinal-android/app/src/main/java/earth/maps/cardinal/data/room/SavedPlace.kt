@@ -27,6 +27,7 @@ data class SavedPlace(
     @Deprecated("Update references to placeId to point to new ID field.") val placeId: Int?,  // Reference to original place ID if from search
     val customName: String? = null,  // User can override name
     val customDescription: String? = null,  // User can add notes
+    val isPinned: Boolean = false,
     val name: String,
     val type: String,
     val icon: String,
@@ -53,8 +54,9 @@ data class SavedPlace(
                 placeId = 0,
                 customName = null,
                 customDescription = null,
+                isPinned = false,
                 name = place.name,
-                type = if (place.description.isNotEmpty()) place.description else "place",
+                type = place.description.ifEmpty { "place" },
                 icon = place.icon,
                 latitude = place.latLng.latitude,
                 longitude = place.latLng.longitude,

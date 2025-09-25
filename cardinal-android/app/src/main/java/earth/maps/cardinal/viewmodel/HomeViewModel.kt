@@ -27,16 +27,19 @@ import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.ViewportRepository
+import earth.maps.cardinal.data.deduplicateSearchResults
 import earth.maps.cardinal.data.room.SavedPlaceDao
 import earth.maps.cardinal.data.room.SavedPlaceRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -50,9 +53,6 @@ class HomeViewModel @Inject constructor(
     private val locationRepository: LocationRepository,
     private val savedPlaceRepository: SavedPlaceRepository,
 ) : ViewModel() {
-
-    // Saved places from database
-    val savedPlaces = mutableStateOf<List<Place>>(emptyList())
 
     // Search query flow for debouncing
     private val _searchQueryFlow = MutableStateFlow("")
@@ -71,13 +71,6 @@ class HomeViewModel @Inject constructor(
         private set
 
     init {
-        // Load saved places from database
-        viewModelScope.launch {
-            placeDao.getAllPlaces().collect { placeEntities ->
-                savedPlaces.value = placeEntities.map { savedPlaceRepository.toPlace(it) }
-            }
-        }
-
         // Set up debounced search
         searchQueryFlow.debounce(300) // 300ms delay
             .distinctUntilChanged().onEach { query ->
@@ -108,7 +101,7 @@ class HomeViewModel @Inject constructor(
                 // Use current viewport center as focus point for viewport biasing
                 val focusPoint = viewportRepository.viewportCenter.value
                 geocodingService.geocode(query, focusPoint).collect { results ->
-                    geocodeResults.value = results
+                    geocodeResults.value = deduplicateSearchResults(results)
                     isSearching = false
                 }
             } catch (e: Exception) {
@@ -117,6 +110,12 @@ class HomeViewModel @Inject constructor(
                 geocodeResults.value = emptyList()
                 isSearching = false
             }
+        }
+    }
+
+    fun pinnedPlaces(): Flow<List<Place>> {
+        return placeDao.getAllPlacesAsFlow().map { placeList ->
+            placeList.filter { it.isPinned }.map { savedPlaceRepository.toPlace(it) }
         }
     }
 }

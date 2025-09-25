@@ -21,7 +21,6 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
-import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -35,27 +34,51 @@ interface ListItemDao {
     @Query("DELETE FROM list_items WHERE listId = :listId")
     suspend fun clearList(listId: String)
 
-    @Query("""
+    @Query(
+        """
         UPDATE list_items 
         SET position = :newPosition 
         WHERE listId = :listId AND itemId = :itemId AND itemType = :itemType
-    """)
-    suspend fun updateItemPosition(listId: String, itemId: String, itemType: ItemType, newPosition: Int)
+    """
+    )
+    suspend fun updateItemPosition(
+        listId: String,
+        itemId: String,
+        itemType: ItemType,
+        newPosition: Int
+    )
 
-    @Query("""
+    @Query(
+        """
         SELECT * FROM list_items 
         WHERE listId = :listId 
         ORDER BY position
-    """)
-    fun getItemsInList(listId: String): Flow<List<ListItem>>
+    """
+    )
+    fun getItemsInListAsFlow(listId: String): Flow<List<ListItem>>
+
+    @Query(
+        """
+        SELECT * FROM list_items 
+        WHERE listId = :listId 
+        ORDER BY position
+    """
+    )
+    suspend fun getItemsInList(listId: String): List<ListItem>
 
     // For moving items between lists
-    @Query("""
+    @Query(
+        """
         UPDATE list_items 
         SET listId = :newListId, position = :newPosition
-        WHERE itemId = :itemId AND itemType = :itemType AND listId = :oldListId
-    """)
-    suspend fun moveItem(itemId: String, itemType: ItemType, oldListId: String, newListId: String, newPosition: Int)
+        WHERE itemId = :itemId
+    """
+    )
+    suspend fun moveItem(
+        itemId: String,
+        newListId: String,
+        newPosition: Int
+    )
 
     // Reorder all items when positions change
     @Transaction
