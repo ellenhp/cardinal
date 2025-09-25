@@ -27,7 +27,7 @@ import earth.maps.cardinal.data.DownloadStatusConverter
 
 @Database(
     entities = [OfflineArea::class, RoutingProfile::class, DownloadedTile::class, SavedList::class, SavedPlace::class, ListItem::class],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @TypeConverters(TileTypeConverter::class, DownloadStatusConverter::class, ItemTypeConverter::class)
@@ -180,6 +180,14 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE saved_places ADD COLUMN transitStopId TEXT"
+                )
+            }
+        }
+
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -193,6 +201,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_6_7,
                     MIGRATION_7_8,
                     MIGRATION_8_9,
+                    MIGRATION_9_10,
                 ).build()
                 INSTANCE = instance
                 instance

@@ -42,6 +42,7 @@ data class SavedPlace(
     val country: String? = null,
     val countryCode: String? = null,
     val isTransitStop: Boolean = false,
+    val transitStopId: String? = null,
     val createdAt: Long,
     val updatedAt: Long
 ) {
@@ -68,8 +69,9 @@ data class SavedPlace(
                 country = place.address?.country,
                 countryCode = place.address?.countryCode,
                 isTransitStop = place.isTransitStop,
+                transitStopId = place.transitStopId,
                 createdAt = timestamp,
-                updatedAt = timestamp
+                updatedAt = timestamp,
             )
         }
     }
