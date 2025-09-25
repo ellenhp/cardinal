@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
@@ -39,12 +41,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -57,9 +60,11 @@ import androidx.compose.ui.semantics.expand
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import earth.maps.cardinal.bottomsheet.BottomSheetState.Companion.Saver
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
@@ -157,7 +162,7 @@ fun rememberBottomSheetState(
     confirmStateChange: (BottomSheetValue) -> Boolean = { true }
 ): BottomSheetState {
     return rememberSaveable(
-        animationSpec, saver = BottomSheetState.Saver(
+        animationSpec, saver = Saver(
             animationSpec = animationSpec, confirmStateChange = confirmStateChange
         )
     ) {
@@ -221,11 +226,9 @@ fun rememberBottomSheetScaffoldState(
  * screen. For a similar component which implements the basic material design layout strategy
  * with app bars, floating action buttons and navigation drawers, use the standard [Scaffold].
  * For similar component that uses a backdrop as the centerpiece of the screen, use
- * [BackdropScaffold].
+ * BackdropScaffold.
  *
  * A simple example of a bottom sheet scaffold looks like this:
- *
- * @sample androidx.compose.material.samples.BottomSheetScaffoldSample
  *
  * @param sheetContent The content of the bottom sheet.
  * @param modifier An optional [Modifier] for the root of the scaffold.
@@ -242,6 +245,7 @@ fun rememberBottomSheetScaffoldState(
  * children. Defaults to the matching content color for [sheetBackgroundColor], or if that is
  * not a color from the theme, this will keep the same content color set above the bottom sheet.
  * @param sheetPeekHeight The height of the bottom sheet when it is collapsed.
+ * @param dockedToolbarHeight The height of the docked toolbar that slides in during expansion.
  * @param drawerContent The content of the drawer sheet.
  * @param drawerGesturesEnabled Whether the drawer sheet can be interacted with by gestures.
  * @param drawerShape The shape of the drawer sheet.
@@ -257,8 +261,9 @@ fun rememberBottomSheetScaffoldState(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BottomSheetScaffold(
-    sheetContent: @Composable ColumnScope.() -> Unit,
     modifier: Modifier = Modifier,
+    sheetContent: @Composable ColumnScope.() -> Unit,
+    dockedToolbar: (@Composable ColumnScope.() -> Unit)? = null,
     scaffoldState: BottomSheetScaffoldState = rememberBottomSheetScaffoldState(),
     topBar: (@Composable () -> Unit)? = null,
     snackbarHost: @Composable (SnackbarHostState) -> Unit = { SnackbarHost(it) },
@@ -270,6 +275,7 @@ fun BottomSheetScaffold(
     sheetBackgroundColor: Color = MaterialTheme.colorScheme.surface,
     sheetContentColor: Color = contentColorFor(sheetBackgroundColor),
     sheetPeekHeight: Dp = BottomSheetScaffoldDefaults.SheetPeekHeight,
+    dockedToolbarHeight: Dp = BottomSheetScaffoldDefaults.DockedToolbarHeight,
     drawerContent: @Composable (ColumnScope.() -> Unit)? = null,
     drawerGesturesEnabled: Boolean = true,
     drawerShape: Shape = MaterialTheme.shapes.large,
@@ -277,15 +283,15 @@ fun BottomSheetScaffold(
     drawerBackgroundColor: Color = MaterialTheme.colorScheme.surface,
     drawerContentColor: Color = contentColorFor(drawerBackgroundColor),
     drawerScrimColor: Color = DrawerDefaults.scrimColor,
-    backgroundColor: Color = MaterialTheme.colorScheme.background,
-    contentColor: Color = contentColorFor(backgroundColor),
     content: @Composable (PaddingValues) -> Unit
 ) {
+    val density = LocalDensity.current
+    var sheetContentHeight by remember { with(density) { mutableFloatStateOf(sheetPeekHeight.toPx()) } }
     val scope = rememberCoroutineScope()
     BoxWithConstraints(modifier) {
         val fullHeight = constraints.maxHeight.toFloat()
         val peekHeightPx = with(LocalDensity.current) { sheetPeekHeight.toPx() }
-        var bottomSheetHeight by remember { mutableStateOf(fullHeight) }
+        var bottomSheetHeight by remember { mutableFloatStateOf(fullHeight) }
 
         val swipeable =
             Modifier
@@ -339,18 +345,34 @@ fun BottomSheetScaffold(
                 },
                 bottomSheet = {
                     Surface(
-                        swipeable
+                        modifier = swipeable
                             .fillMaxWidth()
                             .requiredHeightIn(min = sheetPeekHeight)
                             .onGloballyPositioned {
                                 bottomSheetHeight = it.size.height.toFloat()
                             },
                         shape = sheetShape,
-                        // parameter does not exists in material3
-                        // elevation = sheetElevation,
                         color = sheetBackgroundColor,
                         contentColor = sheetContentColor,
-                        content = { Column(content = sheetContent) })
+                        shadowElevation = sheetElevation,
+                        content = {
+                            Column {
+                                val padding = if (dockedToolbar == null) {
+                                    0.dp
+                                } else {
+                                    dockedToolbarHeight
+                                }
+                                Column(
+                                    modifier = Modifier
+                                        .imePadding()
+                                        .padding(bottom = padding)
+                                        .onGloballyPositioned {
+                                            sheetContentHeight = it.size.height.toFloat()
+                                        }) {
+                                    sheetContent()
+                                }
+                            }
+                        })
                 },
                 floatingActionButton = {
                     Box {
@@ -366,6 +388,56 @@ fun BottomSheetScaffold(
                 floatingActionButtonPosition = floatingActionButtonPosition
             )
         }
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .zIndex(1f)
+        ) {
+            val toolbarHeightPx = with(density) { dockedToolbarHeight.toPx() }
+            val height =
+                with(density) { fullHeight - scaffoldState.bottomSheetState.offset.value - peekHeightPx }
+            // heightFraction is a value in [0, 1] that is determined by how close to full expansion the bottom sheet is.
+            val heightFraction = height / (sheetContentHeight - peekHeightPx)
+
+            // Calculate animation progress for dockedToolbar
+            val defaultThreshold = 0.5f
+            val expansionRange = sheetContentHeight - peekHeightPx
+            val toolbarMovement = 2 * toolbarHeightPx
+            val requiredFraction = toolbarMovement / expansionRange
+            val animationStartThreshold = if (requiredFraction > (1f - defaultThreshold)) {
+                max(0f, 1f - requiredFraction)
+            } else {
+                defaultThreshold
+            }
+            val shouldAnimateToolbar = heightFraction > animationStartThreshold
+
+            // Calculate progress from 0 to 1 during the expansion fraction starting at animationStartThreshold
+            val baseProgress = if (shouldAnimateToolbar) {
+                ((heightFraction - animationStartThreshold) / (1f - animationStartThreshold)).coerceIn(
+                    0f, 1f
+                )
+            } else {
+                0f
+            }
+
+            // Calculate toolbar height as percentage of full height
+            val toolbarHeightPercentage = toolbarHeightPx / fullHeight
+
+            // Adjust progress based on toolbar size
+            val adjustedProgress = baseProgress
+
+            // Add the dockedToolbar with sliding animation from bottom
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = with(density) {
+                        ((1 - adjustedProgress) * 2 * toolbarHeightPx).toDp()
+                    })
+            ) {
+                dockedToolbar?.invoke(this)
+            }
+        }
+
         if (drawerContent == null) {
             child()
         } else {
@@ -446,4 +518,9 @@ object BottomSheetScaffoldDefaults {
      * The default peek height used by [BottomSheetScaffold].
      */
     val SheetPeekHeight = 56.dp
+
+    /**
+     * The default docked toolbar height used by [BottomSheetScaffold].
+     */
+    val DockedToolbarHeight = 56.dp
 }

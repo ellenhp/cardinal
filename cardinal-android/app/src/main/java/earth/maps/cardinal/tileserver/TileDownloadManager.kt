@@ -25,6 +25,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.os.IBinder
 import android.util.Log
 import earth.maps.cardinal.R
+import earth.maps.cardinal.data.BoundingBox
 import earth.maps.cardinal.data.room.DownloadStatus
 import earth.maps.cardinal.data.room.DownloadedTile
 import earth.maps.cardinal.data.room.DownloadedTileDao
@@ -32,7 +33,6 @@ import earth.maps.cardinal.data.room.OfflineArea
 import earth.maps.cardinal.data.room.OfflineAreaDao
 import earth.maps.cardinal.data.room.TileType
 import earth.maps.cardinal.geocoding.TileProcessor
-import earth.maps.cardinal.ui.BoundingBox
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.android.Android

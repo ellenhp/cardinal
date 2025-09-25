@@ -25,8 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,15 +32,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.R.drawable
+import earth.maps.cardinal.data.AddressFormatter
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.format
 
 @Composable
 fun QuickSuggestions(
@@ -54,6 +57,7 @@ fun QuickSuggestions(
     onRequestLocationPermission: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val addressFormatter = remember { AddressFormatter() }
     LazyColumn(modifier = modifier) {
         // My Location item
         item {
@@ -84,7 +88,7 @@ fun QuickSuggestions(
                             )
                         } else {
                             Icon(
-                                imageVector = Icons.Default.LocationOn,
+                                painter = painterResource(earth.maps.cardinal.R.drawable.my_location),
                                 contentDescription = null,
                                 modifier = Modifier.size(dimensionResource(dimen.icon_size)),
                                 tint = MaterialTheme.colorScheme.primary
@@ -118,6 +122,7 @@ fun QuickSuggestions(
         if (savedPlaces.isNotEmpty()) {
             items(savedPlaces) { place ->
                 SavedPlaceItem(
+                    addressFormatter = addressFormatter,
                     place = place,
                     onPlaceSelected = onSavedPlaceSelected
                 )
@@ -128,6 +133,7 @@ fun QuickSuggestions(
 
 @Composable
 private fun SavedPlaceItem(
+    addressFormatter: AddressFormatter,
     place: Place,
     onPlaceSelected: (Place) -> Unit
 ) {
@@ -152,11 +158,13 @@ private fun SavedPlaceItem(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = when (place.icon) {
-                        "home" -> Icons.Default.LocationOn // You might want to add specific icons
-                        "work" -> Icons.Default.LocationOn
-                        else -> Icons.Default.LocationOn
-                    },
+                    painter = painterResource(
+                        when (place.icon) {
+                            "home" -> drawable.ic_home
+                            "work" -> drawable.ic_work
+                            else -> drawable.ic_location_on
+                        }
+                    ),
                     contentDescription = null,
                     modifier = Modifier.size(dimensionResource(dimen.icon_size))
                 )
@@ -175,7 +183,7 @@ private fun SavedPlaceItem(
                 )
                 place.address?.let { address ->
                     Text(
-                        text = address.format()?.take(50) ?: "",
+                        text = address.format(addressFormatter)?.take(50) ?: "",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

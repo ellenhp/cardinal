@@ -29,12 +29,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -55,12 +49,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import earth.maps.cardinal.R
+import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import kotlinx.coroutines.launch
@@ -106,7 +102,7 @@ fun ManagePlacesDialog(
                     }
                 }) {
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        painter = painterResource(drawable.ic_close),
                         contentDescription = stringResource(R.string.close_button)
                     )
                 }
@@ -213,11 +209,13 @@ private fun PlaceItemWithActions(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = when (place.icon) {
-                    "home" -> Icons.Default.Home
-                    "work" -> Icons.Default.Place
-                    else -> Icons.Default.Place
-                },
+                painter = painterResource(
+                    when (place.icon) {
+                        "home" -> drawable.ic_home
+                        "work" -> drawable.ic_work
+                        else -> drawable.ic_location_on
+                    }
+                ),
                 contentDescription = place.name,
                 modifier = Modifier.size(dimensionResource(R.dimen.icon_size)),
                 tint = MaterialTheme.colorScheme.primary
@@ -248,7 +246,7 @@ private fun PlaceItemWithActions(
             modifier = Modifier.size(36.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Edit,
+                painter = painterResource(drawable.ic_edit),
                 contentDescription = stringResource(R.string.edit_place),
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -260,7 +258,7 @@ private fun PlaceItemWithActions(
             modifier = Modifier.size(36.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Delete,
+                painter = painterResource(drawable.ic_delete),
                 contentDescription = stringResource(R.string.delete_button),
                 tint = MaterialTheme.colorScheme.error
             )

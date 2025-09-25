@@ -16,14 +16,6 @@
 
 package earth.maps.cardinal.data
 
-data class Place(
-    val id: Int? = null,
-    val name: String,
-    val type: String = "",
-    val icon: String = "place",
-    val latLng: LatLng,
-    val address: Address? = null,
-    val isMyLocation: Boolean = false,
-    val isTransitStop: Boolean = false,
+data class BoundingBox(
+    val north: Double, val south: Double, val east: Double, val west: Double
 )
-

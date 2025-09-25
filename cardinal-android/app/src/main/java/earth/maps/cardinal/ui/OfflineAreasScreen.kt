@@ -27,9 +27,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -62,6 +59,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.R.drawable
+import earth.maps.cardinal.data.BoundingBox
 import earth.maps.cardinal.data.room.DownloadStatus
 import earth.maps.cardinal.data.room.OfflineArea
 import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
@@ -116,7 +115,7 @@ fun OfflineAreasScreen(
 
             IconButton(onClick = onDismiss) {
                 Icon(
-                    imageVector = Icons.Default.Close,
+                    painter = painterResource(drawable.ic_close),
                     contentDescription = stringResource(R.string.close)
                 )
             }
@@ -137,7 +136,7 @@ fun OfflineAreasScreen(
                 .padding(bottom = dimensionResource(dimen.padding)), enabled = !isDownloading
         ) {
             Icon(
-                painter = painterResource(R.drawable.cloud_download_24dp),
+                painter = painterResource(drawable.cloud_download_24dp),
                 contentDescription = null,
                 modifier = Modifier.padding(end = 8.dp)
             )
@@ -260,7 +259,7 @@ fun OfflineAreaItem(
 
                 IconButton(onClick = onDeleteClick) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
+                        painter = painterResource(drawable.ic_delete),
                         contentDescription = stringResource(R.string.delete_area)
                     )
                 }
@@ -436,6 +435,3 @@ fun calculateBoundingBoxFromViewport(
     )
 }
 
-data class BoundingBox(
-    val north: Double, val south: Double, val east: Double, val west: Double
-)

@@ -17,6 +17,7 @@
 package earth.maps.cardinal.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,26 +28,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CornerSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -68,10 +66,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.R.drawable
+import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.AppPreferenceRepository
-import earth.maps.cardinal.data.DistanceUtils
+import earth.maps.cardinal.data.GeoUtils
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.deduplicateSearchResults
@@ -83,9 +82,7 @@ import kotlinx.coroutines.launch
 import uniffi.ferrostar.Route
 
 enum class FieldFocusState {
-    NONE,
-    FROM,
-    TO
+    NONE, FROM, TO
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,6 +97,9 @@ fun DirectionsScreen(
     onRequestLocationPermission: () -> Unit,
     appPreferences: AppPreferenceRepository
 ) {
+    val availableProfiles by viewModel.getAvailableProfilesForCurrentMode()
+        .collectAsState(initial = emptyList())
+
     var fieldFocusState by remember { mutableStateOf(FieldFocusState.NONE) }
     val isAnyFieldFocused = fieldFocusState != FieldFocusState.NONE
 
@@ -134,7 +134,7 @@ fun DirectionsScreen(
         }
     }
 
-    stringResource(R.string.change_start_location_to_my_location)
+    stringResource(string.change_start_location_to_my_location)
 
     Column(
         modifier = Modifier
@@ -152,8 +152,7 @@ fun DirectionsScreen(
                     .onGloballyPositioned { coordinates ->
                         val heightInDp = with(density) { coordinates.size.height.toDp() }
                         onPeekHeightChange(heightInDp)
-                    }
-            ) {
+                    }) {
                 // Header with back button
                 Row(
                     modifier = Modifier
@@ -164,13 +163,13 @@ fun DirectionsScreen(
                 ) {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back)
+                            painter = painterResource(drawable.ic_arrow_back),
+                            contentDescription = stringResource(string.back)
                         )
                     }
 
                     Text(
-                        text = stringResource(R.string.directions),
+                        text = stringResource(string.directions),
                         style = MaterialTheme.typography.headlineSmall
                     )
 
@@ -180,7 +179,7 @@ fun DirectionsScreen(
 
                 // From and To fields
                 PlaceField(
-                    label = stringResource(R.string.from),
+                    label = stringResource(string.from),
                     place = viewModel.fromPlace,
                     onCleared = {
                         viewModel.updateFromPlace(null)
@@ -207,7 +206,7 @@ fun DirectionsScreen(
                 )
 
                 PlaceField(
-                    label = stringResource(R.string.to),
+                    label = stringResource(string.to),
                     place = viewModel.toPlace,
                     onCleared = {
                         viewModel.updateToPlace(null)
@@ -232,21 +231,11 @@ fun DirectionsScreen(
                         .padding(bottom = dimensionResource(dimen.padding))
                 )
 
-                // Routing mode selection
-                Text(
-                    text = stringResource(R.string.routing_mode),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                val availableRoutingModes by viewModel.getAvailableRoutingModes()
-                    .collectAsState(
-                        initial = listOf(
-                            RoutingMode.AUTO,
-                            RoutingMode.PEDESTRIAN,
-                            RoutingMode.BICYCLE
-                        )
+                val availableRoutingModes by viewModel.getAvailableRoutingModes().collectAsState(
+                    initial = listOf(
+                        RoutingMode.AUTO, RoutingMode.PEDESTRIAN, RoutingMode.BICYCLE
                     )
+                )
 
                 RoutingModeSelector(
                     availableModes = availableRoutingModes,
@@ -254,9 +243,14 @@ fun DirectionsScreen(
                     onModeSelected = { viewModel.updateRoutingMode(it) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = dimensionResource(dimen.padding))
+                        .padding(bottom = dimensionResource(dimen.padding_minor))
                 )
 
+                RoutingProfileSelector(
+                    modifier = Modifier.fillMaxWidth(),
+                    viewModel = viewModel,
+                    availableProfiles = availableProfiles
+                )
 
                 // Inset horizontal divider
                 HorizontalDivider(
@@ -272,7 +266,7 @@ fun DirectionsScreen(
             when {
                 routeState.isLoading -> {
                     Text(
-                        text = stringResource(R.string.calculating_route_in_progress),
+                        text = stringResource(string.calculating_route_in_progress),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(dimensionResource(dimen.padding))
@@ -281,7 +275,7 @@ fun DirectionsScreen(
 
                 routeState.error != null -> {
                     Text(
-                        text = stringResource(R.string.directions_error, routeState.error),
+                        text = stringResource(string.directions_error, routeState.error),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -304,7 +298,7 @@ fun DirectionsScreen(
                 else -> {
                     // No route calculated yet
                     Text(
-                        text = stringResource(R.string.enter_start_and_end_locations_to_get_directions),
+                        text = stringResource(string.enter_start_and_end_locations_to_get_directions),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(dimensionResource(dimen.padding))
@@ -447,13 +441,8 @@ fun RouteDisplayHandler(
                 coroutineScope.launch {
                     cameraState.animateTo(
                         boundingBox = BoundingBox(
-                            west = minLng,
-                            south = minLat,
-                            east = maxLng,
-                            north = maxLat
-                        ),
-                        padding = padding,
-                        duration = appPreferences.animationSpeedDurationValue
+                            west = minLng, south = minLat, east = maxLng, north = maxLat
+                        ), padding = padding, duration = appPreferences.animationSpeedDurationValue
                     )
                 }
             }
@@ -502,7 +491,7 @@ private fun PlaceField(
                 label = { Text(label) },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.LocationOn,
+                        painter = painterResource(drawable.ic_location_on),
                         contentDescription = null
                     )
                 },
@@ -514,14 +503,14 @@ private fun PlaceField(
                             onCleared()
                         }) {
                             Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.content_description_clear_search)
+                                painter = painterResource(drawable.ic_close),
+                                contentDescription = stringResource(string.content_description_clear_search)
                             )
                         }
                     }
                 },
                 placeholder = {
-                    Text(stringResource(R.string.enter_a_place))
+                    Text(stringResource(string.enter_a_place))
                 },
                 readOnly = false, // Make sure the field is editable to show keyboard
                 colors = TextFieldDefaults.colors(
@@ -535,19 +524,18 @@ private fun PlaceField(
                     enabled = !isRouteLoading,
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.refresh),
-                        contentDescription = stringResource(R.string.recalculate_route)
+                        painter = painterResource(drawable.ic_refresh),
+                        contentDescription = stringResource(string.recalculate_route)
                     )
                 }
             }
             if (showFlipButton) {
                 IconButton(
-                    onClick = onFlipClick,
-                    enabled = !isRouteLoading
+                    onClick = onFlipClick, enabled = !isRouteLoading
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.swap_vertical),
-                        contentDescription = stringResource(R.string.flip_destinations)
+                        painter = painterResource(drawable.swap_vertical),
+                        contentDescription = stringResource(string.flip_destinations)
                     )
                 }
             }
@@ -588,6 +576,7 @@ private fun RoutingModeSelector(
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SegmentedButtonRow(
     availableModes: List<RoutingMode>,
@@ -595,129 +584,54 @@ private fun SegmentedButtonRow(
     onModeSelected: (RoutingMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            availableModes.forEachIndexed { index, mode ->
-                val isSelected = selectedMode == mode
-                val isFirst = index == 0
-                val isLast = index == availableModes.size - 1
-
-                SegmentedButton(
-                    selected = isSelected,
-                    onClick = { onModeSelected(mode) },
-                    label = mode.label,
-                    icon = mode.icon,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(
-                            start = if (isFirst) 0.dp else 2.dp,
-                            end = if (isLast) 0.dp else 2.dp
-                        ),
-                    shape = when {
-                        isFirst -> MaterialTheme.shapes.medium.copy(
-                            topEnd = CornerSize(0.dp),
-                            bottomEnd = CornerSize(0.dp)
-                        )
-
-                        isLast -> MaterialTheme.shapes.medium.copy(
-                            topStart = CornerSize(0.dp),
-                            bottomStart = CornerSize(0.dp)
-                        )
-
-                        else -> MaterialTheme.shapes.medium.copy(
-                            topStart = CornerSize(0.dp),
-                            topEnd = CornerSize(0.dp),
-                            bottomStart = CornerSize(0.dp),
-                            bottomEnd = CornerSize(0.dp)
-                        )
-                    }
-                )
+    SingleChoiceSegmentedButtonRow(modifier = modifier.fillMaxWidth()) {
+        availableModes.forEachIndexed { index, mode ->
+            ToggleButton(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = dimensionResource(dimen.padding) / 2),
+                checked = mode == selectedMode,
+                onCheckedChange = { if (it) onModeSelected(mode) },
+            ) {
+                Icon(painter = painterResource(mode.icon), contentDescription = mode.label)
             }
         }
     }
 }
 
-@Composable
-private fun SegmentedButton(
-    selected: Boolean,
-    onClick: () -> Unit,
-    label: String,
-    icon: Int? = null,
-    modifier: Modifier = Modifier,
-    shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.medium
-) {
-    Button(
-        onClick = onClick,
-        modifier = modifier,
-        shape = shape,
-        colors = if (selected) {
-            ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        } else {
-            ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        elevation = ButtonDefaults.buttonElevation(0.dp)
-    ) {
-        if (icon != null) {
-            Icon(painter = painterResource(icon), contentDescription = label)
-        } else {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge
-            )
-        }
-    }
-}
-
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun RoutingProfileSelector(
     viewModel: DirectionsViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    availableProfiles: List<RoutingProfile>
 ) {
-    val availableProfiles by viewModel.getAvailableProfilesForCurrentMode()
-        .collectAsState(initial = emptyList())
     val selectedProfile = viewModel.selectedRoutingProfile
 
-    // Add "Default" option at the beginning
-    val profileOptions = listOf(null) + availableProfiles
-
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+    AnimatedVisibility(
+        availableProfiles.isNotEmpty(),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier
+        // Add "Default" option at the beginning
+        val profileOptions = listOf(null) + availableProfiles
+
+        SingleChoiceSegmentedButtonRow(
+            modifier = modifier
                 .fillMaxWidth()
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.Start
         ) {
             profileOptions.forEach { profile ->
                 val isSelected = selectedProfile?.id == profile?.id
-                val label = profile?.name ?: "Default"
+                val label = profile?.name ?: stringResource(string.default_profile)
 
-                SegmentedButton(
-                    selected = isSelected,
-                    onClick = { viewModel.selectRoutingProfile(profile) },
-                    label = label,
-                    modifier = Modifier.padding(end = 4.dp)
-                )
+                ToggleButton(
+                    modifier = Modifier
+                        .padding(horizontal = dimensionResource(dimen.padding_minor) / 2)
+                        .weight(1f),
+                    checked = isSelected,
+                    onCheckedChange = { if (it) viewModel.selectRoutingProfile(profile) },
+                ) {
+                    Text(text = label)
+                }
             }
         }
     }
@@ -748,12 +662,6 @@ private fun FerrostarRouteResults(
                         .fillMaxWidth()
                         .padding(dimensionResource(dimen.padding))
                 ) {
-                    Text(
-                        text = stringResource(R.string.route_summary),
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -761,13 +669,11 @@ private fun FerrostarRouteResults(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Distance:",
-                            style = MaterialTheme.typography.bodyLarge
+                            text = "Distance:", style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = DistanceUtils.formatDistance(
-                                ferrostarRoute.distance,
-                                distanceUnit
+                            text = GeoUtils.formatDistance(
+                                ferrostarRoute.distance, distanceUnit
                             ),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.primary
@@ -783,8 +689,7 @@ private fun FerrostarRouteResults(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Duration:",
-                            style = MaterialTheme.typography.bodyLarge
+                            text = "Duration:", style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
                             text = "${(totalDuration / 60).toInt()} min",
@@ -793,37 +698,12 @@ private fun FerrostarRouteResults(
                         )
                     }
 
-                    // Show current profile and change button
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = dimensionResource(dimen.padding)),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = stringResource(
-                                R.string.routing_profile_format,
-                                selectedProfile?.name ?: stringResource(R.string.default_profile)
-                            ),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        TextButton(
-                            onClick = { showProfileDialog = true },
-                            enabled = availableProfiles.isNotEmpty()
-                        ) {
-                            Text(stringResource(R.string.change_profile))
-                        }
-                    }
-
                     Button(
                         onClick = {
                             viewModel.startNavigation(navController)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = true
+                        }, modifier = Modifier.fillMaxWidth(), enabled = true
                     ) {
-                        Text(stringResource(R.string.start_navigation))
+                        Text(stringResource(string.start_navigation))
                     }
                 }
             }
@@ -852,8 +732,7 @@ private fun FerrostarRouteResults(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "${index + 1}",
-                            style = MaterialTheme.typography.labelLarge
+                            text = "${index + 1}", style = MaterialTheme.typography.labelLarge
                         )
                     }
 
@@ -868,7 +747,7 @@ private fun FerrostarRouteResults(
 
                     // Step distance
                     Text(
-                        text = DistanceUtils.formatShortDistance(step.distance, distanceUnit),
+                        text = GeoUtils.formatShortDistance(step.distance, distanceUnit),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -881,7 +760,7 @@ private fun FerrostarRouteResults(
     if (showProfileDialog) {
         AlertDialog(
             onDismissRequest = { showProfileDialog = false },
-            title = { Text(stringResource(R.string.select_routing_profile)) },
+            title = { Text(stringResource(string.select_routing_profile)) },
             text = {
                 Column {
                     // Default option
@@ -889,11 +768,10 @@ private fun FerrostarRouteResults(
                         onClick = {
                             viewModel.selectRoutingProfile(null)
                             showProfileDialog = false
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                        }, modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = stringResource(R.string.default_profile),
+                            text = stringResource(string.default_profile),
                             color = if (selectedProfile == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -904,8 +782,7 @@ private fun FerrostarRouteResults(
                             onClick = {
                                 viewModel.selectRoutingProfile(profile)
                                 showProfileDialog = false
-                            },
-                            modifier = Modifier.fillMaxWidth()
+                            }, modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = profile.name,
@@ -917,9 +794,8 @@ private fun FerrostarRouteResults(
             },
             confirmButton = {
                 TextButton(onClick = { showProfileDialog = false }) {
-                    Text(stringResource(R.string.cancel_change_routing_profile))
+                    Text(stringResource(string.cancel_change_routing_profile))
                 }
-            }
-        )
+            })
     }
 }

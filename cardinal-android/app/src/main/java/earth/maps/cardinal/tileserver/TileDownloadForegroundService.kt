@@ -34,12 +34,12 @@ import androidx.core.app.NotificationCompat
 import dagger.hilt.android.AndroidEntryPoint
 import earth.maps.cardinal.MainActivity
 import earth.maps.cardinal.R
+import earth.maps.cardinal.data.BoundingBox
 import earth.maps.cardinal.data.room.DownloadStatus
 import earth.maps.cardinal.data.room.DownloadedTileDao
 import earth.maps.cardinal.data.room.OfflineAreaDao
 import earth.maps.cardinal.data.room.TileType
 import earth.maps.cardinal.geocoding.TileProcessor
-import earth.maps.cardinal.ui.BoundingBox
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

@@ -28,9 +28,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -122,7 +119,7 @@ fun SettingsScreen(
                     navController.popBackStack()
                 }) {
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        painter = painterResource(drawable.ic_close),
                         contentDescription = stringResource(string.close)
                     )
                 }
@@ -153,7 +150,7 @@ fun SettingsScreen(
                         viewModel.onCallToActionClicked()
                     }) {
                     Icon(
-                        imageVector = Icons.Default.Favorite,
+                        painter = painterResource(drawable.ic_heart),
                         tint = Color.White,
                         contentDescription = stringResource(string.open_cardinal_maps_github_repository_in_browser)
                     )

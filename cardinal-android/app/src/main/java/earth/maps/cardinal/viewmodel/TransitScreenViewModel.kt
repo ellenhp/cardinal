@@ -16,34 +16,46 @@
 
 package earth.maps.cardinal.viewmodel
 
+import android.content.Context
+import android.location.Location
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.room.PlaceDao
+import dagger.hilt.android.qualifiers.ApplicationContext
+import earth.maps.cardinal.data.LatLng
+import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.transit.StopTime
 import earth.maps.cardinal.transit.TransitStop
 import earth.maps.cardinal.transit.TransitousService
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
-class TransitStopCardViewModel @Inject constructor(
-    private val placeDao: PlaceDao, private val transitousService: TransitousService
+class TransitScreenViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
+    private val locationRepository: LocationRepository,
+    private val transitousService: TransitousService
 ) : ViewModel() {
+
+    private companion object {
+        private const val TAG = "TransitMapViewModel"
+        private const val DEFAULT_RADIUS_METERS = 1000
+        private const val NUM_EVENTS = 200
+    }
 
     private var refreshJob: Job? = null
 
-    val isPlaceSaved = mutableStateOf(false)
-    val stop = mutableStateOf<Place?>(null)
+    val stop = mutableStateOf<String?>(null)
     val reverseGeocodedStop = mutableStateOf<TransitStop?>(null)
     val departures = mutableStateOf<List<StopTime>>(emptyList())
 
@@ -68,60 +80,61 @@ class TransitStopCardViewModel @Inject constructor(
      */
     val isRefreshingDepartures: StateFlow<Boolean> = _isRefreshingDepartures
 
+    private var lastLocation: Location? = null
+
     init {
+        // Start observing location updates
+        locationRepository.startContinuousLocationUpdates(context)
+        observeLocationUpdates()
+
         refreshJob = viewModelScope.launch {
             while (true) {
-                refreshDepartures()
-                delay(30.seconds)
+                refreshData()
+                delay(60.seconds)
             }
         }
     }
 
-    fun setStop(place: Place) {
-        this.stop.value = place
-    }
-
-    suspend fun initializeDepartures() {
-        val place = stop.value
-        if (place != null) {
-            checkIfPlaceIsSaved(place)
-            reverseGeocodeStop(place)
-            fetchDepartures()
-        } else {
-            Log.e(TAG, "Can't find departures for a `null` stop.")
-        }
-
-    }
-
-    fun checkIfPlaceIsSaved(place: Place) {
+    /**
+     * Observes location updates from the LocationRepository and fetches transit data
+     * when the location changes significantly.
+     */
+    @OptIn(FlowPreview::class)
+    private fun observeLocationUpdates() {
         viewModelScope.launch {
-            if (place.id != null) {
-                val existingPlace = placeDao.getPlaceById(place.id)
-                isPlaceSaved.value = existingPlace != null
+            locationRepository.locationFlow.distinctUntilChanged { old, new ->
+                // Only update if location changed significantly (more than 100 meters)
+                if (new != null) {
+                    (old?.distanceTo(new) ?: 1000f) < 100f
+                } else {
+                    false
+                }
+            }.collectLatest { location ->
+                location?.let {
+                    lastLocation = it
+                    refreshData()
+                }
             }
         }
     }
 
-    private suspend fun reverseGeocodeStop(place: Place) {
+    private suspend fun reverseGeocodeStop(latLng: LatLng) {
         _isLoading.value = true
         try {
             transitousService.reverseGeocode(
-                name = place.name,
-                latitude = place.latLng.latitude,
-                longitude = place.latLng.longitude,
-                type = "STOP"
+                name = null, latitude = latLng.latitude, longitude = latLng.longitude, type = "STOP"
             ).collectLatest { stops ->
                 reverseGeocodedStop.value = stops.firstOrNull()
                 Log.d(TAG, "$reverseGeocodedStop")
                 // Update the place with the reverse-geocoded name if available
                 reverseGeocodedStop.value?.let { stop ->
-                    this@TransitStopCardViewModel.stop.value = place.copy(
-                        name = stop.name
-                    )
+                    this@TransitScreenViewModel.stop.value = stop.id
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to reverse geocode stop $place", e)
+            Log.e(
+                TAG, "Failed to reverse geocode stop $latLng", e
+            )
         }
     }
 
@@ -131,14 +144,18 @@ class TransitStopCardViewModel @Inject constructor(
             // We need to get the stop ID from the reverse geocoded result
             reverseGeocodedStop.value?.id?.let { stopId ->
                 if (stopId.isNotEmpty()) {
-                    transitousService.getStopTimes(stopId).collectLatest { response ->
-                        departures.value = response.stopTimes
+                    transitousService.getStopTimes(
+                        stopId, n = NUM_EVENTS, radius = DEFAULT_RADIUS_METERS
+                    ).collectLatest { response ->
+                        departures.value = aggregateStopTimes(response.stopTimes)
                     }
                 }
             }
             _didLoadingFail.value = false
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to fetch departures for $reverseGeocodedStop", e)
+            Log.e(
+                TAG, "Failed to fetch departures for $reverseGeocodedStop", e
+            )
             _didLoadingFail.value = true
         } finally {
             _isRefreshingDepartures.value = false
@@ -147,14 +164,36 @@ class TransitStopCardViewModel @Inject constructor(
         }
     }
 
-    suspend fun refreshDepartures() {
-        _isRefreshingDepartures.value = true
-        try {
-            stop.value?.let { place ->
+    private fun aggregateStopTimes(stopTimes: List<StopTime>): List<StopTime> {
+        val lastLocation = lastLocation ?: return emptyList()
+        val stopTimesByProximity = stopTimes.sortedBy {
+            LatLng(it.place.lat, it.place.lon).distanceTo(
+                LatLng(lastLocation.latitude, lastLocation.longitude)
+            )
+        }
+        val bestStopForRouteHeadsign = mutableMapOf<Pair<String, String>, String>()
+        val relevantStopTimes = mutableListOf<StopTime>()
+        for (stopTime in stopTimesByProximity) {
+            val pair = Pair(stopTime.routeShortName, stopTime.headsign)
+            if (!bestStopForRouteHeadsign.containsKey(pair)) {
+                bestStopForRouteHeadsign[pair] = stopTime.place.stopId
+            } else if (bestStopForRouteHeadsign[pair] != stopTime.place.stopId) {
+                continue
+            }
+            relevantStopTimes.add(stopTime)
+        }
+        return relevantStopTimes
+    }
+
+    /**
+     * Manually refreshes the transit data.
+     */
+    fun refreshData() {
+        lastLocation?.let { location ->
+            viewModelScope.launch {
+                reverseGeocodeStop(LatLng(location.latitude, location.longitude))
                 fetchDepartures()
             }
-        } finally {
-            _isRefreshingDepartures.value = false
         }
     }
 
@@ -162,8 +201,5 @@ class TransitStopCardViewModel @Inject constructor(
         super.onCleared()
         refreshJob?.cancel()
     }
-
-    companion object {
-        private const val TAG = "TransitStopViewModel"
-    }
 }
+

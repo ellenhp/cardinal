@@ -28,10 +28,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -61,11 +57,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.R.drawable
+import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.routing.AutoOptions
 import earth.maps.cardinal.routing.AutoRoutingOptions
@@ -136,7 +136,12 @@ fun ProfileEditorScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { handleBackNavigation() }) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                Icon(
+                    painter = painterResource(drawable.ic_arrow_back),
+                    contentDescription = stringResource(
+                        string.content_description_back
+                    )
+                )
             }
 
             Text(
@@ -152,12 +157,16 @@ fun ProfileEditorScreen(
                         }
                     }
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = "Save")
+                    Icon(painter = painterResource(drawable.ic_save), contentDescription = "Save")
                 }
             } else {
                 // Placeholder to maintain layout
                 IconButton(onClick = {}, enabled = false) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.Transparent)
+                    Icon(
+                        painter = painterResource(drawable.ic_add),
+                        contentDescription = null,
+                        tint = Color.Transparent
+                    )
                 }
             }
         }
@@ -269,7 +278,7 @@ fun ProfileEditorScreen(
                         navController.popBackStack()
                     }
                 ) {
-                    Text("Discard")
+                    Text(stringResource(string.discard_button))
                 }
             }
         )

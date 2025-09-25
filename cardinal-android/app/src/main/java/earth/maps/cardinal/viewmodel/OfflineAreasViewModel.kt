@@ -29,11 +29,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import earth.maps.cardinal.data.BoundingBox
 import earth.maps.cardinal.data.room.OfflineArea
 import earth.maps.cardinal.data.room.OfflineAreaRepository
 import earth.maps.cardinal.tileserver.TileDownloadForegroundService
 import earth.maps.cardinal.tileserver.calculateTileRange
-import earth.maps.cardinal.ui.BoundingBox
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject

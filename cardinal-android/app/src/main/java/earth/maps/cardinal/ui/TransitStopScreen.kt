@@ -18,6 +18,7 @@ package earth.maps.cardinal.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,9 +34,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,9 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -61,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -69,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
+import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.transit.StopTime
 import earth.maps.cardinal.viewmodel.TransitStopCardViewModel
@@ -92,7 +90,7 @@ fun Color.contrastColor(): Color {
 }
 
 @Composable
-fun TransitStopInformation(viewModel: TransitStopCardViewModel) {
+fun TransitStopInformation(viewModel: TransitStopCardViewModel, onRouteClicked: (Place) -> Unit) {
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
     val isRefreshingDepartures = viewModel.isRefreshingDepartures.collectAsState()
@@ -129,7 +127,7 @@ fun TransitStopInformation(viewModel: TransitStopCardViewModel) {
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Default.Refresh,
+                        painter = painterResource(earth.maps.cardinal.R.drawable.ic_refresh),
                         contentDescription = stringResource(string.refresh_departures)
                     )
                 }
@@ -166,7 +164,9 @@ fun TransitStopInformation(viewModel: TransitStopCardViewModel) {
             val maxDeparturesPerHeadsign = 3
             // List of departures grouped by route and headsign
             RouteDepartures(
-                stopTimes = viewModel.departures.value, maxDepartures = maxDeparturesPerHeadsign
+                stopTimes = viewModel.departures.value,
+                maxDepartures = maxDeparturesPerHeadsign,
+                onRouteClicked = onRouteClicked,
             )
         }
     }
@@ -175,7 +175,9 @@ fun TransitStopInformation(viewModel: TransitStopCardViewModel) {
 
 @OptIn(ExperimentalTime::class, ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun RouteDepartures(stopTimes: List<StopTime>, maxDepartures: Int) {
+fun RouteDepartures(
+    stopTimes: List<StopTime>, maxDepartures: Int, onRouteClicked: (Place) -> Unit
+) {
     // Group departures by route name
     val departuresByRoute = stopTimes.groupBy { it.routeShortName }
 
@@ -194,16 +196,37 @@ fun RouteDepartures(stopTimes: List<StopTime>, maxDepartures: Int) {
         }.toMap()
         val headsigns = departuresByHeadsign.keys.toList().sorted()
 
+        val transitStopString = stringResource(string.transit_stop)
+        val places = remember {
+            departuresByHeadsign.map { (_, value) ->
+                value.firstOrNull()?.let { departure ->
+                    Place(
+                        name = departure.place.name,
+                        type = transitStopString,
+                        latLng = LatLng(departure.place.lat, departure.place.lon),
+                        isTransitStop = true
+                    )
+                }
+            }
+        }
+
+        val pagerState = rememberPagerState(pageCount = { headsigns.size })
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 4.dp),
+                .padding(bottom = 4.dp)
+                .clickable(onClick = {
+                    places[pagerState.currentPage]?.let { place ->
+                        onRouteClicked(
+                            place
+                        )
+                    }
+                }),
             colors = CardDefaults.cardColors(
                 containerColor = routeColor,
                 contentColor = onRouteColor,
             )
         ) {
-            val pagerState = rememberPagerState(pageCount = { headsigns.size })
             val scrollScope = rememberCoroutineScope()
             val density = LocalDensity.current
             var routeNamePadding = remember { mutableStateOf<Dp?>(null) }
@@ -268,7 +291,7 @@ fun PageIndicator(pageCount: Int, currentPage: Int) {
 @OptIn(ExperimentalTime::class)
 @Composable
 fun DepartureRow(
-    stopTime: StopTime, isFirst: Boolean, onRouteColor: Color
+    stopTime: StopTime, isFirst: Boolean, onRouteColor: Color, showStop: Boolean = false
 ) {
     val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val isoFormatter = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.systemDefault())
@@ -394,7 +417,19 @@ fun FixedHeightHorizontalPager(
                             .fillMaxWidth(0.6f),
                         text = selectedHeadsign,
                         textAlign = TextAlign.Start,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = onRouteColor
+                    )
+                    Text(
+                        modifier = Modifier
+                            .padding(
+                                start = dimensionResource(dimen.padding),
+                                top = dimensionResource(dimen.padding_minor),
+                            )
+                            .fillMaxWidth(0.6f),
+                        text = departuresForSelectedHeadsign.first().place.name,
+                        textAlign = TextAlign.Start,
+                        style = MaterialTheme.typography.bodySmall,
                         color = onRouteColor
                     )
                 }
@@ -433,25 +468,43 @@ fun FixedHeightHorizontalPager(
     }
 }
 
-
 @Composable
-fun SaveTransitStopDialog(
-    place: Place, onDismiss: () -> Unit, onSave: (Place) -> Unit
-) {
+@OptIn(ExperimentalTime::class, ExperimentalMaterial3Api::class)
+fun formatDepartureTime(stopTime: StopTime): String {
+    val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    val isoFormatter = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.systemDefault())
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(string.save_place)) },
-        text = {
-            OutlinedButton(
-                onClick = { onSave(place) }, modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(string.save_button))
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(string.cancel_button))
-            }
-        })
+    val scheduledDepartureInstant = stopTime.place.scheduledDeparture?.let {
+        try {
+            Instant.from(isoFormatter.parse(it))
+        } catch (_: Exception) {
+            null
+        }
+    }
+    val scheduledDepartureTime: String? = scheduledDepartureInstant?.let {
+        try {
+            dateFormat.format(Date.from(it))
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    val bestDepartureInstant = stopTime.place.departure?.let {
+        try {
+            Instant.from(isoFormatter.parse(it))
+        } catch (_: Exception) {
+            null
+        }
+    } ?: scheduledDepartureInstant
+
+    val timeUntilDeparture = bestDepartureInstant?.toKotlinInstant()?.minus(Clock.System.now())
+
+    return if (timeUntilDeparture != null && timeUntilDeparture > 30.minutes) {
+        scheduledDepartureTime ?: stringResource(string.unknown_departure)
+    } else if (timeUntilDeparture != null) {
+        "${timeUntilDeparture.inWholeMinutes} min"
+    } else {
+        scheduledDepartureTime ?: stringResource(string.unknown_departure)
+    }
 }
+

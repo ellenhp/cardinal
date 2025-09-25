@@ -36,4 +36,12 @@ interface GeocodingService {
      * @return Flow of geocoding results
      */
     suspend fun reverseGeocode(latitude: Double, longitude: Double): Flow<List<GeocodeResult>>
+
+    /**
+     * Find nearby places around a given point
+     * @param latitude The latitude coordinate
+     * @param longitude The longitude coordinate
+     * @return Flow of nearby places
+     */
+    suspend fun nearby(latitude: Double, longitude: Double): Flow<List<GeocodeResult>>
 }

@@ -26,6 +26,7 @@ valhallaMobile = "0.1.6"
 valhallaMobileConfig = "0.0.9"
 ferrostar = "0.41.0"
 okhttp3 = "5.1.0"
+material3 = "1.5.0-alpha04"
 
 [libraries]
 androidaddressformatter = { module = "com.github.woheller69:AndroidAddressFormatter", version.ref = "androidaddressformatter" }
@@ -44,7 +45,7 @@ androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
-androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutinesAndroid" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinSerializationJson" }
 ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }

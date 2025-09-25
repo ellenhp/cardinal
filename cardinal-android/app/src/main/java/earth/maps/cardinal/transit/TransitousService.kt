@@ -51,7 +51,7 @@ class TransitousService @Inject constructor(private val appPreferenceRepository:
     }
 
     fun reverseGeocode(
-        name: String,
+        name: String?,
         latitude: Double,
         longitude: Double,
         type: String = "STOP"
@@ -67,9 +67,13 @@ class TransitousService @Inject constructor(private val appPreferenceRepository:
                 parameter("type", type)
             }
 
-            val result = response.body<List<TransitStop>>().sortedBy {
-                val editDistanceHeuristic = StringUtils.levenshteinDistance(it.name, name) * 10.0
-                editDistanceHeuristic + LatLng(it.lat, it.lon).distanceTo(
+            val result = response.body<List<TransitStop>>().sortedBy { transitStop ->
+                val editDistanceHeuristic =
+                    if (name.isNullOrBlank()) 0.0 else StringUtils.levenshteinDistance(
+                        transitStop.name,
+                        name
+                    ) * 10.0
+                editDistanceHeuristic + LatLng(transitStop.lat, transitStop.lon).distanceTo(
                     LatLng(latitude, longitude)
                 )
             }
@@ -82,7 +86,7 @@ class TransitousService @Inject constructor(private val appPreferenceRepository:
         }
     }
 
-    fun getStopTimes(stopId: String, n: Int = 50): Flow<StopTimesResponse> = flow {
+    fun getStopTimes(stopId: String, n: Int = 50, radius: Int = 0): Flow<StopTimesResponse> = flow {
         if (!appPreferenceRepository.allowTransitInOfflineMode.value) {
             return@flow
         }
@@ -92,6 +96,8 @@ class TransitousService @Inject constructor(private val appPreferenceRepository:
             val response = client.get("https://api.transitous.org/api/v1/stoptimes") {
                 parameter("stopId", stopId)
                 parameter("n", n)
+                parameter("radius", radius)
+                parameter("exactRadius", true)
             }
 
             val result = response.body<StopTimesResponse>()

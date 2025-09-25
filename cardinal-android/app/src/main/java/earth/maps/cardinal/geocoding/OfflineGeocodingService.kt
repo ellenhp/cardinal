@@ -57,6 +57,11 @@ class OfflineGeocodingService(private val context: Context) : GeocodingService, 
         emit(emptyList())
     }
 
+    override suspend fun nearby(latitude: Double, longitude: Double): Flow<List<GeocodeResult>> =
+        flow {
+            emit(emptyList())
+        }
+
     override suspend fun beginTileProcessing() {
         Log.d(TAG, "Beginning tile processing")
         airmailIndex.beginIngestion()

@@ -117,6 +117,36 @@ class PeliasGeocodingService(private val appPreferenceRepository: AppPreferenceR
         }
     }
 
+    override suspend fun nearby(latitude: Double, longitude: Double): Flow<List<GeocodeResult>> =
+        flow {
+            try {
+                Log.d(TAG, "Nearby: $latitude, $longitude")
+                val config = appPreferenceRepository.peliasApiConfig.value
+                val response = client.get("${config.baseUrl}/nearby") {
+                    parameter("point.lat", latitude.toString())
+                    parameter("point.lon", longitude.toString())
+                    parameter("size", "50")
+                    parameter("layers", "venue")
+                    config.apiKey?.let { parameter("api_key", it) }
+                }
+
+                val result = response.body<JsonObject>()
+                Log.d(TAG, "Nearby response: $result")
+                val features = result["features"]?.jsonArray ?: JsonArray(emptyList())
+                Log.d(TAG, "Number of nearby features: ${features.size}")
+
+                val geocodeResults = features.mapNotNull { element ->
+                    parseGeocodeResult(element)
+                }
+                Log.d(TAG, "Parsed nearby results: ${geocodeResults.size}")
+
+                emit(geocodeResults)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during nearby", e)
+                emit(emptyList())
+            }
+        }
+
     private fun parseGeocodeResult(element: JsonElement): GeocodeResult? {
         return try {
             val obj = element.jsonObject

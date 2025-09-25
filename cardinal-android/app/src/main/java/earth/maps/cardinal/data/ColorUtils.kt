@@ -16,14 +16,23 @@
 
 package earth.maps.cardinal.data
 
-data class Place(
-    val id: Int? = null,
-    val name: String,
-    val type: String = "",
-    val icon: String = "place",
-    val latLng: LatLng,
-    val address: Address? = null,
-    val isMyLocation: Boolean = false,
-    val isTransitStop: Boolean = false,
-)
+import androidx.compose.ui.graphics.Color
+
+fun Color.isYellow(): Boolean {
+    val r = red
+    val g = green
+    val b = blue
+    val max = maxOf(r, g, b)
+    val min = minOf(r, g, b)
+    if (max == min) return false // gray
+    val delta = max - min
+    val h = when (max) {
+        r -> 60 * (g - b) / delta
+        g -> 60 * (2 + (b - r) / delta)
+        b -> 60 * (4 + (r - g) / delta)
+        else -> 0f
+    }
+    val hue = if (h < 0) h + 360f else h
+    return hue in 30f..75f
+}
 

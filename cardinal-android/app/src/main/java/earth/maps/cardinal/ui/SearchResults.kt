@@ -25,22 +25,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import earth.maps.cardinal.R.dimen
+import earth.maps.cardinal.R.drawable
+import earth.maps.cardinal.data.AddressFormatter
 import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.format
 import earth.maps.cardinal.viewmodel.SearchResultsViewModel
 
 @Composable
@@ -50,16 +53,25 @@ fun SearchResults(
     onPlaceSelected: (Place) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val addressFormatter = remember { AddressFormatter() }
     LazyColumn(modifier = modifier) {
         items(geocodeResults) { result ->
             val place = viewModel.generatePlace(result)
-            SearchResultItem(place = place, onPlaceSelected = onPlaceSelected)
+            SearchResultItem(
+                addressFormatter = addressFormatter,
+                place = place,
+                onPlaceSelected = onPlaceSelected
+            )
         }
     }
 }
 
 @Composable
-fun SearchResultItem(place: Place, onPlaceSelected: (Place) -> Unit) {
+fun SearchResultItem(
+    addressFormatter: AddressFormatter,
+    place: Place,
+    onPlaceSelected: (Place) -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -84,7 +96,7 @@ fun SearchResultItem(place: Place, onPlaceSelected: (Place) -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Search,
+                    painter = painterResource(drawable.ic_search),
                     contentDescription = null,
                     modifier = Modifier.size(dimensionResource(dimen.icon_size))
                 )
@@ -101,7 +113,7 @@ fun SearchResultItem(place: Place, onPlaceSelected: (Place) -> Unit) {
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                place.address?.format()?.let { address ->
+                place.address?.format(addressFormatter)?.let { address ->
                     Text(
                         text = address.trim().replace("\n", ", "),
                         style = MaterialTheme.typography.bodySmall,
