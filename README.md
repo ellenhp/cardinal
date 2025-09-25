@@ -20,7 +20,7 @@ Every decision we make puts the user first:
 - **Self-host your maps services** - Works seamlessly with [Headway](https://github.com/headwaymaps/headway) for those who want the convenience of online maps on their own terms.
 - **Modern look and feel** - Built from the ground up with Material 3 components.
 - **Smooth performance** - Using MapLibre for map rendering means Cardinal Maps is fast—much faster than you may be used if you're a FOSS maps enjoyer.
-- **Transit support (work in progress)** - Tap on any bus stop to see upcoming departures, and favorite it for easy access in your saved places.
+- **Transit support (work in progress)** - Easily view departures at nearby transit stations.
 
 ## Screenshots
 
