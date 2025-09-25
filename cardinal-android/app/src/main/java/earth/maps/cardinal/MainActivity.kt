@@ -43,6 +43,7 @@ import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.room.MigrationHelper
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
 import earth.maps.cardinal.routing.RouteRepository
 import earth.maps.cardinal.tileserver.LocalMapServerService
@@ -51,6 +52,8 @@ import earth.maps.cardinal.tileserver.PermissionRequestManager
 import earth.maps.cardinal.ui.AppContent
 import earth.maps.cardinal.ui.theme.AppTheme
 import earth.maps.cardinal.viewmodel.MapViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.lang.Double.parseDouble
 import javax.inject.Inject
@@ -72,6 +75,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var routeRepository: RouteRepository
+
+    @Inject
+    lateinit var migrationHelper: MigrationHelper
 
     private var localMapServerService: LocalMapServerService? = null
     private var bound by mutableStateOf(false)
@@ -139,6 +145,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        CoroutineScope(Dispatchers.IO).launch {
+            migrationHelper.migratePlacesToSavedPlaces()
+        }
 
         intent?.takeIf { it.action == Intent.ACTION_VIEW }?.let { intent ->
             val data: Uri? = intent.data
