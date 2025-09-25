@@ -91,7 +91,10 @@ private fun PlaceItem(place: SavedPlace, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = dimensionResource(dimen.padding))
+            .padding(
+                vertical = dimensionResource(dimen.padding) / 2,
+                horizontal = dimensionResource(dimen.padding)
+            )
             .clickable(
                 true, onClick = onClick
             ), onClick = onClick, elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)

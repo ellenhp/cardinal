@@ -188,8 +188,8 @@ fun TransitScreenRouteDepartures(
 
         val transitStopString = stringResource(string.transit_stop)
         val places = remember {
-            departuresByHeadsign.map { (_, value) ->
-                value.firstOrNull()?.let { departure ->
+            departuresByHeadsign.map { (key, value) ->
+                key to value.firstOrNull()?.let { departure ->
                     Place(
                         name = departure.place.name,
                         description = transitStopString,
@@ -197,7 +197,7 @@ fun TransitScreenRouteDepartures(
                         isTransitStop = true
                     )
                 }
-            }
+            }.toMap()
         }
 
         val pagerState = rememberPagerState(pageCount = { headsigns.size })
@@ -205,7 +205,7 @@ fun TransitScreenRouteDepartures(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = {
-                    places[pagerState.currentPage]?.let { place ->
+                    places[headsigns[pagerState.currentPage]]?.let { place ->
                         onRouteClicked(place)
                     }
                 }),
