@@ -58,6 +58,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.room.SavedPlace
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import kotlinx.coroutines.launch
 
@@ -132,7 +133,7 @@ fun ManagePlacesDialog(
                             place = place,
                             onPlaceSelected = {
                                 viewModel.selectPlace(place)
-                                onPlaceSelected(place)
+                                onPlaceSelected(viewModel.convertToPlace(place))
                             },
                             onEditPlace = { viewModel.startEditingPlace(place) },
                             onDeletePlace = { viewModel.startDeletingPlace(place) }
@@ -189,8 +190,8 @@ fun ManagePlacesDialog(
 
 @Composable
 private fun PlaceItemWithActions(
-    place: Place,
-    onPlaceSelected: (Place) -> Unit,
+    place: SavedPlace,
+    onPlaceSelected: (SavedPlace) -> Unit,
     onEditPlace: () -> Unit,
     onDeletePlace: () -> Unit
 ) {
@@ -268,9 +269,9 @@ private fun PlaceItemWithActions(
 
 @Composable
 private fun EditPlaceDialog(
-    place: Place,
+    place: SavedPlace,
     onDismiss: () -> Unit,
-    onEdit: (Place) -> Unit
+    onEdit: (SavedPlace) -> Unit
 ) {
     var name by remember { mutableStateOf(place.name) }
     var type by remember { mutableStateOf(place.type) }

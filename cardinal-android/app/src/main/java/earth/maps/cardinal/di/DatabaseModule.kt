@@ -24,8 +24,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import earth.maps.cardinal.data.room.AppDatabase
 import earth.maps.cardinal.data.room.DownloadedTileDao
+import earth.maps.cardinal.data.room.ListItemDao
 import earth.maps.cardinal.data.room.OfflineAreaDao
-import earth.maps.cardinal.data.room.PlaceDao
+import earth.maps.cardinal.data.room.SavedListDao
+import earth.maps.cardinal.data.room.SavedPlaceDao
 import javax.inject.Singleton
 
 @Module
@@ -39,11 +41,6 @@ object DatabaseModule {
     }
 
     @Provides
-    fun providePlaceDao(appDatabase: AppDatabase): PlaceDao {
-        return appDatabase.placeDao()
-    }
-
-    @Provides
     fun provideOfflineAreaDao(appDatabase: AppDatabase): OfflineAreaDao {
         return appDatabase.offlineAreaDao()
     }
@@ -51,5 +48,20 @@ object DatabaseModule {
     @Provides
     fun provideDownloadedTileDao(appDatabase: AppDatabase): DownloadedTileDao {
         return appDatabase.downloadedTileDao()
+    }
+
+    @Provides
+    fun provideSavedListDao(appDatabase: AppDatabase): SavedListDao {
+        return appDatabase.savedListDao()
+    }
+
+    @Provides
+    fun provideSavedPlaceDao(appDatabase: AppDatabase): SavedPlaceDao {
+        return appDatabase.savedPlaceDao()
+    }
+
+    @Provides
+    fun provideListItemDao(appDatabase: AppDatabase): ListItemDao {
+        return appDatabase.listItemDao()
     }
 }

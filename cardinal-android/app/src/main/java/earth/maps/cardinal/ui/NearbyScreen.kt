@@ -193,7 +193,7 @@ fun NearbyPlaceCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = place.type,
+                        text = place.description,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

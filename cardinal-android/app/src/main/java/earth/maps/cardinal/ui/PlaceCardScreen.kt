@@ -118,7 +118,7 @@ fun PlaceCardScreen(
             )
 
             Text(
-                text = displayedPlace.type,
+                text = displayedPlace.description,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)

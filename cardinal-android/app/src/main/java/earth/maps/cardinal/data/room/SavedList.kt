@@ -14,16 +14,18 @@
  *    limitations under the License.
  */
 
-package earth.maps.cardinal.data
+package earth.maps.cardinal.data.room
 
-data class Place(
-    val id: String? = null,
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "saved_lists")
+data class SavedList(
+    @PrimaryKey val id: String,  // Using UUID strings for better uniqueness
     val name: String,
-    val description: String = "",
-    val icon: String = "place",
-    val latLng: LatLng,
-    val address: Address? = null,
-    val isMyLocation: Boolean = false,
-    val isTransitStop: Boolean = false,
+    val description: String? = null,
+    val isRoot: Boolean = false,  // Flag for the root "Saved Places" list
+    val isCollapsed: Boolean = false,  // UI state for collapsible lists
+    val createdAt: Long,
+    val updatedAt: Long
 )
-

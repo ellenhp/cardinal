@@ -27,7 +27,8 @@ import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.ViewportRepository
-import earth.maps.cardinal.data.room.PlaceDao
+import earth.maps.cardinal.data.room.SavedPlaceDao
+import earth.maps.cardinal.data.room.SavedPlaceRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,10 +44,11 @@ import javax.inject.Inject
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val placeDao: PlaceDao,
+    private val placeDao: SavedPlaceDao,
     private val geocodingService: GeocodingService,
     private val viewportRepository: ViewportRepository,
     private val locationRepository: LocationRepository,
+    private val savedPlaceRepository: SavedPlaceRepository,
 ) : ViewModel() {
 
     // Saved places from database
@@ -72,7 +74,7 @@ class HomeViewModel @Inject constructor(
         // Load saved places from database
         viewModelScope.launch {
             placeDao.getAllPlaces().collect { placeEntities ->
-                savedPlaces.value = placeEntities.map { it.toPlace() }
+                savedPlaces.value = placeEntities.map { savedPlaceRepository.toPlace(it) }
             }
         }
 

@@ -19,31 +19,37 @@ package earth.maps.cardinal.data.room
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface PlaceDao {
-    @Query("SELECT * FROM places")
-    fun getAllPlaces(): Flow<List<PlaceEntity>>
+interface SavedPlaceDao {
+    @Query("SELECT * FROM saved_places WHERE id = :placeId")
+    suspend fun getPlace(placeId: String): SavedPlace?
 
-    @Query("SELECT * FROM places WHERE id = :id")
-    suspend fun getPlaceById(id: Int): PlaceEntity?
+    @Query("SELECT * FROM saved_places WHERE placeId = :originalId LIMIT 1")
+    suspend fun getPlaceByOriginalId(originalId: Int): SavedPlace?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertPlace(place: PlaceEntity)
+    @Query(
+        """
+        SELECT sp.* FROM saved_places sp
+        INNER JOIN list_items li ON sp.id = li.itemId
+        WHERE li.listId = :listId AND li.itemType = 'PLACE'
+        ORDER BY li.position
+    """
+    )
+    fun getPlacesInList(listId: String): Flow<List<SavedPlace>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertPlaces(places: List<PlaceEntity>)
+    @Query("SELECT * FROM saved_places")
+    fun getAllPlaces(): Flow<List<SavedPlace>>
+
+    @Insert
+    suspend fun insertPlace(place: SavedPlace)
 
     @Update
-    suspend fun updatePlace(place: PlaceEntity)
+    suspend fun updatePlace(place: SavedPlace)
 
     @Delete
-    suspend fun deletePlace(place: PlaceEntity)
-
-    @Query("DELETE FROM places")
-    suspend fun deleteAllPlaces()
+    suspend fun deletePlace(place: SavedPlace)
 }

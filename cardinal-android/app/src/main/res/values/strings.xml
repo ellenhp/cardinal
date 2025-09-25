@@ -193,4 +193,7 @@
     <string name="remove_as_default">Remove as default</string>
     <string name="set_as_default">Set as default</string>
     <string name="add_save_places_and_they_ll_show_up_here">Favorite places and they\'ll show up here.</string>
+    <string name="content_description_select_all">Select all</string>
+    <string name="content_description_drag_to_reorder">Drag to reorder</string>
+    <string name="done">Done</string>
 </resources>

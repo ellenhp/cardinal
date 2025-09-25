@@ -25,7 +25,6 @@ import android.os.Bundle
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import earth.maps.cardinal.R
-import earth.maps.cardinal.ui.generatePlaceId
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -365,9 +364,8 @@ class LocationRepository @Inject constructor(
      */
     fun createMyLocationPlace(latLng: LatLng): Place {
         return Place(
-            id = Int.MIN_VALUE, // Special ID for "My Location"
             name = context.getString(R.string.my_location),
-            type = "Current Location",
+            description = "Current location",
             icon = "location",
             latLng = latLng,
             isMyLocation = true
@@ -376,9 +374,8 @@ class LocationRepository @Inject constructor(
 
     fun createSearchResultPlace(result: GeocodeResult): Place {
         return Place(
-            id = generatePlaceId(result),
             name = result.displayName,
-            type = mapOsmTagsToDescription(result.properties),
+            description = mapOsmTagsToDescription(result.properties),
             icon = "search",
             latLng = LatLng(
                 latitude = result.latitude,

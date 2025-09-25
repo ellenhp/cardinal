@@ -1,0 +1,159 @@
+/*
+ *    Copyright 2025 The Cardinal Authors
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
+package earth.maps.cardinal.data.room
+
+import earth.maps.cardinal.data.Place
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
+import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class SavedPlaceRepository @Inject constructor(
+    database: AppDatabase
+) {
+    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val placeDao = database.savedPlaceDao()
+    private val listItemDao = database.listItemDao()
+
+    private val _allPlaces = MutableStateFlow<List<SavedPlace>>(emptyList())
+    val allPlaces: StateFlow<List<SavedPlace>> = _allPlaces.asStateFlow()
+
+    init {
+        // TODO: Implement place observation if needed
+    }
+
+    /**
+     * Saves a place.
+     */
+    suspend fun savePlace(
+        place: Place,
+        customName: String? = null,
+        customDescription: String? = null
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val savedPlace = SavedPlace.fromPlace(place).copy(
+                customName = customName,
+                customDescription = customDescription
+            )
+
+            placeDao.insertPlace(savedPlace)
+            Result.success(savedPlace.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Updates a saved place.
+     */
+    suspend fun updatePlace(
+        placeId: String,
+        customName: String? = null,
+        customDescription: String? = null
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val existingPlace = placeDao.getPlace(placeId)
+                ?: return@withContext Result.failure(IllegalArgumentException("Place not found"))
+
+            val updatedPlace = existingPlace.copy(
+                customName = customName ?: existingPlace.customName,
+                customDescription = customDescription ?: existingPlace.customDescription,
+                updatedAt = System.currentTimeMillis()
+            )
+
+            placeDao.updatePlace(updatedPlace)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Deletes a saved place.
+     */
+    suspend fun deletePlace(placeId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val place = placeDao.getPlace(placeId)
+                ?: return@withContext Result.failure(IllegalArgumentException("Place not found"))
+
+            placeDao.deletePlace(place)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Gets a saved place by ID.
+     */
+    suspend fun getPlaceById(placeId: String): Result<SavedPlace?> = withContext(Dispatchers.IO) {
+        try {
+            val place = placeDao.getPlace(placeId)
+            Result.success(place)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Gets all places in a list.
+     */
+    fun getPlacesInList(listId: String): Flow<List<SavedPlace>> {
+        return placeDao.getPlacesInList(listId)
+    }
+
+    /**
+     * Converts a SavedPlace back to a Place.
+     */
+    fun toPlace(savedPlace: SavedPlace): Place {
+        return Place(
+            id = savedPlace.placeId?.toString(),
+            name = savedPlace.customName ?: savedPlace.name,
+            description = savedPlace.type,
+            icon = savedPlace.icon,
+            latLng = earth.maps.cardinal.data.LatLng(
+                latitude = savedPlace.latitude,
+                longitude = savedPlace.longitude
+            ),
+            address = if (savedPlace.houseNumber != null || savedPlace.road != null || savedPlace.city != null ||
+                savedPlace.state != null || savedPlace.postcode != null || savedPlace.country != null ||
+                savedPlace.countryCode != null
+            ) {
+                earth.maps.cardinal.data.Address(
+                    houseNumber = savedPlace.houseNumber,
+                    road = savedPlace.road,
+                    city = savedPlace.city,
+                    state = savedPlace.state,
+                    postcode = savedPlace.postcode,
+                    country = savedPlace.country,
+                    countryCode = savedPlace.countryCode
+                )
+            } else {
+                null
+            },
+            isTransitStop = savedPlace.isTransitStop
+        )
+    }
+}
