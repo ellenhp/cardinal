@@ -20,11 +20,13 @@ import android.annotation.SuppressLint
 import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -139,6 +141,8 @@ fun AppContent(
     val density = LocalDensity.current
     var selectedOfflineArea by remember { mutableStateOf<OfflineArea?>(null) }
 
+    var showToolbar by remember { mutableStateOf(true) }
+
     // Route state for displaying on map
     var currentRoute by remember { mutableStateOf<Route?>(null) }
 
@@ -239,6 +243,7 @@ fun AppContent(
             Screen.HOME_SEARCH,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            showToolbar = true
             HomeScreenComposable(
                 viewModel = homeViewModel,
                 mapPins = mapPins,
@@ -259,6 +264,7 @@ fun AppContent(
             Screen.NEARBY_POI,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            showToolbar = true
 
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
@@ -266,15 +272,13 @@ fun AppContent(
             val scaffoldState =
                 rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
 
-            CardinalScaffold(
+            CardinalAppScaffold(
                 scaffoldState = scaffoldState, peekHeight = screenHeightDp / 3,
+                toolbar = { CardinalToolbar(navController) },
                 content = {
                     NearbyScreenContent(viewModel = nearbyViewModel, onPlaceSelected = {
                         NavigationUtils.navigate(navController, Screen.PlaceCard(it))
                     })
-                },
-                toolbar = {
-                    CardinalToolbar(navController)
                 },
                 fabHeightCallback = {
                     if (topOfBackStack == backStackEntry) {
@@ -289,6 +293,7 @@ fun AppContent(
             Screen.NEARBY_TRANSIT,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            showToolbar = true
 
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
@@ -296,15 +301,13 @@ fun AppContent(
             val scaffoldState =
                 rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
 
-            CardinalScaffold(
+            CardinalAppScaffold(
                 scaffoldState = scaffoldState, peekHeight = screenHeightDp / 3,
+                toolbar = { CardinalToolbar(navController) },
                 content = {
                     TransitScreenContent(viewModel = transitViewModel, onRouteClicked = {
                         NavigationUtils.navigate(navController, Screen.PlaceCard(it))
                     })
-                },
-                toolbar = {
-                    CardinalToolbar(navController)
                 },
                 fabHeightCallback = {
                     if (topOfBackStack == backStackEntry) {
@@ -318,6 +321,8 @@ fun AppContent(
             Screen.PLACE_CARD,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            showToolbar = false
+
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
             )
@@ -368,7 +373,7 @@ fun AppContent(
                     }
                 }
 
-                CardinalScaffold(
+                CardinalAppScaffold(
                     scaffoldState = scaffoldState, peekHeight = peekHeight,
                     content = {
                         PlaceCardScreen(place = place, viewModel = viewModel, onBack = {
@@ -396,6 +401,7 @@ fun AppContent(
             Screen.OFFLINE_AREAS,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            showToolbar = true
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
             )
@@ -426,7 +432,7 @@ fun AppContent(
             }
 
             currentViewport?.let { visibleRegion ->
-                CardinalScaffold(
+                CardinalAppScaffold(
                     scaffoldState = scaffoldState,
                     peekHeight = peekHeight,
                     fabHeightCallback = {
@@ -434,9 +440,7 @@ fun AppContent(
                             fabHeight = it
                         }
                     },
-                    toolbar = {
-                        CardinalToolbar(navController)
-                    },
+                    toolbar = { CardinalToolbar(navController) },
                     content = {
                         OfflineAreasScreen(
                             currentViewport = visibleRegion,
@@ -480,6 +484,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
         ) {
+            showToolbar = false
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -512,6 +517,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
+            showToolbar = false
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -549,6 +555,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
+            showToolbar = false
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -579,6 +586,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
+            showToolbar = false
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -609,6 +617,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
+            showToolbar = false
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
                 // The routing profiles screen is always fully expanded.
@@ -662,6 +671,7 @@ fun AppContent(
             Screen.DIRECTIONS,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            showToolbar = false
             val bottomSheetState =
                 rememberBottomSheetState(initialValue = BottomSheetValue.Collapsed)
             val scaffoldState =
@@ -714,7 +724,7 @@ fun AppContent(
                 }
             }
 
-            CardinalScaffold(
+            CardinalAppScaffold(
                 scaffoldState = scaffoldState, peekHeight = peekHeight,
                 content = {
                     DirectionsScreen(
@@ -744,6 +754,7 @@ fun AppContent(
             )
         }
         composable(Screen.TURN_BY_TURN) { backStackEntry ->
+            showToolbar = false
             val routeId = backStackEntry.arguments?.getString("routeId")
             val routingModeJson = backStackEntry.arguments?.getString("routingMode")
 
@@ -769,7 +780,24 @@ fun AppContent(
                 )
             }
         }
+    }
 
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Animated toolbar positioned below the scaffold
+        AnimatedVisibility(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            visible = showToolbar,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(300)
+            ),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(300)
+            ),
+        ) {
+            CardinalToolbar(navController, onSearchDoublePress = { homeViewModel.expandSearch() })
+        }
     }
 }
 
@@ -854,8 +882,6 @@ private fun HomeScreenComposable(
     backStackEntry: NavBackStackEntry,
 ) {
     val searchExpanded: Boolean? by viewModel.searchExpanded.collectAsState(null)
-    val coroutineScope = rememberCoroutineScope()
-    // This uses remember to ensure that it's reset when this screen exits the composition.
     val bottomSheetState = rememberBottomSheetState(
         initialValue = BottomSheetValue.Collapsed
     )
@@ -887,7 +913,7 @@ private fun HomeScreenComposable(
         mapPins.clear()
     }
 
-    CardinalScaffold(
+    CardinalAppScaffold(
         scaffoldState = scaffoldState,
         peekHeight = peekHeight,
         fabHeightCallback = {
@@ -895,10 +921,10 @@ private fun HomeScreenComposable(
                 onFabHeightChange(it)
             }
         },
-        toolbar = if (searchExpanded != true) {
-            { CardinalToolbar(navController, onSearchDoublePress = { viewModel.expandSearch() }) }
-        } else {
-            null
+        toolbar = {
+            CardinalToolbar(
+                navController,
+                onSearchDoublePress = { viewModel.expandSearch() })
         },
         content = {
             HomeScreen(
@@ -925,51 +951,53 @@ private fun HomeScreenComposable(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun CardinalScaffold(
+fun CardinalAppScaffold(
     scaffoldState: BottomSheetScaffoldState,
     peekHeight: Dp,
     content: @Composable () -> Unit,
     fabHeightCallback: (Dp) -> Unit,
     appBar: (@Composable () -> Unit)? = null,
     toolbar: (@Composable () -> Unit)? = null,
+    showToolbar: Boolean = true,
 ) {
     val density = LocalDensity.current
-
     val snackBarHostState = remember { SnackbarHostState() }
     val bottomInset = with(density) {
         WindowInsets.safeContent.getBottom(density).toDp()
     }
     val handleHeight = 48.dp
-    val toolbarColumnScope = if (toolbar != null) {
-        @Composable {
-            toolbar()
-        }
-    } else null
+    val toolbarHeight = 56.dp
 
-    BottomSheetScaffold(
-        scaffoldState = scaffoldState,
-        sheetPeekHeight = peekHeight + bottomInset + handleHeight,
-        snackbarHost = { SnackbarHost(snackBarHostState) },
-        sheetBackgroundColor = BottomSheetDefaults.ContainerColor,
-        dockedToolbar = toolbarColumnScope,
-        topBar = appBar,
-        sheetContent = {
-            Column(
-                modifier = Modifier.onGloballyPositioned {
-                    fabHeightCallback(with(density) { it.positionInRoot().y.toDp() })
-                }) {
-                Box(
-                    modifier = Modifier
-                        .defaultMinSize(minHeight = handleHeight)
-                        .align(Alignment.CenterHorizontally)
-                ) {
-                    BottomSheetDefaults.DragHandle()
+    // If toolbar is visible, add padding for it below the scaffold
+    val bottomPadding = if (showToolbar && toolbar != null) toolbarHeight else 0.dp
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        BottomSheetScaffold(
+            scaffoldState = scaffoldState,
+            sheetPeekHeight = peekHeight + bottomInset + handleHeight,
+            bottomPadding = bottomPadding,
+            snackbarHost = { SnackbarHost(snackBarHostState) },
+            sheetBackgroundColor = BottomSheetDefaults.ContainerColor,
+            topBar = appBar,
+            sheetContent = {
+                Column(
+                    modifier = Modifier.onGloballyPositioned {
+                        fabHeightCallback(with(density) { it.positionInRoot().y.toDp() })
+                    }) {
+                    Box(
+                        modifier = Modifier
+                            .defaultMinSize(minHeight = handleHeight)
+                            .align(Alignment.CenterHorizontally)
+                    ) {
+                        BottomSheetDefaults.DragHandle()
+                    }
+                    content()
                 }
-                content()
-            }
-            Spacer(modifier = Modifier.height(bottomInset))
-        },
-        content = {})
+                Spacer(modifier = Modifier.height(bottomInset))
+            },
+            content = {})
+    }
+
 }
 
 @Composable

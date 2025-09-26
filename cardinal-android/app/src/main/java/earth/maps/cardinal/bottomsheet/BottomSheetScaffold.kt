@@ -242,7 +242,7 @@ fun rememberBottomSheetScaffoldState(
  * children. Defaults to the matching content color for [sheetBackgroundColor], or if that is
  * not a color from the theme, this will keep the same content color set above the bottom sheet.
  * @param sheetPeekHeight The height of the bottom sheet when it is collapsed.
- * @param dockedToolbarHeight The height of the docked toolbar that slides in during expansion.
+ * @param bottomPadding Additional bottom padding to account for external toolbar.
  * @param drawerContent The content of the drawer sheet.
  * @param drawerGesturesEnabled Whether the drawer sheet can be interacted with by gestures.
  * @param drawerShape The shape of the drawer sheet.
@@ -260,7 +260,6 @@ fun rememberBottomSheetScaffoldState(
 fun BottomSheetScaffold(
     modifier: Modifier = Modifier,
     sheetContent: @Composable ColumnScope.() -> Unit,
-    dockedToolbar: (@Composable () -> Unit)? = null,
     scaffoldState: BottomSheetScaffoldState = rememberBottomSheetScaffoldState(),
     topBar: (@Composable () -> Unit)? = null,
     snackbarHost: @Composable (SnackbarHostState) -> Unit = { SnackbarHost(it) },
@@ -272,7 +271,7 @@ fun BottomSheetScaffold(
     sheetBackgroundColor: Color = MaterialTheme.colorScheme.surface,
     sheetContentColor: Color = contentColorFor(sheetBackgroundColor),
     sheetPeekHeight: Dp = BottomSheetScaffoldDefaults.SheetPeekHeight,
-    dockedToolbarHeight: Dp = BottomSheetScaffoldDefaults.DockedToolbarHeight,
+    bottomPadding: Dp = 0.dp,
     drawerContent: @Composable (ColumnScope.() -> Unit)? = null,
     drawerGesturesEnabled: Boolean = true,
     drawerShape: Shape = MaterialTheme.shapes.large,
@@ -282,15 +281,11 @@ fun BottomSheetScaffold(
     drawerScrimColor: Color = DrawerDefaults.scrimColor,
     content: @Composable (PaddingValues) -> Unit
 ) {
-    val sheetPeekHeight = if (dockedToolbar == null) {
-        sheetPeekHeight
-    } else {
-        sheetPeekHeight + dockedToolbarHeight
-    }
+    val effectivePeekHeight = sheetPeekHeight + bottomPadding
     val scope = rememberCoroutineScope()
     BoxWithConstraints(modifier) {
         val fullHeight = constraints.maxHeight.toFloat()
-        val peekHeightPx = with(LocalDensity.current) { sheetPeekHeight.toPx() }
+        val peekHeightPx = with(LocalDensity.current) { effectivePeekHeight.toPx() }
         var bottomSheetHeight by remember { mutableFloatStateOf(fullHeight) }
 
         val swipeable =
@@ -340,14 +335,14 @@ fun BottomSheetScaffold(
                             .fillMaxSize()
                             .imePadding()
                     ) {
-                        content(PaddingValues(bottom = sheetPeekHeight))
+                        content(PaddingValues(bottom = effectivePeekHeight))
                     }
                 },
                 bottomSheet = {
                     Surface(
                         modifier = swipeable
                             .fillMaxWidth()
-                            .requiredHeightIn(min = sheetPeekHeight)
+                            .requiredHeightIn(min = effectivePeekHeight)
                             .onGloballyPositioned {
                                 bottomSheetHeight = it.size.height.toFloat()
                             },
@@ -377,13 +372,6 @@ fun BottomSheetScaffold(
                 bottomSheetOffset = scaffoldState.bottomSheetState.offset,
                 floatingActionButtonPosition = floatingActionButtonPosition
             )
-        }
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .zIndex(1f)
-        ) {
-            dockedToolbar?.invoke()
         }
 
         if (drawerContent == null) {
