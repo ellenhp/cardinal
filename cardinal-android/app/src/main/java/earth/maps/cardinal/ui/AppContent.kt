@@ -274,7 +274,6 @@ fun AppContent(
 
             CardinalAppScaffold(
                 scaffoldState = scaffoldState, peekHeight = screenHeightDp / 3,
-                toolbar = { CardinalToolbar(navController) },
                 content = {
                     NearbyScreenContent(viewModel = nearbyViewModel, onPlaceSelected = {
                         NavigationUtils.navigate(navController, Screen.PlaceCard(it))
@@ -303,7 +302,6 @@ fun AppContent(
 
             CardinalAppScaffold(
                 scaffoldState = scaffoldState, peekHeight = screenHeightDp / 3,
-                toolbar = { CardinalToolbar(navController) },
                 content = {
                     TransitScreenContent(viewModel = transitViewModel, onRouteClicked = {
                         NavigationUtils.navigate(navController, Screen.PlaceCard(it))
@@ -388,6 +386,7 @@ fun AppContent(
                             }
                         })
                     },
+                    showToolbar = false,
                     fabHeightCallback = {
                         if (topOfBackStack == backStackEntry) {
                             fabHeight = it
@@ -440,7 +439,6 @@ fun AppContent(
                             fabHeight = it
                         }
                     },
-                    toolbar = { CardinalToolbar(navController) },
                     content = {
                         OfflineAreasScreen(
                             currentViewport = visibleRegion,
@@ -746,6 +744,7 @@ fun AppContent(
                         appPreferences = appPreferenceRepository
                     )
                 },
+                showToolbar = false,
                 fabHeightCallback = {
                     if (topOfBackStack == backStackEntry) {
                         fabHeight = it
@@ -881,6 +880,7 @@ private fun HomeScreenComposable(
     topOfBackStack: NavBackStackEntry?,
     backStackEntry: NavBackStackEntry,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val searchExpanded: Boolean? by viewModel.searchExpanded.collectAsState(null)
     val bottomSheetState = rememberBottomSheetState(
         initialValue = BottomSheetValue.Collapsed
@@ -921,17 +921,24 @@ private fun HomeScreenComposable(
                 onFabHeightChange(it)
             }
         },
-        toolbar = {
-            CardinalToolbar(
-                navController,
-                onSearchDoublePress = { viewModel.expandSearch() })
-        },
         content = {
             HomeScreen(
                 viewModel = viewModel,
                 onPlaceSelected = { place ->
                     imeController?.hide()
-                    NavigationUtils.navigate(navController, Screen.PlaceCard(place))
+
+                    // We are intentionally not collapsing search here, but we do set the bottom
+                    // sheet state to collapsed to prevent jank on popping back to this screen.
+                    coroutineScope.launch {
+                        // This should happen before we navigate away otherwise we get a race condition
+                        // between setting the anchors and collapsing the sheet. Unfortunately, it
+                        // doesn't return until the sheet is fully collapsed, so we queue the navigation
+                        // after this and hope for the best.
+                        bottomSheetState.collapse()
+                    }
+                    coroutineScope.launch {
+                        NavigationUtils.navigate(navController, Screen.PlaceCard(place))
+                    }
                 },
                 onPeekHeightChange = {
                     if (topOfBackStack == backStackEntry) {
@@ -957,7 +964,6 @@ fun CardinalAppScaffold(
     content: @Composable () -> Unit,
     fabHeightCallback: (Dp) -> Unit,
     appBar: (@Composable () -> Unit)? = null,
-    toolbar: (@Composable () -> Unit)? = null,
     showToolbar: Boolean = true,
 ) {
     val density = LocalDensity.current
@@ -969,7 +975,7 @@ fun CardinalAppScaffold(
     val toolbarHeight = 56.dp
 
     // If toolbar is visible, add padding for it below the scaffold
-    val bottomPadding = if (showToolbar && toolbar != null) toolbarHeight else 0.dp
+    val bottomPadding = if (showToolbar) toolbarHeight else 0.dp
 
     Box(modifier = Modifier.fillMaxSize()) {
         BottomSheetScaffold(

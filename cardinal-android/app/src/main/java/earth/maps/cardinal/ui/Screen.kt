@@ -126,7 +126,7 @@ object NavigationUtils {
         navController.navigate(toRoute(screen)) {
             if (popUpToHome) {
                 popUpTo(Screen.HOME_SEARCH) {
-                    inclusive = false
+                    inclusive = screen.route == Screen.HOME_SEARCH
                 }
             } else if (avoidCycles) {
                 popUpTo(screen.route) {

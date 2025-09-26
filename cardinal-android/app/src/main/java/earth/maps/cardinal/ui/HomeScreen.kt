@@ -65,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
@@ -72,6 +73,7 @@ import earth.maps.cardinal.data.AddressFormatter
 import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.viewmodel.HomeViewModel
+import earth.maps.cardinal.viewmodel.SavedPlacesViewModel
 import kotlin.math.abs
 
 @SuppressLint("ConfigurationScreenWidthHeight")
@@ -215,6 +217,9 @@ private fun SearchPanelContent(
                 }
             }
             Spacer(modifier = Modifier.fillMaxSize())
+        } else {
+            val savedPlacesViewModel = hiltViewModel<SavedPlacesViewModel>()
+            SavedPlacesList(savedPlacesViewModel, onPlaceSelected = onPlaceSelected)
         }
     }
 }
