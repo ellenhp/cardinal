@@ -97,7 +97,7 @@ fun TransitScreenContent(
     val scrollState = rememberScrollState()
 
     LaunchedEffect(secondsSinceStart) {
-        if (secondsSinceStart % 30 == 0) {
+        if (secondsSinceStart % 30 == 0 && secondsSinceStart > 0) {
             viewModel.refreshData()
         }
     }

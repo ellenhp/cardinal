@@ -51,7 +51,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
@@ -61,8 +60,7 @@ import earth.maps.cardinal.data.format
 import earth.maps.cardinal.viewmodel.NearbyViewModel
 
 @Composable
-fun NearbyScreenContent(onPlaceSelected: (Place) -> Unit) {
-    val viewModel: NearbyViewModel = hiltViewModel()
+fun NearbyScreenContent(viewModel: NearbyViewModel, onPlaceSelected: (Place) -> Unit) {
     val nearbyResults by viewModel.nearbyResults.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()

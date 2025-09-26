@@ -27,7 +27,9 @@ import earth.maps.cardinal.data.RoutingMode
  */
 sealed class Screen(val route: String) {
     companion object {
-        const val HOME = "home"
+        const val HOME_SEARCH = "home"
+        const val NEARBY_POI = "nearby_poi"
+        const val NEARBY_TRANSIT = "nearby_transit"
         const val PLACE_CARD = "place_card?place={place}"
         const val OFFLINE_AREAS = "offline_areas"
         const val SETTINGS = "settings"
@@ -40,7 +42,11 @@ sealed class Screen(val route: String) {
         const val TURN_BY_TURN = "turn_by_turn?routeId={routeId}&routingMode={routingMode}"
     }
 
-    object Home : Screen(HOME)
+    object HomeSearch : Screen(HOME_SEARCH)
+
+    object NearbyPoi : Screen(NEARBY_POI)
+
+    object NearbyTransit : Screen(NEARBY_TRANSIT)
 
     data class PlaceCard(val place: Place) : Screen(PLACE_CARD)
 
@@ -77,7 +83,9 @@ object NavigationUtils {
      */
     fun toRoute(screen: Screen): String {
         return when (screen) {
-            is Screen.Home -> screen.route
+            is Screen.HomeSearch -> screen.route
+            is Screen.NearbyPoi -> screen.route
+            is Screen.NearbyTransit -> screen.route
             is Screen.PlaceCard -> {
                 val placeJson = Uri.encode(gson.toJson(screen.place))
                 "place_card?place=$placeJson"
@@ -113,9 +121,14 @@ object NavigationUtils {
         navController: NavController,
         screen: Screen,
         avoidCycles: Boolean = true,
+        popUpToHome: Boolean = false,
     ) {
         navController.navigate(toRoute(screen)) {
-            if (avoidCycles) {
+            if (popUpToHome) {
+                popUpTo(Screen.HOME_SEARCH) {
+                    inclusive = false
+                }
+            } else if (avoidCycles) {
                 popUpTo(screen.route) {
                     inclusive = true
                 }

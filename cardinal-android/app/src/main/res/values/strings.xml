@@ -200,4 +200,8 @@
     <string name="done">Done</string>
     <string name="are_you_sure_you_want_to_delete_this_saved_place">Are you sure you want to delete this saved place?</string>
     <string name="add_new_list">Add new list</string>
+    <string name="public_transportation_nearby">Public transportation nearby</string>
+    <string name="points_of_interest_nearby">Points of interest nearby</string>
+    <string name="settings_menu">Settings menu</string>
+    <string name="search">Search</string>
 </resources>

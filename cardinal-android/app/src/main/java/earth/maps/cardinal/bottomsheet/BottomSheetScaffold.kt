@@ -26,8 +26,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
@@ -64,7 +62,6 @@ import androidx.compose.ui.zIndex
 import earth.maps.cardinal.bottomsheet.BottomSheetState.Companion.Saver
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
@@ -263,7 +260,7 @@ fun rememberBottomSheetScaffoldState(
 fun BottomSheetScaffold(
     modifier: Modifier = Modifier,
     sheetContent: @Composable ColumnScope.() -> Unit,
-    dockedToolbar: (@Composable ColumnScope.() -> Unit)? = null,
+    dockedToolbar: (@Composable () -> Unit)? = null,
     scaffoldState: BottomSheetScaffoldState = rememberBottomSheetScaffoldState(),
     topBar: (@Composable () -> Unit)? = null,
     snackbarHost: @Composable (SnackbarHostState) -> Unit = { SnackbarHost(it) },
@@ -285,8 +282,11 @@ fun BottomSheetScaffold(
     drawerScrimColor: Color = DrawerDefaults.scrimColor,
     content: @Composable (PaddingValues) -> Unit
 ) {
-    val density = LocalDensity.current
-    var sheetContentHeight by remember { with(density) { mutableFloatStateOf(sheetPeekHeight.toPx()) } }
+    val sheetPeekHeight = if (dockedToolbar == null) {
+        sheetPeekHeight
+    } else {
+        sheetPeekHeight + dockedToolbarHeight
+    }
     val scope = rememberCoroutineScope()
     BoxWithConstraints(modifier) {
         val fullHeight = constraints.maxHeight.toFloat()
@@ -356,21 +356,11 @@ fun BottomSheetScaffold(
                         contentColor = sheetContentColor,
                         shadowElevation = sheetElevation,
                         content = {
-                            Column {
-                                val padding = if (dockedToolbar == null) {
-                                    0.dp
-                                } else {
-                                    dockedToolbarHeight
-                                }
-                                Column(
-                                    modifier = Modifier
-                                        .imePadding()
-                                        .padding(bottom = padding)
-                                        .onGloballyPositioned {
-                                            sheetContentHeight = it.size.height.toFloat()
-                                        }) {
-                                    sheetContent()
-                                }
+                            Column(
+                                modifier = Modifier
+                                    .imePadding()
+                            ) {
+                                sheetContent()
                             }
                         })
                 },
@@ -393,49 +383,7 @@ fun BottomSheetScaffold(
                 .align(Alignment.BottomCenter)
                 .zIndex(1f)
         ) {
-            val toolbarHeightPx = with(density) { dockedToolbarHeight.toPx() }
-            val height =
-                with(density) { fullHeight - scaffoldState.bottomSheetState.offset.value - peekHeightPx }
-            // heightFraction is a value in [0, 1] that is determined by how close to full expansion the bottom sheet is.
-            val heightFraction = height / (sheetContentHeight - peekHeightPx)
-
-            // Calculate animation progress for dockedToolbar
-            val defaultThreshold = 0.5f
-            val expansionRange = sheetContentHeight - peekHeightPx
-            val toolbarMovement = 2 * toolbarHeightPx
-            val requiredFraction = toolbarMovement / expansionRange
-            val animationStartThreshold = if (requiredFraction > (1f - defaultThreshold)) {
-                max(0f, 1f - requiredFraction)
-            } else {
-                defaultThreshold
-            }
-            val shouldAnimateToolbar = heightFraction > animationStartThreshold
-
-            // Calculate progress from 0 to 1 during the expansion fraction starting at animationStartThreshold
-            val baseProgress = if (shouldAnimateToolbar) {
-                ((heightFraction - animationStartThreshold) / (1f - animationStartThreshold)).coerceIn(
-                    0f, 1f
-                )
-            } else {
-                0f
-            }
-
-            // Calculate toolbar height as percentage of full height
-            val toolbarHeightPercentage = toolbarHeightPx / fullHeight
-
-            // Adjust progress based on toolbar size
-            val adjustedProgress = baseProgress
-
-            // Add the dockedToolbar with sliding animation from bottom
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = with(density) {
-                        ((1 - adjustedProgress) * 2 * toolbarHeightPx).toDp()
-                    })
-            ) {
-                dockedToolbar?.invoke(this)
-            }
+            dockedToolbar?.invoke()
         }
 
         if (drawerContent == null) {

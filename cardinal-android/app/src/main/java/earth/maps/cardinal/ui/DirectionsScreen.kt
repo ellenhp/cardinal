@@ -381,8 +381,6 @@ fun DirectionsScreen(
                         fieldFocusState = FieldFocusState.NONE
                     },
                     isGettingLocation = viewModel.isGettingLocation,
-                    hasLocationPermission = hasLocationPermission,
-                    onRequestLocationPermission = onRequestLocationPermission,
                     modifier = Modifier.fillMaxWidth()
                 )
             } else {
