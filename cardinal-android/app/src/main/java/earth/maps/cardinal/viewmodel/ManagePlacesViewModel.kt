@@ -19,6 +19,7 @@ package earth.maps.cardinal.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import earth.maps.cardinal.data.CutPasteRepository
 import earth.maps.cardinal.data.room.ItemType
 import earth.maps.cardinal.data.room.ListContent
 import earth.maps.cardinal.data.room.ListItemDao
@@ -41,7 +42,20 @@ class ManagePlacesViewModel @Inject constructor(
     private val savedPlaceRepository: SavedPlaceRepository,
     private val savedListRepository: SavedListRepository,
     private val listItemDao: ListItemDao,
+    private val cutPasteRepository: CutPasteRepository,
 ) : ViewModel() {
+
+    private data class SelectedItem(val itemId: String, val itemType: ItemType) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is SelectedItem) return false
+            return itemId == other.itemId
+        }
+
+        override fun hashCode(): Int {
+            return itemId.hashCode()
+        }
+    }
 
     // Navigation stack to track the path through lists
     private val _navigationStack = MutableStateFlow<List<String>>(emptyList())
@@ -78,6 +92,8 @@ class ManagePlacesViewModel @Inject constructor(
     val currentListContent: Flow<List<Flow<ListContent?>>?> = _currentList.flatMapLatest { list ->
         list?.let { savedListRepository.getListContent(it.id) } ?: flowOf(null)
     }
+
+    val clipboard: Flow<Set<String>> = cutPasteRepository.clipboard
 
     suspend fun setInitialList(listId: String?) {
         if (listId != null) {
@@ -157,13 +173,20 @@ class ManagePlacesViewModel @Inject constructor(
         }
     }
 
-    // Returns a breadcrumb path for display
-    suspend fun getBreadcrumbNames(): List<String> {
-        val names = mutableListOf<String>()
-        _navigationStack.value.forEach { listId ->
-            val list = savedListRepository.getListById(listId).getOrNull()
-            list?.let { names.add(it.name) }
+    fun cutSelected() {
+        val newClipboard = _selectedItems.value.toSet()
+        cutPasteRepository.clipboard.value = newClipboard
+    }
+
+    fun pasteSelected() {
+        val currentListId = currentListId.value ?: return
+        viewModelScope.launch {
+            val itemsInListCount = listItemDao.getItemsInList(currentListId).size
+
+            cutPasteRepository.clipboard.value.forEachIndexed { index, id ->
+                listItemDao.moveItem(id, currentListId, itemsInListCount + index)
+            }
+            cutPasteRepository.clipboard.value = emptySet()
         }
-        return names
     }
 }

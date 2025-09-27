@@ -40,13 +40,13 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalFloatingToolbar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -87,7 +87,7 @@ fun ManagePlacesScreen(
     // This is not always equal to listId, notably in the case of a root list referred to implicitly by a `null` listId
     val currentListId by viewModel.currentListId.collectAsState(initial = null)
     val currentListContent by viewModel.currentListContent.collectAsState(initial = null)
-    val navigationStack by viewModel.navigationStack.collectAsState()
+    val clipboard by viewModel.clipboard.collectAsState(emptySet())
     val selectedItems by viewModel.selectedItems.collectAsState()
     val isAllSelected by viewModel.isAllSelected.collectAsState(initial = false)
     val showDeleteConfirmation = remember { mutableStateOf(false) }
@@ -130,6 +130,7 @@ fun ManagePlacesScreen(
                 content = currentListContent ?: emptyList(),
                 selectedItems = selectedItems,
                 paddingValues = paddingValues,
+                clipboard = clipboard,
                 onItemClick = { item ->
                     when (item) {
                         is PlaceContent -> {
@@ -153,12 +154,12 @@ fun ManagePlacesScreen(
             )
         }
         Box(modifier = Modifier.fillMaxSize()) {
-            VerticalFloatingToolbar(
+            HorizontalFloatingToolbar(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp),
                 expanded = true,
-                colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors()
+                colors = FloatingToolbarDefaults.standardFloatingToolbarColors()
             ) {
                 IconButton(onClick = { showCreateListDialog.value = true }) {
                     Icon(
@@ -166,6 +167,18 @@ fun ManagePlacesScreen(
                         contentDescription = stringResource(
                             string.new_list
                         )
+                    )
+                }
+                IconButton(onClick = { viewModel.cutSelected() }) {
+                    Icon(
+                        painter = painterResource(drawable.ic_content_cut),
+                        contentDescription = stringResource(string.cut)
+                    )
+                }
+                IconButton(onClick = { viewModel.pasteSelected() }) {
+                    Icon(
+                        painter = painterResource(drawable.ic_content_paste),
+                        contentDescription = stringResource(string.paste)
                     )
                 }
                 IconButton(onClick = { showDeleteConfirmation.value = true }) {
@@ -189,7 +202,6 @@ fun ManagePlacesScreen(
                     )
                 }
             }
-
         }
     }
 
@@ -367,6 +379,7 @@ private fun EmptyListContent() {
 private fun ListContentGrid(
     viewModel: ManagePlacesViewModel,
     content: List<Flow<ListContent?>>,
+    clipboard: Set<String>,
     selectedItems: Set<String>,
     onItemClick: (ListContent) -> Unit,
     paddingValues: PaddingValues
@@ -396,9 +409,10 @@ private fun ListContentGrid(
         items(lists) { item ->
             ListItem(
                 item = item,
+                isInClipboard = clipboard.contains(item.id),
                 isSelected = selectedItems.contains(item.id),
                 onSelectionChange = { viewModel.toggleSelection(item.id) },
-                onClick = { onItemClick(item) }
+                onClick = { onItemClick(item) },
             )
         }
 
@@ -416,6 +430,7 @@ private fun ListContentGrid(
             items(pinnedPlaces) { item ->
                 PlaceItem(
                     item = item,
+                    isInClipboard = clipboard.contains(item.id),
                     isSelected = selectedItems.contains(item.id),
                     onSelectionChange = { viewModel.toggleSelection(item.id) },
                     onClick = { onItemClick(item) }
@@ -439,6 +454,7 @@ private fun ListContentGrid(
         items(unpinnedPlaces) { item ->
             PlaceItem(
                 item = item,
+                isInClipboard = clipboard.contains(item.id),
                 isSelected = selectedItems.contains(item.id),
                 onSelectionChange = { viewModel.toggleSelection(item.id) },
                 onClick = { onItemClick(item) }
@@ -464,6 +480,7 @@ private fun SectionHeader(
 @Composable
 private fun PlaceItem(
     item: PlaceContent,
+    isInClipboard: Boolean,
     isSelected: Boolean,
     onSelectionChange: (Boolean) -> Unit,
     onClick: () -> Unit
@@ -503,6 +520,13 @@ private fun PlaceItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
+            if (isInClipboard) {
+                Icon(
+                    painter = painterResource(drawable.ic_content_cut),
+                    contentDescription = stringResource(string.in_clipboard)
+                )
+            }
         }
     }
 }
@@ -510,6 +534,7 @@ private fun PlaceItem(
 @Composable
 private fun ListItem(
     item: ListContentItem,
+    isInClipboard: Boolean,
     isSelected: Boolean,
     onSelectionChange: (Boolean) -> Unit,
     onClick: () -> Unit
@@ -552,7 +577,12 @@ private fun ListItem(
                 }
                 // TODO: Show item count when available
             }
-
+            if (isInClipboard) {
+                Icon(
+                    painter = painterResource(drawable.ic_content_cut),
+                    contentDescription = stringResource(string.in_clipboard)
+                )
+            }
             // Arrow to indicate this is a folder/list
             Icon(
                 painter = painterResource(drawable.ic_arrow_forward),

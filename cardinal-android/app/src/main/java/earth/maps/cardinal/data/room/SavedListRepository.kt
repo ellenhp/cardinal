@@ -19,10 +19,8 @@ package earth.maps.cardinal.data.room
 import android.content.Context
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -36,7 +34,6 @@ import javax.inject.Singleton
 class SavedListRepository @Inject constructor(
     @param:ApplicationContext private val context: Context, database: AppDatabase
 ) {
-    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val listDao = database.savedListDao()
     private val listItemDao = database.listItemDao()
     private val placeDao = database.savedPlaceDao()

@@ -93,7 +93,6 @@ private fun PlaceItem(place: SavedPlace, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(
                 vertical = dimensionResource(dimen.padding) / 2,
-                horizontal = dimensionResource(dimen.padding)
             )
             .clickable(
                 true, onClick = onClick
