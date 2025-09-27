@@ -1,5 +1,28 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:autoMirrored="true" android:height="24dp" android:viewportHeight="960" android:viewportWidth="960" android:width="24dp">
-      
-    <path android:fillColor="#e3e3e3" android:pathData="M480,656 L304,480l176,-176 176,176 -176,176ZM536,855q-11,11 -26,17t-30,6q-15,0 -30,-6t-26,-17L105,536q-11,-11 -17,-26t-6,-30q0,-15 6,-30t17,-26l318,-318q12,-12 26.5,-18t30.5,-6q16,0 30.5,6t26.5,18l318,318q11,11 17,26t6,30q0,15 -6,30t-17,26L536,855ZM480,768 L768,480 480,192 192,480 480,768Z"/>
-    
+<!--
+  ~    Copyright 2025 The Cardinal Authors
+  ~
+  ~    Licensed under the Apache License, Version 2.0 (the "License");
+  ~    you may not use this file except in compliance with the License.
+  ~    You may obtain a copy of the License at
+  ~
+  ~        http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~    Unless required by applicable law or agreed to in writing, software
+  ~    distributed under the License is distributed on an "AS IS" BASIS,
+  ~    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~    See the License for the specific language governing permissions and
+  ~    limitations under the License.
+  -->
+
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:autoMirrored="true"
+    android:height="24dp"
+    android:viewportHeight="960"
+    android:viewportWidth="960"
+    android:width="24dp">
+
+    <path
+        android:fillColor="#e3e3e3"
+        android:pathData="M480,656 L304,480l176,-176 176,176 -176,176ZM536,855q-11,11 -26,17t-30,6q-15,0 -30,-6t-26,-17L105,536q-11,-11 -17,-26t-6,-30q0,-15 6,-30t17,-26l318,-318q12,-12 26.5,-18t30.5,-6q16,0 30.5,6t26.5,18l318,318q11,11 17,26t6,30q0,15 -6,30t-17,26L536,855ZM480,768 L768,480 480,192 192,480 480,768Z" />
+
 </vector>

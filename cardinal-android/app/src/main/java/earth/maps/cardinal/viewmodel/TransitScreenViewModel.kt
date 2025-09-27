@@ -52,7 +52,10 @@ class TransitScreenViewModel @Inject constructor(
 
     val stop = mutableStateOf<String?>(null)
     val reverseGeocodedStop = mutableStateOf<TransitStop?>(null)
-    val departures = mutableStateOf<List<StopTime>>(emptyList())
+
+    private val _departures = MutableStateFlow<List<StopTime>>(emptyList())
+
+    val departures: StateFlow<List<StopTime>> = _departures
 
     private val _didLoadingFail = MutableStateFlow(false)
 
@@ -135,7 +138,7 @@ class TransitScreenViewModel @Inject constructor(
                     transitousService.getStopTimes(
                         stopId, n = NUM_EVENTS, radius = DEFAULT_RADIUS_METERS
                     ).collectLatest { response ->
-                        departures.value = aggregateStopTimes(response.stopTimes)
+                        _departures.value = aggregateStopTimes(response.stopTimes)
                     }
                 }
             }
