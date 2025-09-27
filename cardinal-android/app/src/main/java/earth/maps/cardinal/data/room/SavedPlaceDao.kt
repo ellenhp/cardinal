@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SavedPlaceDao {
     @Query("SELECT * FROM saved_places WHERE id = :placeId")
-    fun getPlaceAsFlow(placeId: String): Flow<SavedPlace>
+    fun getPlaceAsFlow(placeId: String): Flow<SavedPlace?>
 
     @Query("SELECT * FROM saved_places WHERE id = :placeId")
     suspend fun getPlace(placeId: String): SavedPlace?

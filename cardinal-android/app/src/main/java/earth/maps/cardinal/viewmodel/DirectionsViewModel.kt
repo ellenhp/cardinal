@@ -33,6 +33,7 @@ import earth.maps.cardinal.data.ViewportRepository
 import earth.maps.cardinal.data.room.RoutingProfile
 import earth.maps.cardinal.data.room.RoutingProfileRepository
 import earth.maps.cardinal.data.room.SavedPlaceDao
+import earth.maps.cardinal.data.room.SavedPlaceRepository
 import earth.maps.cardinal.geocoding.GeocodingService
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
 import earth.maps.cardinal.routing.RouteRepository
@@ -47,6 +48,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -71,6 +73,7 @@ class DirectionsViewModel @Inject constructor(
     private val ferrostarWrapperRepository: FerrostarWrapperRepository,
     private val viewportRepository: ViewportRepository,
     private val placeDao: SavedPlaceDao,
+    private val savedPlaceRepository: SavedPlaceRepository,
     private val locationRepository: LocationRepository,
     private val routingProfileRepository: RoutingProfileRepository,
     private val routeRepository: RouteRepository,
@@ -109,7 +112,9 @@ class DirectionsViewModel @Inject constructor(
         private set
 
     // Saved places for quick suggestions
-    val savedPlaces = mutableStateOf<List<Place>>(emptyList())
+    val savedPlaces = placeDao.getAllPlacesAsFlow().map { list ->
+        list.map { savedPlaceRepository.toPlace(it) }
+    }
 
     var isGettingLocation by mutableStateOf(false)
         private set
@@ -431,18 +436,6 @@ class DirectionsViewModel @Inject constructor(
                     context,
                     android.Manifest.permission.ACCESS_COARSE_LOCATION
                 ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-
-    /**
-     * Safely gets current location as a Place, handling permission checks.
-     * Returns null if permissions are not granted or location cannot be obtained.
-     */
-    suspend fun getCurrentLocationAsPlaceSafe(context: android.content.Context): Place? {
-        return if (hasLocationPermission(context)) {
-            getCurrentLocationAsPlace()
-        } else {
-            null
-        }
     }
 
     /**

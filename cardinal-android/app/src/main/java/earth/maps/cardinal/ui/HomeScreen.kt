@@ -22,6 +22,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -72,23 +73,17 @@ import earth.maps.cardinal.data.AddressFormatter
 import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.viewmodel.HomeViewModel
-import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
-import earth.maps.cardinal.viewmodel.TransitScreenViewModel
+import earth.maps.cardinal.viewmodel.SavedPlacesViewModel
 import kotlin.math.abs
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    homeBottomSheetState: HomeBottomSheetState,
-    managePlacesViewModel: ManagePlacesViewModel,
     onPlaceSelected: (Place) -> Unit,
     onPeekHeightChange: (dp: Dp) -> Unit,
     onSearchFocusChange: (Boolean) -> Unit,
     homeInSearchScreen: Boolean,
-    transitScreenViewModel: TransitScreenViewModel,
-    showManagePlacesDialog: Boolean,
-    onDismissShowPlaces: () -> Unit,
 ) {
     val searchQuery = viewModel.searchQuery
 
@@ -100,26 +95,10 @@ fun HomeScreen(
                 viewModel.updateSearchQuery(query)
             },
             onSearchFocusChange = onSearchFocusChange,
-            managePlacesViewModel = managePlacesViewModel,
             onPeekHeightChange = onPeekHeightChange,
             onPlaceSelected = onPlaceSelected,
             homeInSearchScreen = homeInSearchScreen,
-            showManagePlacesDialog = showManagePlacesDialog,
-            onDismissShowPlaces = onDismissShowPlaces,
         )
-        when (homeBottomSheetState) {
-            HomeBottomSheetState.SAVED -> {
-                SavedPlacesList(viewModel = hiltViewModel(), onPlaceSelected = onPlaceSelected)
-            }
-
-            HomeBottomSheetState.NEARBY -> {
-                NearbyScreenContent(onPlaceSelected)
-            }
-
-            HomeBottomSheetState.TRANSIT -> {
-                TransitScreenContent(transitScreenViewModel, onRouteClicked = onPlaceSelected)
-            }
-        }
     }
 }
 
@@ -129,12 +108,9 @@ private fun SearchPanelContent(
     searchQuery: TextFieldValue,
     onSearchQueryChange: (TextFieldValue) -> Unit,
     onSearchFocusChange: (Boolean) -> Unit,
-    managePlacesViewModel: ManagePlacesViewModel,
     onPeekHeightChange: (dp: Dp) -> Unit,
     onPlaceSelected: (Place) -> Unit,
     homeInSearchScreen: Boolean,
-    showManagePlacesDialog: Boolean,
-    onDismissShowPlaces: () -> Unit,
 ) {
     val addressFormatter = remember { AddressFormatter() }
     val pinnedPlaces by viewModel.pinnedPlaces().collectAsState(emptyList())
@@ -194,35 +170,29 @@ private fun SearchPanelContent(
                 shape = RoundedCornerShape(dimensionResource(dimen.icon_size))
             )
 
+            // This block is responsible for returning focus to the search bar after we pop back to the search panel from a place card.
             LaunchedEffect(homeInSearchScreen) {
                 if (homeInSearchScreen) {
                     textField.requestFocus()
                 }
             }
 
-            if (showManagePlacesDialog) {
-                ManagePlacesDialog(
-                    onDismiss = { onDismissShowPlaces() },
-                    onPlaceSelected = { place ->
-                        onPlaceSelected(place)
-                    },
-                    viewModel = managePlacesViewModel
-                )
-            }
-
             AnimatedVisibility(
                 visible = pinnedPlaces.isNotEmpty()
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = dimensionResource(dimen.padding))
-                ) {
-                    for (place in pinnedPlaces)
-                        NavigationIcon(
-                            place = place,
-                            onPlaceSelected = onPlaceSelected
-                        )
+                // The homeInSearchScreen isn't part of the animated visibility condition because it looks weird.
+                if (!homeInSearchScreen) {
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = dimensionResource(dimen.padding))
+                    ) {
+                        for (place in pinnedPlaces)
+                            NavigationIcon(
+                                place = place,
+                                onPlaceSelected = onPlaceSelected
+                            )
+                    }
                 }
             }
 
@@ -246,9 +216,10 @@ private fun SearchPanelContent(
                     )
                 }
             }
-            if (searchQuery.text.isNotEmpty()) {
-                Spacer(modifier = Modifier.fillMaxSize())
-            }
+            Spacer(modifier = Modifier.fillMaxSize())
+        } else {
+            val savedPlacesViewModel = hiltViewModel<SavedPlacesViewModel>()
+            SavedPlacesList(savedPlacesViewModel, onPlaceSelected = onPlaceSelected)
         }
     }
 }

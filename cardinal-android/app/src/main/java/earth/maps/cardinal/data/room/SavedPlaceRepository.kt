@@ -17,9 +17,7 @@
 package earth.maps.cardinal.data.room
 
 import earth.maps.cardinal.data.Place
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,24 +28,23 @@ import javax.inject.Singleton
 
 @Singleton
 class SavedPlaceRepository @Inject constructor(
-    database: AppDatabase
+    database: AppDatabase,
+    private val savedListRepository: SavedListRepository,
 ) {
-    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val placeDao = database.savedPlaceDao()
     private val listItemDao = database.listItemDao()
 
     private val _allPlaces = MutableStateFlow<List<SavedPlace>>(emptyList())
     val allPlaces: StateFlow<List<SavedPlace>> = _allPlaces.asStateFlow()
 
-    init {
-        // TODO: Implement place observation if needed
-    }
-
     /**
      * Saves a place.
      */
     suspend fun savePlace(
-        place: Place, customName: String? = null, customDescription: String? = null
+        place: Place,
+        list: SavedList? = null,
+        customName: String? = null,
+        customDescription: String? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             val savedPlace = SavedPlace.fromPlace(place).copy(
@@ -55,6 +52,17 @@ class SavedPlaceRepository @Inject constructor(
             )
 
             placeDao.insertPlace(savedPlace)
+
+            val list = list ?: savedListRepository.getRootList().getOrNull()
+
+            list?.let { list ->
+                savedListRepository.addItemToList(
+                    list.id,
+                    itemId = savedPlace.id,
+                    itemType = ItemType.PLACE
+                )
+            }
+
             Result.success(savedPlace.id)
         } catch (e: Exception) {
             Result.failure(e)
@@ -65,7 +73,10 @@ class SavedPlaceRepository @Inject constructor(
      * Updates a saved place.
      */
     suspend fun updatePlace(
-        placeId: String, customName: String? = null, customDescription: String? = null
+        placeId: String,
+        customName: String? = null,
+        customDescription: String? = null,
+        isPinned: Boolean? = null
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val existingPlace = placeDao.getPlace(placeId) ?: return@withContext Result.failure(
@@ -75,6 +86,7 @@ class SavedPlaceRepository @Inject constructor(
             val updatedPlace = existingPlace.copy(
                 customName = customName ?: existingPlace.customName,
                 customDescription = customDescription ?: existingPlace.customDescription,
+                isPinned = isPinned ?: existingPlace.isPinned,
                 updatedAt = System.currentTimeMillis()
             )
 
@@ -94,7 +106,9 @@ class SavedPlaceRepository @Inject constructor(
                 IllegalArgumentException("Place not found")
             )
 
+            listItemDao.orphanItem(placeId, ItemType.PLACE)
             placeDao.deletePlace(place)
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

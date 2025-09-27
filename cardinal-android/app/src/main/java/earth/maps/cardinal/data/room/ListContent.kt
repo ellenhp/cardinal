@@ -36,7 +36,8 @@ data class PlaceContent(
     val icon: String,
     val customName: String? = null,
     val customDescription: String? = null,
-    override val position: Int
+    val isPinned: Boolean,
+    override val position: Int,
 ) : ListContent()
 
 /**
@@ -47,5 +48,5 @@ data class ListContentItem(
     override val name: String,
     val description: String? = null,
     val isCollapsed: Boolean = false,
-    override val position: Int
+    override val position: Int,
 ) : ListContent()

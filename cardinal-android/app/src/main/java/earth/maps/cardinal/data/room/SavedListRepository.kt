@@ -19,11 +19,12 @@ package earth.maps.cardinal.data.room
 import android.content.Context
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
@@ -33,22 +34,16 @@ import javax.inject.Singleton
 class SavedListRepository @Inject constructor(
     @param:ApplicationContext private val context: Context, database: AppDatabase
 ) {
-    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val listDao = database.savedListDao()
     private val listItemDao = database.listItemDao()
     private val placeDao = database.savedPlaceDao()
-
-    init {
-        coroutineScope.launch {
-            cleanupUnparentedElements()
-        }
-    }
 
     /**
      * Creates a new list.
      */
     suspend fun createList(
         name: String,
+        parentId: String,
         description: String? = null,
         isRoot: Boolean = false,
         isCollapsed: Boolean = false
@@ -67,35 +62,18 @@ class SavedListRepository @Inject constructor(
             )
 
             listDao.insertList(list)
+
+            val position = listItemDao.getItemsInList(parentId).size
+            listItemDao.insertItem(
+                ListItem(
+                    listId = parentId,
+                    itemId = id,
+                    itemType = ItemType.LIST,
+                    position = position,
+                    addedAt = System.currentTimeMillis()
+                )
+            )
             Result.success(id)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Updates an existing list.
-     */
-    suspend fun updateList(
-        listId: String,
-        name: String? = null,
-        description: String? = null,
-        isCollapsed: Boolean? = null
-    ): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val existingList = listDao.getList(listId) ?: return@withContext Result.failure(
-                IllegalArgumentException("List not found")
-            )
-
-            val updatedList = existingList.copy(
-                name = name ?: existingList.name,
-                description = description ?: existingList.description,
-                isCollapsed = isCollapsed ?: existingList.isCollapsed,
-                updatedAt = System.currentTimeMillis()
-            )
-
-            listDao.updateList(updatedList)
-            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -110,7 +88,30 @@ class SavedListRepository @Inject constructor(
                 IllegalArgumentException("List not found")
             )
 
+            listItemDao.orphanItem(listId, ItemType.LIST)
             listDao.deleteList(list)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Updates a list.
+     */
+    suspend fun updateList(listId: String, name: String? = null, description: String? = null): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val existingList = listDao.getList(listId) ?: return@withContext Result.failure(
+                IllegalArgumentException("List not found")
+            )
+
+            val updatedList = existingList.copy(
+                name = name ?: existingList.name,
+                description = description ?: existingList.description,
+                updatedAt = System.currentTimeMillis()
+            )
+
+            listDao.updateList(updatedList)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -177,13 +178,6 @@ class SavedListRepository @Inject constructor(
     }
 
     /**
-     * Gets child lists of a parent list.
-     */
-    fun getChildLists(parentListId: String): Flow<List<SavedList>> {
-        return listDao.getChildLists(parentListId)
-    }
-
-    /**
      * Adds an item to a list.
      */
     suspend fun addItemToList(
@@ -215,28 +209,6 @@ class SavedListRepository @Inject constructor(
     }
 
     /**
-     * Removes an item from a list.
-     */
-    suspend fun removeItemFromList(
-        listId: String, itemId: String, itemType: ItemType
-    ): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val listItem = ListItem(
-                listId = listId,
-                itemId = itemId,
-                itemType = itemType,
-                position = 0, // Not used in deletion
-                addedAt = 0 // Not used in deletion
-            )
-
-            listItemDao.deleteItem(listItem)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
      * Reorders items in a list.
      */
     suspend fun reorderItems(
@@ -251,57 +223,63 @@ class SavedListRepository @Inject constructor(
     }
 
     /**
-     * Gets the hierarchical content of a list for UI display.
-     * Returns a list of ListContent items (either PlaceContent or ListContentItem).
+     * Gets the items in a list as ListItems.
      */
-    suspend fun getListContent(listId: String): Result<List<ListContent>> =
+    suspend fun getItemsInList(listId: String): Result<List<ListItem>> =
         withContext(Dispatchers.IO) {
             try {
                 val items = listItemDao.getItemsInList(listId)
-                val contentList = mutableListOf<ListContent>()
-
-                for (item in items) {
-                    when (item.itemType) {
-                        ItemType.PLACE -> {
-                            val savedPlace = placeDao.getPlace(item.itemId)
-                            if (savedPlace != null) {
-                                contentList.add(
-                                    PlaceContent(
-                                        id = savedPlace.id,
-                                        name = savedPlace.customName ?: savedPlace.name,
-                                        type = savedPlace.type,
-                                        icon = savedPlace.icon,
-                                        customName = savedPlace.customName,
-                                        customDescription = savedPlace.customDescription,
-                                        position = item.position
-                                    )
-                                )
-                            }
-                        }
-
-                        ItemType.LIST -> {
-                            val savedList = listDao.getList(item.itemId)
-                            if (savedList != null) {
-                                contentList.add(
-                                    ListContentItem(
-                                        id = savedList.id,
-                                        name = savedList.name,
-                                        description = savedList.description,
-                                        isCollapsed = savedList.isCollapsed,
-                                        position = item.position
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Sort by position
-                contentList.sortBy { it.position }
-                Result.success(contentList)
+                Result.success(items)
             } catch (e: Exception) {
                 Result.failure(e)
             }
+        }
+
+    /**
+     * Gets the item IDs in a list as a Flow.
+     */
+    fun getItemIdsInListAsFlow(listId: String): Flow<Set<String>> =
+        listItemDao.getItemsInListAsFlow(listId).map { items ->
+            items.map { it.itemId }.toSet()
+        }
+
+    /**
+     * Gets the hierarchical content of a list for UI display.
+     * Returns a flow of list of ListContent items (either PlaceContent or ListContentItem).
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun getListContent(listId: String): Flow<List<Flow<ListContent?>>> =
+        listItemDao.getItemsInListAsFlow(listId).mapLatest { items ->
+            val flows = items.map { item ->
+                when (item.itemType) {
+                    ItemType.PLACE -> placeDao.getPlaceAsFlow(item.itemId).filterNotNull()
+                        .map { savedPlace ->
+                            PlaceContent(
+                                id = savedPlace.id,
+                                name = savedPlace.customName ?: savedPlace.name,
+                                type = savedPlace.type,
+                                icon = savedPlace.icon,
+                                customName = savedPlace.customName,
+                                customDescription = savedPlace.customDescription,
+                                isPinned = savedPlace.isPinned,
+                                position = item.position
+                            )
+                        }
+
+                    ItemType.LIST -> listDao.getListAsFlow(item.itemId).map { savedList ->
+                        savedList?.let {
+                            ListContentItem(
+                                id = it.id,
+                                name = it.name,
+                                description = it.description,
+                                isCollapsed = it.isCollapsed,
+                                position = item.position
+                            )
+                        }
+                    }
+                }
+            }
+            return@mapLatest flows
         }
 
     companion object {

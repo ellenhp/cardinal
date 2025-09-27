@@ -54,6 +54,11 @@ class HomeViewModel @Inject constructor(
     private val savedPlaceRepository: SavedPlaceRepository,
 ) : ViewModel() {
 
+    // Whether the home screen is in a search state.
+    private val _searchExpanded = MutableStateFlow(false)
+
+    val searchExpanded: Flow<Boolean> = _searchExpanded
+
     // Search query flow for debouncing
     private val _searchQueryFlow = MutableStateFlow("")
     private val searchQueryFlow: StateFlow<String> = _searchQueryFlow.asStateFlow()
@@ -117,5 +122,13 @@ class HomeViewModel @Inject constructor(
         return placeDao.getAllPlacesAsFlow().map { placeList ->
             placeList.filter { it.isPinned }.map { savedPlaceRepository.toPlace(it) }
         }
+    }
+
+    fun collapseSearch() {
+        _searchExpanded.value = false
+    }
+
+    fun expandSearch() {
+        _searchExpanded.value = true
     }
 }

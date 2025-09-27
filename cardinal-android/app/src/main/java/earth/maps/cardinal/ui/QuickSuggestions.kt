@@ -53,8 +53,6 @@ fun QuickSuggestions(
     savedPlaces: List<Place>,
     onSavedPlaceSelected: (Place) -> Unit,
     isGettingLocation: Boolean,
-    hasLocationPermission: Boolean,
-    onRequestLocationPermission: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val addressFormatter = remember { AddressFormatter() }
@@ -65,7 +63,9 @@ fun QuickSuggestions(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = dimensionResource(dimen.padding))
-                    .clickable { onMyLocationSelected() },
+                    .clickable {
+                        onMyLocationSelected()
+                    },
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Row(

@@ -51,11 +51,13 @@
     <string name="close_button">Close</string>
 
     <!-- Manage Places Dialog -->
-    <string name="edit_place">Edit Place</string>
-    <string name="place_name">Place Name</string>
-    <string name="place_description">Place Description</string>
+    <string name="edit_place">Edit place</string>
+    <string name="edit_list">Edit list</string>
+    <string name="edit">Edit</string>
+    <string name="place_name">Place name</string>
+    <string name="place_description">Place description</string>
     <string name="save_button">Save</string>
-    <string name="pin_place">Pin Place</string>
+    <string name="pin_place">Pin place</string>
 
     <!-- Offline Areas -->
     <string name="offline_areas_title">Manage Offline Map Downloads</string>
@@ -200,4 +202,21 @@
     <string name="done">Done</string>
     <string name="are_you_sure_you_want_to_delete_this_saved_place">Are you sure you want to delete this saved place?</string>
     <string name="add_new_list">Add new list</string>
+    <string name="public_transportation_nearby">Public transportation nearby</string>
+    <string name="points_of_interest_nearby">Points of interest nearby</string>
+    <string name="settings_menu">Settings menu</string>
+    <string name="search">Search</string>
+    <string name="open_list">Open list</string>
+    <string name="saved_lists">Saved lists</string>
+    <string name="new_list">New list</string>
+    <string name="select_all">Select all</string>
+    <string name="deselect_all">Deselect all</string>
+    <string name="delete_confirmation_message">Are you sure you want to delete %1$d selected item(s)? This action cannot be undone.</string>
+    <string name="list_name">List name</string>
+    <string name="paste">Paste</string>
+    <string name="cut">Cut</string>
+    <string name="in_clipboard">in clipboard</string>
+    <string name="name">Name</string>
+    <string name="description">Description</string>
+    <string name="save">Save</string>
 </resources>

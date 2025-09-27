@@ -20,17 +20,18 @@ import android.annotation.SuppressLint
 import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -46,16 +47,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FlexibleBottomAppBar
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -65,7 +65,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
@@ -91,6 +90,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
@@ -110,8 +110,8 @@ import earth.maps.cardinal.ui.settings.AdvancedSettingsScreen
 import earth.maps.cardinal.ui.settings.PrivacySettingsScreen
 import earth.maps.cardinal.viewmodel.DirectionsViewModel
 import earth.maps.cardinal.viewmodel.HomeViewModel
-import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import earth.maps.cardinal.viewmodel.MapViewModel
+import earth.maps.cardinal.viewmodel.NearbyViewModel
 import earth.maps.cardinal.viewmodel.OfflineAreasViewModel
 import earth.maps.cardinal.viewmodel.PlaceCardViewModel
 import earth.maps.cardinal.viewmodel.SettingsViewModel
@@ -122,6 +122,8 @@ import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
 import uniffi.ferrostar.Route
+
+private val TOOLBAR_HEIGHT_DP = 56.dp
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -142,6 +144,8 @@ fun AppContent(
     val density = LocalDensity.current
     var selectedOfflineArea by remember { mutableStateOf<OfflineArea?>(null) }
 
+    var showToolbar by remember { mutableStateOf(true) }
+
     // Route state for displaying on map
     var currentRoute by remember { mutableStateOf<Route?>(null) }
 
@@ -153,6 +157,9 @@ fun AppContent(
     var screenWidthDp by remember { mutableStateOf(0.dp) }
     var peekHeight by remember { mutableStateOf(0.dp) }
 
+    val homeViewModel: HomeViewModel = hiltViewModel()
+    val transitViewModel: TransitScreenViewModel = hiltViewModel()
+    val nearbyViewModel: NearbyViewModel = hiltViewModel()
 
     // This is used by nav destinations to determine if it is appropriate of them to update peekHeight.
     val topOfBackStack by navController.currentBackStackEntryAsState()
@@ -233,13 +240,15 @@ fun AppContent(
     }
 
     NavHost(
-        navController = navController, startDestination = Screen.HOME
+        navController = navController, startDestination = Screen.HOME_SEARCH
     ) {
         composable(
-            Screen.HOME,
+            Screen.HOME_SEARCH,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            showToolbar = true
             HomeScreenComposable(
+                viewModel = homeViewModel,
                 mapPins = mapPins,
                 peekHeight = peekHeight,
                 navController = navController,
@@ -255,9 +264,66 @@ fun AppContent(
         }
 
         composable(
+            Screen.NEARBY_POI,
+            enterTransition = { slideInVertically(initialOffsetY = { it }) },
+            exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            showToolbar = true
+
+            val bottomSheetState = rememberBottomSheetState(
+                initialValue = BottomSheetValue.Collapsed
+            )
+            val scaffoldState =
+                rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
+
+            CardinalAppScaffold(
+                scaffoldState = scaffoldState, peekHeight = screenHeightDp / 3,
+                content = {
+                    NearbyScreenContent(viewModel = nearbyViewModel, onPlaceSelected = {
+                        NavigationUtils.navigate(navController, Screen.PlaceCard(it))
+                    })
+                },
+                fabHeightCallback = {
+                    if (topOfBackStack == backStackEntry) {
+                        fabHeight = it
+                    }
+                },
+            )
+
+        }
+
+        composable(
+            Screen.NEARBY_TRANSIT,
+            enterTransition = { slideInVertically(initialOffsetY = { it }) },
+            exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            showToolbar = true
+
+            val bottomSheetState = rememberBottomSheetState(
+                initialValue = BottomSheetValue.Collapsed
+            )
+            val scaffoldState =
+                rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
+
+            CardinalAppScaffold(
+                scaffoldState = scaffoldState, peekHeight = screenHeightDp / 3,
+                content = {
+                    TransitScreenContent(viewModel = transitViewModel, onRouteClicked = {
+                        NavigationUtils.navigate(navController, Screen.PlaceCard(it))
+                    })
+                },
+                fabHeightCallback = {
+                    if (topOfBackStack == backStackEntry) {
+                        fabHeight = it
+                    }
+                },
+            )
+        }
+
+        composable(
             Screen.PLACE_CARD,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            showToolbar = false
+
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
             )
@@ -285,7 +351,7 @@ fun AppContent(
 
                     val previousBackStackEntry = navController.previousBackStackEntry
                     val shouldFlyToPoi =
-                        previousBackStackEntry?.destination?.route?.startsWith(Screen.HOME) == true
+                        previousBackStackEntry?.destination?.route?.startsWith(Screen.DIRECTIONS) != true
 
                     // Only animate if we're entering from the home screen, as opposed to e.g. popping from the
                     // settings screen. This is brittle and may break if we end up with more entry points.
@@ -308,7 +374,7 @@ fun AppContent(
                     }
                 }
 
-                CardinalScaffold(
+                CardinalAppScaffold(
                     scaffoldState = scaffoldState, peekHeight = peekHeight,
                     content = {
                         PlaceCardScreen(place = place, viewModel = viewModel, onBack = {
@@ -323,6 +389,7 @@ fun AppContent(
                             }
                         })
                     },
+                    showToolbar = false,
                     fabHeightCallback = {
                         if (topOfBackStack == backStackEntry) {
                             fabHeight = it
@@ -336,6 +403,7 @@ fun AppContent(
             Screen.OFFLINE_AREAS,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            showToolbar = true
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
             )
@@ -366,7 +434,7 @@ fun AppContent(
             }
 
             currentViewport?.let { visibleRegion ->
-                CardinalScaffold(
+                CardinalAppScaffold(
                     scaffoldState = scaffoldState,
                     peekHeight = peekHeight,
                     fabHeightCallback = {
@@ -411,12 +479,12 @@ fun AppContent(
 
         composable(
             Screen.SETTINGS,
-            // These transitions differ from the rest of them because it feels unnatural for the screen to enter from the end.
-            enterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
             exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
-            popExitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
+            showToolbar = true
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -449,6 +517,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
+            showToolbar = true
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -486,6 +555,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
+            showToolbar = true
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -516,6 +586,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
+            showToolbar = true
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -546,6 +617,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
+            showToolbar = true
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
                 // The routing profiles screen is always fully expanded.
@@ -596,9 +668,51 @@ fun AppContent(
         }
 
         composable(
+            Screen.MANAGE_PLACES,
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
+        ) { backStackEntry ->
+            showToolbar = true
+            LaunchedEffect(key1 = Unit) {
+                mapPins.clear()
+            }
+
+            val snackBarHostState = remember { SnackbarHostState() }
+
+            val listIdRaw = backStackEntry.arguments?.getString("listId")
+            // The screen is set up to take a real value, or null. What we end up with at this point (sometimes?)
+            // is an empty string instead of null.
+            val listId = if (listIdRaw.isNullOrBlank()) {
+                null
+            } else {
+                listIdRaw
+            }
+            val parentsGson = backStackEntry.arguments?.getString("parents")?.let { Uri.decode(it) }
+            val parents: List<String> =
+                parentsGson?.let { Gson().fromJson(it, object : TypeToken<List<String>>() {}.type) }
+                    ?: emptyList()
+            Scaffold(
+                contentWindowInsets = WindowInsets.safeDrawing,
+                snackbarHost = { SnackbarHost(snackBarHostState) },
+                content = { padding ->
+                    Box(modifier = Modifier.padding(padding)) {
+                        ManagePlacesScreen(
+                            paddingValues = PaddingValues(bottom = TOOLBAR_HEIGHT_DP),
+                            navController = navController,
+                            listId = listId,
+                            parents = parents,
+                        )
+                    }
+                })
+        }
+
+        composable(
             Screen.DIRECTIONS,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            showToolbar = false
             val bottomSheetState =
                 rememberBottomSheetState(initialValue = BottomSheetValue.Collapsed)
             val scaffoldState =
@@ -651,7 +765,7 @@ fun AppContent(
                 }
             }
 
-            CardinalScaffold(
+            CardinalAppScaffold(
                 scaffoldState = scaffoldState, peekHeight = peekHeight,
                 content = {
                     DirectionsScreen(
@@ -673,6 +787,7 @@ fun AppContent(
                         appPreferences = appPreferenceRepository
                     )
                 },
+                showToolbar = false,
                 fabHeightCallback = {
                     if (topOfBackStack == backStackEntry) {
                         fabHeight = it
@@ -680,7 +795,9 @@ fun AppContent(
                 },
             )
         }
+
         composable(Screen.TURN_BY_TURN) { backStackEntry ->
+            showToolbar = false
             val routeId = backStackEntry.arguments?.getString("routeId")
             val routingModeJson = backStackEntry.arguments?.getString("routingMode")
 
@@ -706,32 +823,104 @@ fun AppContent(
                 )
             }
         }
-
     }
-}
 
-enum class HomeBottomSheetState(val value: Int, val label: Int) {
-    SAVED(0, string.favorites_screen), NEARBY(1, string.nearby_screen), TRANSIT(
-        2,
-        string.transit_screen
-    );
-
-    companion object {
-        fun fromValue(value: Int): HomeBottomSheetState {
-            return when (value) {
-                0 -> SAVED
-                1 -> NEARBY
-                2 -> TRANSIT
-                else -> SAVED
-            }
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Animated toolbar positioned below the scaffold
+        AnimatedVisibility(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            visible = showToolbar,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(300)
+            ),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(300)
+            ),
+        ) {
+            CardinalToolbar(navController, onSearchDoublePress = { homeViewModel.expandSearch() })
         }
-
-        const val COUNT = 3
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun CardinalToolbar(
+    navController: NavController,
+    onSearchDoublePress: (() -> Unit)? = null
+) {
+    FlexibleBottomAppBar {
+        IconButton(onClick = {
+            NavigationUtils.navigate(
+                navController,
+                screen = Screen.ManagePlaces(null),
+                popUpToHome = true
+            )
+        }) {
+            Icon(
+                painter = painterResource(drawable.ic_star), contentDescription = stringResource(
+                    string.favorites_screen
+                )
+            )
+        }
+        IconButton(onClick = {
+            NavigationUtils.navigate(navController, screen = Screen.NearbyPoi, popUpToHome = true)
+        }) {
+            Icon(
+                painter = painterResource(drawable.ic_nearby),
+                contentDescription = stringResource(string.points_of_interest_nearby)
+            )
+        }
+        FilledIconButton(onClick = {
+            if (navController.currentDestination?.route == Screen.HOME_SEARCH) {
+                onSearchDoublePress?.invoke()
+            } else {
+                NavigationUtils.navigate(
+                    navController,
+                    screen = Screen.HomeSearch,
+                    popUpToHome = true
+                )
+            }
+        }) {
+            Icon(
+                painter = painterResource(drawable.ic_search),
+                contentDescription = stringResource(string.search)
+            )
+        }
+        IconButton(onClick = {
+            NavigationUtils.navigate(
+                navController,
+                screen = Screen.NearbyTransit,
+                popUpToHome = true
+            )
+        }) {
+            Icon(
+                painter = painterResource(drawable.ic_bus_railway),
+                contentDescription = stringResource(
+                    string.public_transportation_nearby
+                )
+            )
+        }
+        IconButton(onClick = {
+            NavigationUtils.navigate(
+                navController,
+                screen = Screen.OfflineAreas,
+                popUpToHome = true
+            )
+        }) {
+            Icon(
+                painter = painterResource(drawable.cloud_download_24dp),
+                contentDescription = stringResource(string.directions)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun HomeScreenComposable(
+    viewModel: HomeViewModel,
     mapPins: SnapshotStateList<Position>,
     peekHeight: Dp,
     navController: NavHostController,
@@ -741,32 +930,23 @@ private fun HomeScreenComposable(
     backStackEntry: NavBackStackEntry,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var homeInSearchScreen by rememberSaveable { mutableStateOf(false) }
-    var homeBottomSheetState by rememberSaveable { mutableStateOf(HomeBottomSheetState.SAVED) }
+    val searchExpanded: Boolean? by viewModel.searchExpanded.collectAsState(null)
     val bottomSheetState = rememberBottomSheetState(
         initialValue = BottomSheetValue.Collapsed
     )
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
 
-    val viewModel: HomeViewModel = hiltViewModel()
-    val transitScreenViewModel = hiltViewModel<TransitScreenViewModel>()
-    val managePlacesViewModel: ManagePlacesViewModel = hiltViewModel()
     val focusManager = LocalFocusManager.current
     val imeController = LocalSoftwareKeyboardController.current
 
-    var showManagePlacesDialog by remember { mutableStateOf(false) }
-
-    if (bottomSheetState.isExpanded) {
+    if (searchExpanded == true) {
         BackHandler {
-            homeInSearchScreen = false
-            coroutineScope.launch {
-                bottomSheetState.collapse()
-            }
+            viewModel.collapseSearch()
         }
     }
 
-    LaunchedEffect(homeInSearchScreen) {
-        if (homeInSearchScreen) {
+    LaunchedEffect(searchExpanded) {
+        if (searchExpanded == true) {
             bottomSheetState.expand()
         } else {
             imeController?.hide()
@@ -779,151 +959,96 @@ private fun HomeScreenComposable(
         mapPins.clear()
     }
 
-    CardinalScaffold(
+    CardinalAppScaffold(
         scaffoldState = scaffoldState,
         peekHeight = peekHeight,
-        sheetGesturesEnabled = !homeInSearchScreen,
         fabHeightCallback = {
             if (topOfBackStack == backStackEntry) {
                 onFabHeightChange(it)
             }
         },
-        toolbarContent = if (!homeInSearchScreen) {
-            {
-                val prev = remember(homeBottomSheetState) {
-                    HomeBottomSheetState.fromValue((homeBottomSheetState.value + HomeBottomSheetState.COUNT - 1) % HomeBottomSheetState.COUNT)
-                }
-                val next = remember(homeBottomSheetState) {
-                    HomeBottomSheetState.fromValue((homeBottomSheetState.value + 1) % HomeBottomSheetState.COUNT)
-                }
-                OutlinedButton(onClick = {
-                    homeBottomSheetState = prev
-                }) {
-                    Icon(
-                        painter = painterResource(drawable.ic_arrow_back),
-                        contentDescription = stringResource(string.content_description_previous_page)
-                    )
-                    Text(
-                        modifier = Modifier.padding(start = 4.dp), text = stringResource(prev.label)
-                    )
-                }
-                when (homeBottomSheetState) {
-                    HomeBottomSheetState.SAVED -> {
-                        IconButton(onClick = {
-                            showManagePlacesDialog = true
-                        }) {
-                            Icon(
-                                painter = painterResource(drawable.ic_edit),
-                                contentDescription = stringResource(string.content_description_edit_saved_places)
-                            )
-                        }
-                    }
-
-                    HomeBottomSheetState.NEARBY -> {
-                    }
-
-                    HomeBottomSheetState.TRANSIT -> {
-
-                    }
-                }
-                OutlinedButton(onClick = {
-                    homeBottomSheetState = next
-                }) {
-                    Text(
-                        modifier = Modifier.padding(end = 4.dp), text = stringResource(next.label)
-                    )
-                    Icon(
-                        painter = painterResource(drawable.ic_arrow_forward),
-                        contentDescription = stringResource(string.content_description_next_page)
-                    )
-                }
-            }
-        } else {
-            null
-        },
         content = {
             HomeScreen(
                 viewModel = viewModel,
-                showManagePlacesDialog = showManagePlacesDialog,
-                transitScreenViewModel = transitScreenViewModel,
-                homeBottomSheetState = homeBottomSheetState,
-                managePlacesViewModel = managePlacesViewModel,
                 onPlaceSelected = { place ->
+                    imeController?.hide()
+
+                    // We are intentionally not collapsing search here, but we do set the bottom
+                    // sheet state to collapsed to prevent jank on popping back to this screen.
                     coroutineScope.launch {
-                        imeController?.hide()
-                        // Collapse the bottom sheet but don't touch homeExpanded.
-                        scaffoldState.bottomSheetState.collapse()
+                        // This should happen before we navigate away otherwise we get a race condition
+                        // between setting the anchors and collapsing the sheet. Unfortunately, it
+                        // doesn't return until the sheet is fully collapsed, so we queue the navigation
+                        // after this and hope for the best.
+                        bottomSheetState.collapse()
                     }
-                    NavigationUtils.navigate(navController, Screen.PlaceCard(place))
+                    coroutineScope.launch {
+                        NavigationUtils.navigate(navController, Screen.PlaceCard(place))
+                    }
                 },
                 onPeekHeightChange = {
                     if (topOfBackStack == backStackEntry) {
                         onPeekHeightChange(it)
                     }
                 },
-                homeInSearchScreen = homeInSearchScreen,
+                homeInSearchScreen = searchExpanded == true,
                 onSearchFocusChange = {
-                    homeInSearchScreen = it
+                    if (it) {
+                        viewModel.expandSearch()
+                    }
                 },
-                onDismissShowPlaces = {
-                    showManagePlacesDialog = false
-                })
+            )
         })
 }
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun CardinalScaffold(
+fun CardinalAppScaffold(
     scaffoldState: BottomSheetScaffoldState,
     peekHeight: Dp,
     content: @Composable () -> Unit,
     fabHeightCallback: (Dp) -> Unit,
-    toolbarContent: (@Composable () -> Unit)? = null,
-    sheetGesturesEnabled: Boolean = true
+    appBar: (@Composable () -> Unit)? = null,
+    showToolbar: Boolean = true,
 ) {
     val density = LocalDensity.current
-
     val snackBarHostState = remember { SnackbarHostState() }
     val bottomInset = with(density) {
         WindowInsets.safeContent.getBottom(density).toDp()
     }
     val handleHeight = 48.dp
 
-    val toolbar: (@Composable ColumnScope.() -> Unit)? = toolbarContent?.let {
-        {
-            FlexibleBottomAppBar {
-                toolbarContent()
-            }
-        }
-    }
+    // If toolbar is visible, add padding for it below the scaffold
+    val bottomPadding = if (showToolbar) TOOLBAR_HEIGHT_DP else 0.dp
 
-    BottomSheetScaffold(
-        scaffoldState = scaffoldState,
-        sheetGesturesEnabled = sheetGesturesEnabled,
-        sheetPeekHeight = peekHeight + bottomInset + handleHeight,
-        snackbarHost = { SnackbarHost(snackBarHostState) },
-        sheetBackgroundColor = BottomSheetDefaults.ContainerColor,
-        dockedToolbar = toolbar,
-        sheetContent = {
-            Column(
-                modifier = Modifier.onGloballyPositioned {
-                    fabHeightCallback(with(density) { it.positionInRoot().y.toDp() })
-                }) {
-                Box(
-                    modifier = Modifier
-                        .defaultMinSize(minHeight = handleHeight)
-                        .align(Alignment.CenterHorizontally)
-                ) {
-                    if (sheetGesturesEnabled) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        BottomSheetScaffold(
+            scaffoldState = scaffoldState,
+            sheetPeekHeight = peekHeight + bottomInset + handleHeight,
+            bottomPadding = bottomPadding,
+            snackbarHost = { SnackbarHost(snackBarHostState) },
+            sheetBackgroundColor = BottomSheetDefaults.ContainerColor,
+            topBar = appBar,
+            sheetContent = {
+                Column(
+                    modifier = Modifier.onGloballyPositioned {
+                        fabHeightCallback(with(density) { it.positionInRoot().y.toDp() })
+                    }) {
+                    Box(
+                        modifier = Modifier
+                            .defaultMinSize(minHeight = handleHeight)
+                            .align(Alignment.CenterHorizontally)
+                    ) {
                         BottomSheetDefaults.DragHandle()
                     }
+                    content()
                 }
-                content()
-            }
-            Spacer(modifier = Modifier.height(bottomInset))
-        },
-        content = {})
+                Spacer(modifier = Modifier.height(bottomInset))
+            },
+            content = {})
+    }
+
 }
 
 @Composable

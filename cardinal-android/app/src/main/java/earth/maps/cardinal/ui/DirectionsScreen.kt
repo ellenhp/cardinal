@@ -109,6 +109,8 @@ fun DirectionsScreen(
     // Get route result from ViewModel
     val routeState = viewModel.routeState
 
+    val savedPlaces by viewModel.savedPlaces.collectAsState(initial = emptyList())
+
     val coroutineScope = rememberCoroutineScope()
 
     // Auto-retry location request when permissions are granted
@@ -369,7 +371,7 @@ fun DirectionsScreen(
                             onRequestLocationPermission()
                         }
                     },
-                    savedPlaces = viewModel.savedPlaces.value,
+                    savedPlaces = savedPlaces,
                     onSavedPlaceSelected = { place ->
                         // Update the appropriate place based on which field is focused
                         if (fieldFocusState == FieldFocusState.FROM) {
@@ -381,8 +383,6 @@ fun DirectionsScreen(
                         fieldFocusState = FieldFocusState.NONE
                     },
                     isGettingLocation = viewModel.isGettingLocation,
-                    hasLocationPermission = hasLocationPermission,
-                    onRequestLocationPermission = onRequestLocationPermission,
                     modifier = Modifier.fillMaxWidth()
                 )
             } else {

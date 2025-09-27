@@ -27,8 +27,11 @@ import earth.maps.cardinal.data.RoutingMode
  */
 sealed class Screen(val route: String) {
     companion object {
-        const val HOME = "home"
+        const val HOME_SEARCH = "home"
+        const val NEARBY_POI = "nearby_poi"
+        const val NEARBY_TRANSIT = "nearby_transit"
         const val PLACE_CARD = "place_card?place={place}"
+        const val MANAGE_PLACES = "manage_places?listId={listId}&parents={parents}"
         const val OFFLINE_AREAS = "offline_areas"
         const val SETTINGS = "settings"
         const val OFFLINE_SETTINGS = "offline_settings"
@@ -40,9 +43,16 @@ sealed class Screen(val route: String) {
         const val TURN_BY_TURN = "turn_by_turn?routeId={routeId}&routingMode={routingMode}"
     }
 
-    object Home : Screen(HOME)
+    object HomeSearch : Screen(HOME_SEARCH)
+
+    object NearbyPoi : Screen(NEARBY_POI)
+
+    object NearbyTransit : Screen(NEARBY_TRANSIT)
 
     data class PlaceCard(val place: Place) : Screen(PLACE_CARD)
+
+    data class ManagePlaces(val listId: String? = null, val parents: List<String> = emptyList()) :
+        Screen(MANAGE_PLACES)
 
     object OfflineAreas : Screen(OFFLINE_AREAS)
 
@@ -77,10 +87,18 @@ object NavigationUtils {
      */
     fun toRoute(screen: Screen): String {
         return when (screen) {
-            is Screen.Home -> screen.route
+            is Screen.HomeSearch -> screen.route
+            is Screen.NearbyPoi -> screen.route
+            is Screen.NearbyTransit -> screen.route
             is Screen.PlaceCard -> {
                 val placeJson = Uri.encode(gson.toJson(screen.place))
                 "place_card?place=$placeJson"
+            }
+
+            is Screen.ManagePlaces -> {
+                val listId = screen.listId?.let { Uri.encode(it) } ?: ""
+                val parents = screen.parents.let { Uri.encode(gson.toJson(it)) } ?: ""
+                "manage_places?listId=$listId&parents=$parents"
             }
 
             is Screen.OfflineAreas -> screen.route
@@ -113,9 +131,14 @@ object NavigationUtils {
         navController: NavController,
         screen: Screen,
         avoidCycles: Boolean = true,
+        popUpToHome: Boolean = false,
     ) {
         navController.navigate(toRoute(screen)) {
-            if (avoidCycles) {
+            if (popUpToHome) {
+                popUpTo(Screen.HOME_SEARCH) {
+                    inclusive = screen.route == Screen.HOME_SEARCH
+                }
+            } else if (avoidCycles) {
                 popUpTo(screen.route) {
                     inclusive = true
                 }
