@@ -95,6 +95,7 @@ fun TransitScreenContent(
     val isLoading = viewModel.isLoading.collectAsState()
     val didLoadingFail = viewModel.didLoadingFail.collectAsState()
     val scrollState = rememberScrollState()
+    val departures by viewModel.departures.collectAsState(emptyList())
 
     LaunchedEffect(secondsSinceStart) {
         if (secondsSinceStart % 30 == 0 && secondsSinceStart > 0) {
@@ -146,7 +147,7 @@ fun TransitScreenContent(
                     .padding(16.dp),
                 text = stringResource(string.failed_to_load_departures)
             )
-        } else if (isLoading.value && viewModel.departures.value.isEmpty()) {
+        } else if (isLoading.value && departures.isEmpty()) {
             Text(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -159,7 +160,7 @@ fun TransitScreenContent(
                     .fillMaxWidth()
                     .padding(16.dp)
             )
-        } else if (viewModel.departures.value.isEmpty()) {
+        } else if (departures.isEmpty()) {
             Text(
                 text = stringResource(string.no_upcoming_departures),
                 style = MaterialTheme.typography.bodyMedium,
@@ -168,7 +169,7 @@ fun TransitScreenContent(
         } else {
             // List of departures grouped by route and headsign
             TransitScreenRouteDepartures(
-                stopTimes = viewModel.departures.value,
+                stopTimes = departures,
                 onRouteClicked = onRouteClicked,
             )
         }
@@ -204,7 +205,7 @@ fun TransitScreenRouteDepartures(
         val headsigns = departuresByHeadsign.keys.toList().sorted()
 
         val transitStopString = stringResource(string.transit_stop)
-        val places = remember {
+        val places = remember(departures) {
             departuresByHeadsign.map { (key, value) ->
                 key to value.firstOrNull()?.let { departure ->
                     Place(
