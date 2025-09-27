@@ -123,7 +123,7 @@ import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
 import uniffi.ferrostar.Route
 
-private val TOOLBAR_HEIGHT_DP = 56.dp
+val TOOLBAR_HEIGHT_DP = 64.dp
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -149,9 +149,6 @@ fun AppContent(
     // Route state for displaying on map
     var currentRoute by remember { mutableStateOf<Route?>(null) }
 
-    val bottomSheetState = rememberBottomSheetState(
-        initialValue = BottomSheetValue.Collapsed
-    )
     val droppedPinName = stringResource(string.dropped_pin)
     var screenHeightDp by remember { mutableStateOf(0.dp) }
     var screenWidthDp by remember { mutableStateOf(0.dp) }
@@ -485,29 +482,10 @@ fun AppContent(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
             showToolbar = true
-            LaunchedEffect(key1 = Unit) {
-                mapPins.clear()
-            }
-
-            val scaffoldState = rememberBottomSheetScaffoldState()
-
-            LaunchedEffect(key1 = Unit) {
-                // The settings screen is always fully expanded.
-                coroutineScope.launch {
-                    scaffoldState.bottomSheetState.expand()
-                }
-            }
-
-            Scaffold(
-                snackbarHost = { SnackbarHost(remember { SnackbarHostState() }) },
-                content = { padding ->
-                    Box(modifier = Modifier.padding(padding)) {
-                        SettingsScreen(
-                            navController = navController,
-                            viewModel = hiltViewModel(),
-                        )
-                    }
-                })
+            SettingsScreen(
+                navController = navController,
+                viewModel = hiltViewModel(),
+            )
         }
 
         composable(
@@ -518,34 +496,16 @@ fun AppContent(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
             showToolbar = true
-            LaunchedEffect(key1 = Unit) {
-                mapPins.clear()
-            }
-
-            val scaffoldState = rememberBottomSheetScaffoldState()
-            val snackBarHostState = remember { SnackbarHostState() }
-
-            LaunchedEffect(key1 = Unit) {
-                // The privacy settings screen is always fully expanded.
-                coroutineScope.launch {
-                    scaffoldState.bottomSheetState.expand()
-                }
-            }
-
             val viewModel: SettingsViewModel = hiltViewModel()
-            Scaffold(snackbarHost = { SnackbarHost(snackBarHostState) }, content = { padding ->
-                Box(modifier = Modifier.padding(padding)) {
-                    PrivacySettingsScreen(
-                        viewModel = viewModel,
-                        onDismiss = { navController.popBackStack() },
-                        onNavigateToOfflineAreas = {
-                            NavigationUtils.navigate(
-                                navController, Screen.OfflineAreas
-                            )
-                        },
+            PrivacySettingsScreen(
+                viewModel = viewModel,
+                onDismiss = { navController.popBackStack() },
+                onNavigateToOfflineAreas = {
+                    NavigationUtils.navigate(
+                        navController, Screen.OfflineAreas
                     )
-                }
-            })
+                },
+            )
         }
 
         composable(
@@ -556,27 +516,10 @@ fun AppContent(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
             showToolbar = true
-            LaunchedEffect(key1 = Unit) {
-                mapPins.clear()
-            }
-
-            val scaffoldState = rememberBottomSheetScaffoldState()
-            val snackBarHostState = remember { SnackbarHostState() }
-
-            LaunchedEffect(key1 = Unit) {
-                // The accessibility settings screen is always fully expanded.
-                coroutineScope.launch {
-                    scaffoldState.bottomSheetState.expand()
-                }
-            }
-
             val viewModel: SettingsViewModel = hiltViewModel()
-            Scaffold(snackbarHost = { SnackbarHost(snackBarHostState) }, content = { padding ->
-                Box(modifier = Modifier.padding(padding)) {
-                    AccessibilitySettingsScreen(
-                        viewModel = viewModel, onDismiss = { navController.popBackStack() })
-                }
-            })
+            AccessibilitySettingsScreen(
+                viewModel = viewModel, onDismiss = { navController.popBackStack() })
+
         }
 
         composable(
@@ -587,27 +530,10 @@ fun AppContent(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
             showToolbar = true
-            LaunchedEffect(key1 = Unit) {
-                mapPins.clear()
-            }
-
-            val scaffoldState = rememberBottomSheetScaffoldState()
-            val snackBarHostState = remember { SnackbarHostState() }
-
-            LaunchedEffect(key1 = Unit) {
-                // The advanced settings screen is always fully expanded.
-                coroutineScope.launch {
-                    scaffoldState.bottomSheetState.expand()
-                }
-            }
-
             val viewModel: SettingsViewModel = hiltViewModel()
-            Scaffold(snackbarHost = { SnackbarHost(snackBarHostState) }, content = { padding ->
-                Box(modifier = Modifier.padding(padding)) {
-                    AdvancedSettingsScreen(
-                        viewModel = viewModel, onDismiss = { navController.popBackStack() })
-                }
-            })
+            AdvancedSettingsScreen(
+                viewModel = viewModel
+            )
         }
 
         composable(
@@ -618,20 +544,9 @@ fun AppContent(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
             showToolbar = true
-            LaunchedEffect(key1 = Unit) {
-                mapPins.clear()
-                // The routing profiles screen is always fully expanded.
-                coroutineScope.launch {
-                    bottomSheetState.expand()
-                }
-            }
-            Scaffold(content = { padding ->
-                Box(modifier = Modifier.padding(padding)) {
-                    RoutingProfilesScreen(
-                        navController = navController
-                    )
-                }
-            })
+            RoutingProfilesScreen(
+                navController = navController
+            )
         }
 
         composable(
@@ -645,26 +560,21 @@ fun AppContent(
                 mapPins.clear()
             }
 
-            val scaffoldState = rememberBottomSheetScaffoldState()
             val snackBarHostState = remember { SnackbarHostState() }
 
-            LaunchedEffect(key1 = Unit) {
-                // The profile editor screen is always fully expanded.
-                coroutineScope.launch {
-                    scaffoldState.bottomSheetState.expand()
-                }
-            }
-
             val profileId = backStackEntry.arguments?.getString("profileId")
-            Scaffold(snackbarHost = { SnackbarHost(snackBarHostState) }, content = { padding ->
-                Box(modifier = Modifier.padding(padding)) {
-                    ProfileEditorScreen(
-                        navController = navController,
-                        profileId = profileId,
-                        snackBarHostState = snackBarHostState
-                    )
-                }
-            })
+            Scaffold(
+                snackbarHost = { SnackbarHost(snackBarHostState) },
+                contentWindowInsets = WindowInsets.safeDrawing,
+                content = { padding ->
+                    Box(modifier = Modifier.padding(padding)) {
+                        ProfileEditorScreen(
+                            navController = navController,
+                            profileId = profileId,
+                            snackBarHostState = snackBarHostState
+                        )
+                    }
+                })
         }
 
         composable(
@@ -675,11 +585,6 @@ fun AppContent(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) { backStackEntry ->
             showToolbar = true
-            LaunchedEffect(key1 = Unit) {
-                mapPins.clear()
-            }
-
-            val snackBarHostState = remember { SnackbarHostState() }
 
             val listIdRaw = backStackEntry.arguments?.getString("listId")
             // The screen is set up to take a real value, or null. What we end up with at this point (sometimes?)
@@ -693,19 +598,11 @@ fun AppContent(
             val parents: List<String> =
                 parentsGson?.let { Gson().fromJson(it, object : TypeToken<List<String>>() {}.type) }
                     ?: emptyList()
-            Scaffold(
-                contentWindowInsets = WindowInsets.safeDrawing,
-                snackbarHost = { SnackbarHost(snackBarHostState) },
-                content = { padding ->
-                    Box(modifier = Modifier.padding(padding)) {
-                        ManagePlacesScreen(
-                            paddingValues = PaddingValues(bottom = TOOLBAR_HEIGHT_DP),
-                            navController = navController,
-                            listId = listId,
-                            parents = parents,
-                        )
-                    }
-                })
+            ManagePlacesScreen(
+                navController = navController,
+                listId = listId,
+                parents = parents,
+            )
         }
 
         composable(
@@ -1009,7 +906,6 @@ fun CardinalAppScaffold(
     peekHeight: Dp,
     content: @Composable () -> Unit,
     fabHeightCallback: (Dp) -> Unit,
-    appBar: (@Composable () -> Unit)? = null,
     showToolbar: Boolean = true,
 ) {
     val density = LocalDensity.current
@@ -1025,11 +921,9 @@ fun CardinalAppScaffold(
     Box(modifier = Modifier.fillMaxSize()) {
         BottomSheetScaffold(
             scaffoldState = scaffoldState,
-            sheetPeekHeight = peekHeight + bottomInset + handleHeight,
-            bottomPadding = bottomPadding,
+            sheetPeekHeight = peekHeight + bottomInset + handleHeight + bottomPadding,
             snackbarHost = { SnackbarHost(snackBarHostState) },
             sheetBackgroundColor = BottomSheetDefaults.ContainerColor,
-            topBar = appBar,
             sheetContent = {
                 Column(
                     modifier = Modifier.onGloballyPositioned {

@@ -454,9 +454,4 @@ object BottomSheetScaffoldDefaults {
      * The default peek height used by [BottomSheetScaffold].
      */
     val SheetPeekHeight = 56.dp
-
-    /**
-     * The default docked toolbar height used by [BottomSheetScaffold].
-     */
-    val DockedToolbarHeight = 56.dp
 }
