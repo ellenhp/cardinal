@@ -20,16 +20,18 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -37,10 +39,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +51,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -82,7 +85,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun ManagePlacesScreen(
     navController: NavController,
-    paddingValues: PaddingValues,
     listId: String?,
     parents: List<String>,
 ) {
@@ -111,17 +113,14 @@ fun ManagePlacesScreen(
     }
 
     Scaffold(
-        modifier = Modifier.padding(paddingValues),
+        contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             ManagePlacesTopBar(
                 navController = navController,
                 title = currentListName ?: stringResource(string.saved_places_title_case),
                 breadcrumbNames = parents.plus(currentListName ?: ""),
-                onBackClick = { navController.popBackStack() },
-                onCloseClick = { navController.popBackStack() }
             )
-        }
-    ) { paddingValues ->
+        }) { paddingValues ->
         if (currentListContent?.isEmpty() == true) {
             Column(
                 modifier = Modifier.padding(paddingValues)
@@ -182,7 +181,10 @@ fun ManagePlacesScreen(
             Modifier
         }
         Box(
-            modifier = modifier.fillMaxSize()
+            modifier = modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(bottom = TOOLBAR_HEIGHT_DP)
         ) {
             FloatingActionButtonMenu(
                 modifier = Modifier.align(Alignment.BottomEnd),
@@ -434,92 +436,63 @@ fun ManagePlacesScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ManagePlacesTopBar(
     navController: NavController,
     title: String,
     breadcrumbNames: List<String>,
-    onBackClick: () -> Unit,
-    onCloseClick: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dimensionResource(dimen.padding)),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Back button (only if can navigate back)
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    painter = painterResource(drawable.ic_arrow_back),
-                    contentDescription = stringResource(string.back)
+    TopAppBar(
+        title = {
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Start,
                 )
-            }
-
-            // Title
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Start,
-                modifier = Modifier.weight(1f)
-            )
-
-            // Close button
-            IconButton(onClick = onCloseClick) {
-                Icon(
-                    painter = painterResource(drawable.ic_close),
-                    contentDescription = stringResource(string.close)
-                )
-            }
-        }
-
-        // Breadcrumbs
-        if (breadcrumbNames.size > 1) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = dimensionResource(dimen.padding)),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                breadcrumbNames.forEachIndexed { index, name ->
-                    if (index > 0) {
-                        Text(
-                            text = " - ", // Don't replace this with a carat or arrow without dealing with RTL layouts.
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Text(
-                        text = name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (index == breadcrumbNames.size - 1) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        modifier = if (index < breadcrumbNames.size - 1) {
-                            Modifier.clickable {
-                                // Navigate back to this level
-                                repeat(breadcrumbNames.size - 1 - index) {
-                                    navController.popBackStack()
-                                }
+                // Breadcrumbs
+                if (breadcrumbNames.size > 1) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = dimensionResource(dimen.padding)),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        breadcrumbNames.forEachIndexed { index, name ->
+                            if (index > 0) {
+                                Text(
+                                    text = " - ", // Don't replace this with a carat or arrow without dealing with RTL layouts.
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                        } else {
-                            Modifier
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (index == breadcrumbNames.size - 1) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = if (index < breadcrumbNames.size - 1) {
+                                    Modifier.clickable {
+                                        // Navigate back to this level
+                                        repeat(breadcrumbNames.size - 1 - index) {
+                                            navController.popBackStack()
+                                        }
+                                    }
+                                } else {
+                                    Modifier
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
-
-        HorizontalDivider(
-            modifier = Modifier.padding(horizontal = dimensionResource(dimen.padding)),
-            color = MaterialTheme.colorScheme.outlineVariant
-        )
-    }
+    )
 }
 
 @Composable
