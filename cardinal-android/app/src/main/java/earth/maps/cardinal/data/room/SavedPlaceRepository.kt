@@ -16,7 +16,6 @@
 
 package earth.maps.cardinal.data.room
 
-import android.util.Log
 import earth.maps.cardinal.data.Place
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -57,7 +56,6 @@ class SavedPlaceRepository @Inject constructor(
             val list = list ?: savedListRepository.getRootList().getOrNull()
 
             list?.let { list ->
-                Log.d("TAG", "adding $place to $list")
                 savedListRepository.addItemToList(
                     list.id,
                     itemId = savedPlace.id,

@@ -942,7 +942,6 @@ private fun HomeScreenComposable(
 
     if (searchExpanded == true) {
         BackHandler {
-            Log.d("TAG", "collapsing search because we got a back press")
             viewModel.collapseSearch()
         }
     }
@@ -950,9 +949,7 @@ private fun HomeScreenComposable(
     LaunchedEffect(searchExpanded) {
         if (searchExpanded == true) {
             bottomSheetState.expand()
-            Log.d("TAG", "expanding because we're in the search screen")
         } else {
-            Log.d("TAG", "collapsing and clearing focus because we're not in the search screen")
             imeController?.hide()
             focusManager.clearFocus(force = true)
             bottomSheetState.collapse()

@@ -16,7 +16,6 @@
 
 package earth.maps.cardinal.viewmodel
 
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -126,12 +125,10 @@ class HomeViewModel @Inject constructor(
     }
 
     fun collapseSearch() {
-        Log.d("TAG", "Collapsing search programmatically")
         _searchExpanded.value = false
     }
 
     fun expandSearch() {
-        Log.d("TAG", "Expanding search programmatically")
         _searchExpanded.value = true
     }
 }

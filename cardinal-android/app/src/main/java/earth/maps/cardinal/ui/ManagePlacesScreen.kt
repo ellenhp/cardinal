@@ -16,7 +16,6 @@
 
 package earth.maps.cardinal.ui
 
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -138,10 +137,6 @@ fun ManagePlacesScreen(
                         }
 
                         is ListContentItem -> {
-                            Log.d(
-                                "TAG",
-                                "thing $parents $currentListName ${parents.plus(currentListName ?: "")}"
-                            )
                             currentListId?.let { currentListId ->
                                 NavigationUtils.navigate(
                                     navController,
@@ -265,7 +260,6 @@ private fun ManagePlacesTopBar(
     onBackClick: () -> Unit,
     onCloseClick: () -> Unit
 ) {
-    Log.d("TAG", "$breadcrumbNames")
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
