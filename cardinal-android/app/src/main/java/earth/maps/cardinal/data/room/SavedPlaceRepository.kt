@@ -73,7 +73,10 @@ class SavedPlaceRepository @Inject constructor(
      * Updates a saved place.
      */
     suspend fun updatePlace(
-        placeId: String, customName: String? = null, customDescription: String? = null
+        placeId: String,
+        customName: String? = null,
+        customDescription: String? = null,
+        isPinned: Boolean? = null
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val existingPlace = placeDao.getPlace(placeId) ?: return@withContext Result.failure(
@@ -83,6 +86,7 @@ class SavedPlaceRepository @Inject constructor(
             val updatedPlace = existingPlace.copy(
                 customName = customName ?: existingPlace.customName,
                 customDescription = customDescription ?: existingPlace.customDescription,
+                isPinned = isPinned ?: existingPlace.isPinned,
                 updatedAt = System.currentTimeMillis()
             )
 

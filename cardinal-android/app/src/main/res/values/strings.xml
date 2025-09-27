@@ -51,11 +51,12 @@
     <string name="close_button">Close</string>
 
     <!-- Manage Places Dialog -->
-    <string name="edit_place">Edit Place</string>
-    <string name="place_name">Place Name</string>
-    <string name="place_description">Place Description</string>
+    <string name="edit_place">Edit place</string>
+    <string name="edit_list">Edit list</string>
+    <string name="place_name">Place name</string>
+    <string name="place_description">Place description</string>
     <string name="save_button">Save</string>
-    <string name="pin_place">Pin Place</string>
+    <string name="pin_place">Pin place</string>
 
     <!-- Offline Areas -->
     <string name="offline_areas_title">Manage Offline Map Downloads</string>
@@ -214,4 +215,7 @@
     <string name="paste">Paste</string>
     <string name="cut">Cut</string>
     <string name="in_clipboard">in clipboard</string>
+    <string name="name">Name</string>
+    <string name="description">Description</string>
+    <string name="save">Save</string>
 </resources>

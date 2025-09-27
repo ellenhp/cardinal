@@ -97,6 +97,28 @@ class SavedListRepository @Inject constructor(
     }
 
     /**
+     * Updates a list.
+     */
+    suspend fun updateList(listId: String, name: String? = null, description: String? = null): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val existingList = listDao.getList(listId) ?: return@withContext Result.failure(
+                IllegalArgumentException("List not found")
+            )
+
+            val updatedList = existingList.copy(
+                name = name ?: existingList.name,
+                description = description ?: existingList.description,
+                updatedAt = System.currentTimeMillis()
+            )
+
+            listDao.updateList(updatedList)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Gets a list by ID.
      */
     suspend fun getListById(listId: String): Result<SavedList?> = withContext(Dispatchers.IO) {

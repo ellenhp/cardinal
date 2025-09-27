@@ -56,6 +56,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,6 +76,7 @@ import earth.maps.cardinal.data.room.ListContentItem
 import earth.maps.cardinal.data.room.PlaceContent
 import earth.maps.cardinal.viewmodel.ManagePlacesViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -95,7 +97,12 @@ fun ManagePlacesScreen(
     val isAllSelected by viewModel.isAllSelected.collectAsState(initial = false)
     val showDeleteConfirmation = remember { mutableStateOf(false) }
     val showCreateListDialog = remember { mutableStateOf(false) }
+    val showEditDialog = remember { mutableStateOf(false) }
+    val editingItem = remember { mutableStateOf<ListContent?>(null) }
     var newListName by remember { mutableStateOf("") }
+    var editName by remember { mutableStateOf("") }
+    var editDescription by remember { mutableStateOf("") }
+    var editPinned by remember { mutableStateOf(false) }
     var fabMenuExpanded by remember { mutableStateOf(false) }
 
     // Initialize the view model with the listId if provided
@@ -123,6 +130,7 @@ fun ManagePlacesScreen(
             }
         }
 
+        val coroutineScope = rememberCoroutineScope()
         val currentListContent = currentListContent
         AnimatedVisibility(
             visible = currentListContent?.isNotEmpty() == true,
@@ -138,7 +146,13 @@ fun ManagePlacesScreen(
                 onItemClick = { item ->
                     when (item) {
                         is PlaceContent -> {
-                            // TODO: Should we navigate to the POI? Or edit it?
+                            coroutineScope.launch {
+                                val place = viewModel.getSavedPlace(item.id) ?: return@launch
+                                NavigationUtils.navigate(
+                                    navController,
+                                    Screen.PlaceCard(place)
+                                )
+                            }
                         }
 
                         is ListContentItem -> {
@@ -154,7 +168,8 @@ fun ManagePlacesScreen(
                             }
                         }
                     }
-                }
+                },
+                onEditClick = { editingItem.value = it; showEditDialog.value = true }
             )
         }
         val modifier = if (fabMenuExpanded) {
@@ -338,6 +353,85 @@ fun ManagePlacesScreen(
             }
         )
     }
+
+    if (showEditDialog.value) {
+        editingItem.value?.let { item ->
+            LaunchedEffect(item) {
+                when (item) {
+                    is PlaceContent -> {
+                        editName = item.name
+                        editDescription = item.customDescription ?: ""
+                        editPinned = item.isPinned
+                    }
+
+                    is ListContentItem -> {
+                        editName = item.name
+                        editDescription = item.description ?: ""
+                        editPinned = false
+                    }
+                }
+            }
+
+            val title = when (item) {
+                is PlaceContent -> stringResource(string.edit_place)
+                is ListContentItem -> stringResource(string.edit_list)
+            }
+
+            AlertDialog(
+                onDismissRequest = { showEditDialog.value = false },
+                title = { Text(title) },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = editName,
+                            onValueChange = { editName = it },
+                            label = { Text(stringResource(string.name)) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = editDescription,
+                            onValueChange = { editDescription = it },
+                            label = { Text(stringResource(string.description)) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (item is PlaceContent) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(
+                                    checked = editPinned,
+                                    onCheckedChange = { editPinned = it }
+                                )
+                                Text(stringResource(string.pin_place))
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        val name = if (editName.isBlank()) null else editName
+                        val desc = if (editDescription.isBlank()) null else editDescription
+                        when (item) {
+                            is PlaceContent -> viewModel.updatePlace(
+                                item.id,
+                                name,
+                                desc,
+                                editPinned
+                            )
+
+                            is ListContentItem -> viewModel.updateList(item.id, name, desc)
+                        }
+                        showEditDialog.value = false
+                    }) {
+                        Text(stringResource(string.save))
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = { showEditDialog.value = false }) {
+                        Text(stringResource(string.cancel))
+                    }
+                }
+            )
+        }
+    }
 }
 
 @Composable
@@ -458,6 +552,7 @@ private fun ListContentGrid(
     clipboard: Set<String>,
     selectedItems: Set<String>,
     onItemClick: (ListContent) -> Unit,
+    onEditClick: (ListContent) -> Unit,
     paddingValues: PaddingValues
 ) {
     val states = content.map {
@@ -489,6 +584,7 @@ private fun ListContentGrid(
                 isSelected = selectedItems.contains(item.id),
                 onSelectionChange = { viewModel.toggleSelection(item.id) },
                 onClick = { onItemClick(item) },
+                onEditClick = onEditClick
             )
         }
 
@@ -509,7 +605,8 @@ private fun ListContentGrid(
                     isInClipboard = clipboard.contains(item.id),
                     isSelected = selectedItems.contains(item.id),
                     onSelectionChange = { viewModel.toggleSelection(item.id) },
-                    onClick = { onItemClick(item) }
+                    onClick = { onItemClick(item) },
+                    onEditClick = onEditClick
                 )
             }
         }
@@ -533,7 +630,8 @@ private fun ListContentGrid(
                 isInClipboard = clipboard.contains(item.id),
                 isSelected = selectedItems.contains(item.id),
                 onSelectionChange = { viewModel.toggleSelection(item.id) },
-                onClick = { onItemClick(item) }
+                onClick = { onItemClick(item) },
+                onEditClick = onEditClick
             )
         }
     }
@@ -559,7 +657,8 @@ private fun PlaceItem(
     isInClipboard: Boolean,
     isSelected: Boolean,
     onSelectionChange: (Boolean) -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onEditClick: (ListContent) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -597,6 +696,10 @@ private fun PlaceItem(
                 )
             }
 
+            IconButton(onClick = { onEditClick(item) }) {
+                Icon(painter = painterResource(drawable.ic_edit), contentDescription = "Edit")
+            }
+
             if (isInClipboard) {
                 Icon(
                     painter = painterResource(drawable.ic_content_cut),
@@ -613,7 +716,8 @@ private fun ListItem(
     isInClipboard: Boolean,
     isSelected: Boolean,
     onSelectionChange: (Boolean) -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onEditClick: (ListContent) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -653,6 +757,11 @@ private fun ListItem(
                 }
                 // TODO: Show item count when available
             }
+
+            IconButton(onClick = { onEditClick(item) }) {
+                Icon(painter = painterResource(drawable.ic_edit), contentDescription = "Edit")
+            }
+
             if (isInClipboard) {
                 Icon(
                     painter = painterResource(drawable.ic_content_cut),

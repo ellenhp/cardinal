@@ -20,6 +20,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.CutPasteRepository
+import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.room.ItemType
 import earth.maps.cardinal.data.room.ListContent
 import earth.maps.cardinal.data.room.ListItemDao
@@ -188,5 +189,27 @@ class ManagePlacesViewModel @Inject constructor(
             }
             cutPasteRepository.clipboard.value = emptySet()
         }
+    }
+
+    fun updatePlace(
+        id: String,
+        customName: String?,
+        customDescription: String?,
+        isPinned: Boolean?
+    ) {
+        viewModelScope.launch {
+            savedPlaceRepository.updatePlace(id, customName, customDescription, isPinned)
+        }
+    }
+
+    fun updateList(id: String, name: String?, description: String?) {
+        viewModelScope.launch {
+            savedListRepository.updateList(id, name, description)
+        }
+    }
+
+    suspend fun getSavedPlace(id: String): Place? {
+        return savedPlaceRepository.getPlaceById(id).getOrNull()
+            ?.let { savedPlaceRepository.toPlace(it) }
     }
 }
