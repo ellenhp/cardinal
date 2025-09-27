@@ -36,6 +36,7 @@ data class PlaceContent(
     val icon: String,
     val customName: String? = null,
     val customDescription: String? = null,
+    val isPinned: Boolean,
     override val position: Int
 ) : ListContent()
 

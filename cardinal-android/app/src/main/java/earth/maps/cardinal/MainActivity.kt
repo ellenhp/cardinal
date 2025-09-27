@@ -44,6 +44,7 @@ import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.room.MigrationHelper
+import earth.maps.cardinal.data.room.SavedListRepository
 import earth.maps.cardinal.routing.FerrostarWrapperRepository
 import earth.maps.cardinal.routing.RouteRepository
 import earth.maps.cardinal.tileserver.LocalMapServerService
@@ -78,6 +79,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var migrationHelper: MigrationHelper
+
+    @Inject
+    lateinit var savedListRepository: SavedListRepository
 
     private var localMapServerService: LocalMapServerService? = null
     private var bound by mutableStateOf(false)
@@ -147,6 +151,7 @@ class MainActivity : ComponentActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             migrationHelper.migratePlacesToSavedPlaces()
+            savedListRepository.cleanupUnparentedElements()
         }
 
         intent?.takeIf { it.action == Intent.ACTION_VIEW }?.let { intent ->

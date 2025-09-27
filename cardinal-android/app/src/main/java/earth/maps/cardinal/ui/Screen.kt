@@ -31,6 +31,7 @@ sealed class Screen(val route: String) {
         const val NEARBY_POI = "nearby_poi"
         const val NEARBY_TRANSIT = "nearby_transit"
         const val PLACE_CARD = "place_card?place={place}"
+        const val MANAGE_PLACES = "manage_places?listId={listId}"
         const val OFFLINE_AREAS = "offline_areas"
         const val SETTINGS = "settings"
         const val OFFLINE_SETTINGS = "offline_settings"
@@ -49,6 +50,8 @@ sealed class Screen(val route: String) {
     object NearbyTransit : Screen(NEARBY_TRANSIT)
 
     data class PlaceCard(val place: Place) : Screen(PLACE_CARD)
+
+    data class ManagePlaces(val listId: String? = null) : Screen(MANAGE_PLACES)
 
     object OfflineAreas : Screen(OFFLINE_AREAS)
 
@@ -89,6 +92,10 @@ object NavigationUtils {
             is Screen.PlaceCard -> {
                 val placeJson = Uri.encode(gson.toJson(screen.place))
                 "place_card?place=$placeJson"
+            }
+            is Screen.ManagePlaces -> {
+                val listId = screen.listId?.let { Uri.encode(it) } ?: ""
+                "manage_places?listId=$listId"
             }
 
             is Screen.OfflineAreas -> screen.route

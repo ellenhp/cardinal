@@ -16,81 +16,185 @@
 
 package earth.maps.cardinal.viewmodel
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.room.ItemType
+import earth.maps.cardinal.data.room.ListContent
+import earth.maps.cardinal.data.room.ListContentItem
+import earth.maps.cardinal.data.room.PlaceContent
+import earth.maps.cardinal.data.room.SavedList
+import earth.maps.cardinal.data.room.SavedListRepository
 import earth.maps.cardinal.data.room.SavedPlace
-import earth.maps.cardinal.data.room.SavedPlaceDao
 import earth.maps.cardinal.data.room.SavedPlaceRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class ManagePlacesViewModel @Inject constructor(
-    private val placeDao: SavedPlaceDao,
-    private val savedPlaceRepository: SavedPlaceRepository,
+    private var savedPlaceRepository: SavedPlaceRepository,
+    private val savedListRepository: SavedListRepository
 ) : ViewModel() {
 
-    val selectedPlace = mutableStateOf<SavedPlace?>(null)
-    val isEditingPlace = mutableStateOf(false)
-    val placeToEdit = mutableStateOf<SavedPlace?>(null)
-    val placeToDelete = mutableStateOf<SavedPlace?>(null)
-    private val listId = mutableStateOf<String?>(null)
+    // Navigation stack to track the path through lists
+    private val _navigationStack = MutableStateFlow<List<String>>(emptyList())
+    val navigationStack: StateFlow<List<String>> = _navigationStack
 
-    fun selectPlace(place: SavedPlace) {
-        selectedPlace.value = place
+    // Current list being displayed
+    private val _currentListId = MutableStateFlow<String?>(null)
+    val currentListId: StateFlow<String?> = _currentListId
+
+    // Current list details
+    private val _currentList = MutableStateFlow<SavedList?>(null)
+    val currentList: StateFlow<SavedList?> = _currentList
+
+    // Selected items for management (set of item IDs)
+    private val _selectedItems = MutableStateFlow<Set<String>>(emptySet())
+    val selectedItems: StateFlow<Set<String>> = _selectedItems
+
+    // Check if all items in the current list are selected
+    val isAllSelected: Flow<Boolean> = combine(
+        selectedItems,
+        _currentList.flatMapLatest { list ->
+            list?.let { savedListRepository.getItemIdsInListAsFlow(it.id) } ?: flowOf(emptySet())
+        }
+    ) { selected, all -> selected == all }
+
+    // Get the current list name for display
+    val currentListName: Flow<String?> = _currentList.map { list ->
+        list?.name ?: savedListRepository.getRootList().getOrNull()?.name
     }
 
-    fun convertToPlace(savedPlace: SavedPlace): Place {
-        return savedPlaceRepository.toPlace(savedPlace)
+    // Get the content of the current list
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val currentListContent: Flow<List<Flow<ListContent?>>?> = _currentList.flatMapLatest { list ->
+        list?.let { savedListRepository.getListContent(it.id) } ?: flowOf(null)
     }
 
-    fun startEditingPlace(place: SavedPlace) {
-        placeToEdit.value = place
-        isEditingPlace.value = true
-    }
-
-    fun cancelEditingPlace() {
-        isEditingPlace.value = false
-        placeToEdit.value = null
-    }
-
-    fun editPlace(updatedPlace: SavedPlace) {
+    init {
         viewModelScope.launch {
-            placeDao.updatePlace(updatedPlace)
-            isEditingPlace.value = false
-            placeToEdit.value = null
+            // Initialize with root list
+            val rootList = savedListRepository.getRootList().getOrNull()
+            if (rootList != null) {
+                navigateToList(rootList.id)
+            }
         }
     }
 
-    fun startDeletingPlace(place: SavedPlace) {
-        placeToDelete.value = place
-    }
-
-    fun cancelDeletingPlace() {
-        placeToDelete.value = null
-    }
-
-    fun deletePlace(place: SavedPlace) {
+    fun setInitialList(listId: String?) {
         viewModelScope.launch {
-            placeDao.deletePlace(place)
-            placeToDelete.value = null
+            if (listId != null) {
+                navigateToList(listId)
+            } else {
+                // Use root list as default
+                val rootList = savedListRepository.getRootList().getOrNull()
+                if (rootList != null) {
+                    navigateToList(rootList.id)
+                }
+            }
         }
     }
 
-    fun pinnedPlaces(): Flow<List<SavedPlace>> {
-        return placeDao.getAllPlacesAsFlow().map { list -> list.filter { it.isPinned } }
+    fun navigateToList(listId: String) {
+        viewModelScope.launch {
+            val list = savedListRepository.getListById(listId).getOrNull()
+            if (list != null) {
+                _navigationStack.value = _navigationStack.value + listId
+                _currentListId.value = listId
+                _currentList.value = list
+                clearSelection()
+            }
+        }
     }
 
-    fun unpinnedPlaces(): Flow<List<SavedPlace>> {
-        return placeDao.getAllPlacesAsFlow().map { list -> list.filter { !it.isPinned } }
+    fun navigateBack(): Boolean {
+        val currentStack = _navigationStack.value
+        if (currentStack.size > 1) {
+            val previousStack = currentStack.dropLast(1)
+            _navigationStack.value = previousStack
+            _currentListId.value = previousStack.lastOrNull()
+            viewModelScope.launch {
+                _currentListId.value?.let { listId ->
+                    _currentList.value = savedListRepository.getListById(listId).getOrNull()
+                }
+            }
+            clearSelection()
+            return true
+        }
+        return false // At root level, can't go back
+    }
+
+    fun canNavigateBack(): Boolean = _navigationStack.value.size > 1
+
+    fun convertToPlace(place: SavedPlace): Place {
+        return savedPlaceRepository.toPlace(place)
+    }
+
+    // Selection management functions
+    fun toggleSelection(itemId: String) {
+        _selectedItems.value = if (_selectedItems.value.contains(itemId)) {
+            _selectedItems.value - itemId
+        } else {
+            _selectedItems.value + itemId
+        }
+    }
+
+    fun selectAll() {
+        viewModelScope.launch {
+            val listId = _currentListId.value ?: return@launch
+            val allIds =
+                savedListRepository.getItemsInList(listId).getOrNull()?.map { it.itemId }?.toSet()
+                    ?: emptySet()
+            _selectedItems.value = allIds
+        }
     }
 
     fun clearSelection() {
-        selectedPlace.value = null
+        _selectedItems.value = emptySet()
+    }
+
+    fun deleteSelected() {
+        viewModelScope.launch {
+            val listId = _currentListId.value ?: return@launch
+            val itemsResult = savedListRepository.getItemsInList(listId)
+            if (itemsResult.isFailure) return@launch
+            val items = itemsResult.getOrNull() ?: return@launch
+
+            _selectedItems.value.forEach { itemId ->
+                val item = items.find { it.itemId == itemId } ?: return@forEach
+                when (item.itemType) {
+                    ItemType.PLACE -> savedPlaceRepository.deletePlace(itemId)
+
+                    ItemType.LIST -> savedListRepository.deleteList(itemId)
+                }
+            }
+            clearSelection()
+        }
+    }
+
+    // Placeholder for creating new list with selected places
+    fun createNewListWithSelected() {
+        // TODO: Implement creating new list with selected places
+    }
+
+    // Returns a breadcrumb path for display
+    suspend fun getBreadcrumbNames(): List<String> {
+        val names = mutableListOf<String>()
+        _navigationStack.value.forEach { listId ->
+            val list = savedListRepository.getListById(listId).getOrNull()
+            list?.let { names.add(it.name) }
+        }
+        return names
     }
 }

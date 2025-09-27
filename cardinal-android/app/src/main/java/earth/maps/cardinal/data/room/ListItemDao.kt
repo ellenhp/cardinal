@@ -88,4 +88,7 @@ interface ListItemDao {
             insertItem(item.copy(position = index))
         }
     }
+
+    @Query("DELETE FROM list_items WHERE itemId = :itemId AND itemType = :itemType")
+    suspend fun orphanItem(itemId: String, itemType: ItemType)
 }

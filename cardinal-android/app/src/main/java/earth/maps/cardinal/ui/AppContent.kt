@@ -122,6 +122,8 @@ import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
 import uniffi.ferrostar.Route
 
+private val TOOLBAR_HEIGHT_DP = 56.dp
+
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -476,13 +478,13 @@ fun AppContent(
 
         composable(
             Screen.SETTINGS,
-            // These transitions differ from the rest of them because it feels unnatural for the screen to enter from the end.
+            // These transitions differ from most because it feels unnatural for the screen to enter from the end.
             enterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
         ) {
-            showToolbar = false
+            showToolbar = true
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -515,7 +517,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            showToolbar = false
+            showToolbar = true
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -553,7 +555,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            showToolbar = false
+            showToolbar = true
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -584,7 +586,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            showToolbar = false
+            showToolbar = true
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
@@ -615,7 +617,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            showToolbar = false
+            showToolbar = true
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
                 // The routing profiles screen is always fully expanded.
@@ -663,6 +665,44 @@ fun AppContent(
                     )
                 }
             })
+        }
+
+        composable(
+            Screen.MANAGE_PLACES,
+            // These transitions differ from most because it feels unnatural for the screen to enter from the end.
+            enterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+        ) { backStackEntry ->
+            showToolbar = true
+            LaunchedEffect(key1 = Unit) {
+                mapPins.clear()
+            }
+
+            val scaffoldState = rememberBottomSheetScaffoldState()
+            val snackBarHostState = remember { SnackbarHostState() }
+
+            LaunchedEffect(key1 = Unit) {
+                // The manage places screen is always fully expanded.
+                coroutineScope.launch {
+                    scaffoldState.bottomSheetState.expand()
+                }
+            }
+
+            val listId = backStackEntry.arguments?.getString("listId")
+            Scaffold(
+                contentWindowInsets = WindowInsets.safeDrawing,
+                snackbarHost = { SnackbarHost(snackBarHostState) },
+                content = { padding ->
+                    Box(modifier = Modifier.padding(padding)) {
+                        ManagePlacesScreen(
+                            paddingValues = PaddingValues(bottom = TOOLBAR_HEIGHT_DP),
+                            navController = navController,
+                            listId = listId
+                        )
+                    }
+                })
         }
 
         composable(
@@ -752,6 +792,7 @@ fun AppContent(
                 },
             )
         }
+
         composable(Screen.TURN_BY_TURN) { backStackEntry ->
             showToolbar = false
             val routeId = backStackEntry.arguments?.getString("routeId")
@@ -808,6 +849,11 @@ private fun CardinalToolbar(
 ) {
     FlexibleBottomAppBar {
         IconButton(onClick = {
+            NavigationUtils.navigate(
+                navController,
+                screen = Screen.ManagePlaces(null),
+                popUpToHome = true
+            )
         }) {
             Icon(
                 painter = painterResource(drawable.ic_star), contentDescription = stringResource(
@@ -972,10 +1018,9 @@ fun CardinalAppScaffold(
         WindowInsets.safeContent.getBottom(density).toDp()
     }
     val handleHeight = 48.dp
-    val toolbarHeight = 56.dp
 
     // If toolbar is visible, add padding for it below the scaffold
-    val bottomPadding = if (showToolbar) toolbarHeight else 0.dp
+    val bottomPadding = if (showToolbar) TOOLBAR_HEIGHT_DP else 0.dp
 
     Box(modifier = Modifier.fillMaxSize()) {
         BottomSheetScaffold(

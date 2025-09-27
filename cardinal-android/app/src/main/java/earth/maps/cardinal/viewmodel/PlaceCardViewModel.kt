@@ -21,14 +21,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.room.SavedPlace
-import earth.maps.cardinal.data.room.SavedPlaceDao
+import earth.maps.cardinal.data.room.SavedPlaceRepository
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class PlaceCardViewModel @Inject constructor(
-    private val placeDao: SavedPlaceDao
+    private val savedPlaceRepository: SavedPlaceRepository,
 ) : ViewModel() {
 
     val isPlaceSaved = mutableStateOf(false)
@@ -42,7 +41,7 @@ class PlaceCardViewModel @Inject constructor(
     fun checkIfPlaceIsSaved(place: Place) {
         viewModelScope.launch {
             if (place.id != null) {
-                val existingPlace = placeDao.getPlace(place.id)
+                val existingPlace = savedPlaceRepository.getPlaceById(place.id).getOrNull()
                 isPlaceSaved.value = existingPlace != null
             }
         }
@@ -50,7 +49,7 @@ class PlaceCardViewModel @Inject constructor(
 
     fun savePlace(place: Place) {
         viewModelScope.launch {
-            placeDao.insertPlace(SavedPlace.fromPlace(place))
+            savedPlaceRepository.savePlace(place)
             isPlaceSaved.value = true
         }
     }
@@ -58,7 +57,7 @@ class PlaceCardViewModel @Inject constructor(
     fun unsavePlace(place: Place) {
         viewModelScope.launch {
             place.id?.let { id ->
-                placeDao.getPlace(id)?.let { placeDao.deletePlace(it) }
+                savedPlaceRepository.deletePlace(placeId = id)
             }
             isPlaceSaved.value = false
         }

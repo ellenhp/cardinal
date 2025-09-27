@@ -204,4 +204,10 @@
     <string name="points_of_interest_nearby">Points of interest nearby</string>
     <string name="settings_menu">Settings menu</string>
     <string name="search">Search</string>
+    <string name="open_list">Open list</string>
+    <string name="saved_lists">Saved lists</string>
+    <string name="new_list">New list</string>
+    <string name="select_all">Select all</string>
+    <string name="deselect_all">Deselect all</string>
+    <string name="delete_confirmation_message">Are you sure you want to delete %1$d selected item(s)? This action cannot be undone.</string>
 </resources>
