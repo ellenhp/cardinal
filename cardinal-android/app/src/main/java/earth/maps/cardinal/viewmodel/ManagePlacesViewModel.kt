@@ -19,32 +19,28 @@ package earth.maps.cardinal.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.room.ItemType
 import earth.maps.cardinal.data.room.ListContent
-import earth.maps.cardinal.data.room.ListContentItem
-import earth.maps.cardinal.data.room.PlaceContent
+import earth.maps.cardinal.data.room.ListItemDao
 import earth.maps.cardinal.data.room.SavedList
 import earth.maps.cardinal.data.room.SavedListRepository
-import earth.maps.cardinal.data.room.SavedPlace
 import earth.maps.cardinal.data.room.SavedPlaceRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class ManagePlacesViewModel @Inject constructor(
-    private var savedPlaceRepository: SavedPlaceRepository,
-    private val savedListRepository: SavedListRepository
+    private val savedPlaceRepository: SavedPlaceRepository,
+    private val savedListRepository: SavedListRepository,
+    private val listItemDao: ListItemDao,
 ) : ViewModel() {
 
     // Navigation stack to track the path through lists
@@ -64,6 +60,7 @@ class ManagePlacesViewModel @Inject constructor(
     val selectedItems: StateFlow<Set<String>> = _selectedItems
 
     // Check if all items in the current list are selected
+    @OptIn(ExperimentalCoroutinesApi::class)
     val isAllSelected: Flow<Boolean> = combine(
         selectedItems,
         _currentList.flatMapLatest { list ->
@@ -137,9 +134,6 @@ class ManagePlacesViewModel @Inject constructor(
 
     fun canNavigateBack(): Boolean = _navigationStack.value.size > 1
 
-    fun convertToPlace(place: SavedPlace): Place {
-        return savedPlaceRepository.toPlace(place)
-    }
 
     // Selection management functions
     fun toggleSelection(itemId: String) {
@@ -184,8 +178,18 @@ class ManagePlacesViewModel @Inject constructor(
     }
 
     // Placeholder for creating new list with selected places
-    fun createNewListWithSelected() {
-        // TODO: Implement creating new list with selected places
+    fun createNewListWithSelected(name: String) {
+        viewModelScope.launch {
+            val currentListId = _currentListId.value ?: return@launch
+            val newListId =
+                savedListRepository.createList(name = name, parentId = currentListId).getOrNull()
+                    ?: return@launch
+            val itemsInListCount = listItemDao.getItemsInList(newListId).size
+
+            _selectedItems.value.forEachIndexed { itemIndex, itemId ->
+                listItemDao.moveItem(itemId, newListId = newListId, itemIndex + itemsInListCount)
+            }
+        }
     }
 
     // Returns a breadcrumb path for display

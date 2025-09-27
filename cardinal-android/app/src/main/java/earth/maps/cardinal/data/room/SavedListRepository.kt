@@ -46,6 +46,7 @@ class SavedListRepository @Inject constructor(
      */
     suspend fun createList(
         name: String,
+        parentId: String,
         description: String? = null,
         isRoot: Boolean = false,
         isCollapsed: Boolean = false
@@ -64,6 +65,17 @@ class SavedListRepository @Inject constructor(
             )
 
             listDao.insertList(list)
+
+            val position = listItemDao.getItemsInList(parentId).size
+            listItemDao.insertItem(
+                ListItem(
+                    listId = parentId,
+                    itemId = id,
+                    itemType = ItemType.LIST,
+                    position = position,
+                    addedAt = System.currentTimeMillis()
+                )
+            )
             Result.success(id)
         } catch (e: Exception) {
             Result.failure(e)

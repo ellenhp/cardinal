@@ -43,6 +43,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalFloatingToolbar
@@ -87,7 +88,8 @@ fun ManagePlacesScreen(
     val selectedItems by viewModel.selectedItems.collectAsState()
     val isAllSelected by viewModel.isAllSelected.collectAsState(initial = false)
     val showDeleteConfirmation = remember { mutableStateOf(false) }
-
+    val showCreateListDialog = remember { mutableStateOf(false) }
+    var newListName by remember { mutableStateOf("") }
 
     // Initialize the view model with the listId if provided
     remember(listId) {
@@ -149,7 +151,7 @@ fun ManagePlacesScreen(
                 expanded = true,
                 colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors()
             ) {
-                IconButton(onClick = { viewModel.createNewListWithSelected() }) {
+                IconButton(onClick = { showCreateListDialog.value = true }) {
                     Icon(
                         painter = painterResource(drawable.ic_new_list),
                         contentDescription = stringResource(
@@ -197,6 +199,43 @@ fun ManagePlacesScreen(
             },
             dismissButton = {
                 Button(onClick = { showDeleteConfirmation.value = false }) {
+                    Text(stringResource(string.cancel))
+                }
+            }
+        )
+    }
+
+    if (showCreateListDialog.value) {
+        AlertDialog(
+            onDismissRequest = {
+                showCreateListDialog.value = false
+                newListName = ""
+            },
+            title = { Text(stringResource(string.add_new_list)) },
+            text = {
+                OutlinedTextField(
+                    value = newListName,
+                    onValueChange = { newListName = it },
+                    label = { Text(stringResource(string.list_name)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (newListName.isNotBlank()) {
+                        viewModel.createNewListWithSelected(newListName)
+                        showCreateListDialog.value = false
+                        newListName = ""
+                    }
+                }) {
+                    Text(stringResource(string.add_new_list))
+                }
+            },
+            dismissButton = {
+                Button(onClick = {
+                    showCreateListDialog.value = false
+                    newListName = ""
+                }) {
                     Text(stringResource(string.cancel))
                 }
             }
@@ -344,6 +383,28 @@ private fun ListContentGrid(
     val unpinnedPlaces = places.filter { !it.isPinned }
 
     LazyColumn(modifier = Modifier.padding(paddingValues)) {
+        // Lists section
+        val shouldShowListsHeader = lists.isNotEmpty()
+        if (shouldShowListsHeader) {
+            item {
+                SectionHeader(
+                    title = stringResource(string.saved_lists),
+                    modifier = Modifier.padding(
+                        vertical = dimensionResource(dimen.padding_minor),
+                        horizontal = dimensionResource(dimen.padding)
+                    )
+                )
+            }
+        }
+        items(lists) { item ->
+            ListItem(
+                item = item,
+                isSelected = selectedItems.contains(item.id),
+                onSelectionChange = { viewModel.toggleSelection(item.id) },
+                onClick = { onItemClick(item) }
+            )
+        }
+
         // Pinned places section
         if (pinnedPlaces.isNotEmpty() || (places.isNotEmpty() && unpinnedPlaces.isNotEmpty())) {
             item {
@@ -380,28 +441,6 @@ private fun ListContentGrid(
         }
         items(unpinnedPlaces) { item ->
             PlaceItem(
-                item = item,
-                isSelected = selectedItems.contains(item.id),
-                onSelectionChange = { viewModel.toggleSelection(item.id) },
-                onClick = { onItemClick(item) }
-            )
-        }
-
-        // Lists section
-        val shouldShowListsHeader = lists.isNotEmpty()
-        if (shouldShowListsHeader) {
-            item {
-                SectionHeader(
-                    title = stringResource(string.saved_lists),
-                    modifier = Modifier.padding(
-                        vertical = dimensionResource(dimen.padding_minor),
-                        horizontal = dimensionResource(dimen.padding)
-                    )
-                )
-            }
-        }
-        items(lists) { item ->
-            ListItem(
                 item = item,
                 isSelected = selectedItems.contains(item.id),
                 onSelectionChange = { viewModel.toggleSelection(item.id) },

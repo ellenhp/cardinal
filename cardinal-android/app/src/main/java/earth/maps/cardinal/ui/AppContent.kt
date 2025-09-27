@@ -669,26 +669,17 @@ fun AppContent(
 
         composable(
             Screen.MANAGE_PLACES,
-            // These transitions differ from most because it feels unnatural for the screen to enter from the end.
-            enterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
             exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
-            popExitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) { backStackEntry ->
             showToolbar = true
             LaunchedEffect(key1 = Unit) {
                 mapPins.clear()
             }
 
-            val scaffoldState = rememberBottomSheetScaffoldState()
             val snackBarHostState = remember { SnackbarHostState() }
-
-            LaunchedEffect(key1 = Unit) {
-                // The manage places screen is always fully expanded.
-                coroutineScope.launch {
-                    scaffoldState.bottomSheetState.expand()
-                }
-            }
 
             val listId = backStackEntry.arguments?.getString("listId")
             Scaffold(
