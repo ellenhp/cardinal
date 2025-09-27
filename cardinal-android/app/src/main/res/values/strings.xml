@@ -53,6 +53,7 @@
     <!-- Manage Places Dialog -->
     <string name="edit_place">Edit place</string>
     <string name="edit_list">Edit list</string>
+    <string name="edit">Edit</string>
     <string name="place_name">Place name</string>
     <string name="place_description">Place description</string>
     <string name="save_button">Save</string>

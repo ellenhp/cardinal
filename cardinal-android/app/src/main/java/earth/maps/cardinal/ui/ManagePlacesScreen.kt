@@ -697,7 +697,10 @@ private fun PlaceItem(
             }
 
             IconButton(onClick = { onEditClick(item) }) {
-                Icon(painter = painterResource(drawable.ic_edit), contentDescription = "Edit")
+                Icon(
+                    painter = painterResource(drawable.ic_edit),
+                    contentDescription = stringResource(string.edit)
+                )
             }
 
             if (isInClipboard) {
@@ -759,7 +762,10 @@ private fun ListItem(
             }
 
             IconButton(onClick = { onEditClick(item) }) {
-                Icon(painter = painterResource(drawable.ic_edit), contentDescription = "Edit")
+                Icon(
+                    painter = painterResource(drawable.ic_edit),
+                    contentDescription = stringResource(string.edit)
+                )
             }
 
             if (isInClipboard) {
