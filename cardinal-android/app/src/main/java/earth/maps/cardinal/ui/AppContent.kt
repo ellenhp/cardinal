@@ -479,11 +479,10 @@ fun AppContent(
 
         composable(
             Screen.SETTINGS,
-            // These transitions differ from most because it feels unnatural for the screen to enter from the end.
-            enterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
             exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
-            popExitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
             showToolbar = true
             LaunchedEffect(key1 = Unit) {
