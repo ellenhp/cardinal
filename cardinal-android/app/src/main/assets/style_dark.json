@@ -13,7 +13,7 @@
         "http://127.0.0.1:{port}/openmaptiles/{z}/{x}/{y}.pbf"
       ],
       "maxzoom": 14,
-      "attribution": "© OpenStreetMap contributors"
+      "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"
     },
     "landcover": {
       "type": "vector",
