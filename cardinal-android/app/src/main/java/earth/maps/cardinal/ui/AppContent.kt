@@ -90,6 +90,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
@@ -681,7 +682,18 @@ fun AppContent(
 
             val snackBarHostState = remember { SnackbarHostState() }
 
-            val listId = backStackEntry.arguments?.getString("listId")
+            val listIdRaw = backStackEntry.arguments?.getString("listId")
+            // The screen is set up to take a real value, or null. What we end up with at this point (sometimes?)
+            // is an empty string instead of null.
+            val listId = if (listIdRaw.isNullOrBlank()) {
+                null
+            } else {
+                listIdRaw
+            }
+            val parentsGson = backStackEntry.arguments?.getString("parents")?.let { Uri.decode(it) }
+            val parents: List<String> =
+                parentsGson?.let { Gson().fromJson(it, object : TypeToken<List<String>>() {}.type) }
+                    ?: emptyList()
             Scaffold(
                 contentWindowInsets = WindowInsets.safeDrawing,
                 snackbarHost = { SnackbarHost(snackBarHostState) },
@@ -690,7 +702,8 @@ fun AppContent(
                         ManagePlacesScreen(
                             paddingValues = PaddingValues(bottom = TOOLBAR_HEIGHT_DP),
                             navController = navController,
-                            listId = listId
+                            listId = listId,
+                            parents = parents,
                         )
                     }
                 })

@@ -16,6 +16,7 @@
 
 package earth.maps.cardinal.ui
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -78,11 +79,14 @@ import kotlinx.coroutines.flow.Flow
 fun ManagePlacesScreen(
     navController: NavController,
     paddingValues: PaddingValues,
-    listId: String? = null,
+    listId: String?,
+    parents: List<String>,
 ) {
     val viewModel: ManagePlacesViewModel = hiltViewModel(key = listId ?: "root")
 
     val currentListName by viewModel.currentListName.collectAsState(initial = null)
+    // This is not always equal to listId, notably in the case of a root list referred to implicitly by a `null` listId
+    val currentListId by viewModel.currentListId.collectAsState(initial = null)
     val currentListContent by viewModel.currentListContent.collectAsState(initial = null)
     val navigationStack by viewModel.navigationStack.collectAsState()
     val selectedItems by viewModel.selectedItems.collectAsState()
@@ -92,20 +96,18 @@ fun ManagePlacesScreen(
     var newListName by remember { mutableStateOf("") }
 
     // Initialize the view model with the listId if provided
-    remember(listId) {
+    LaunchedEffect(listId) {
         viewModel.setInitialList(listId)
-        true
     }
 
     Scaffold(
         modifier = Modifier.padding(paddingValues),
         topBar = {
             ManagePlacesTopBar(
+                navController = navController,
                 title = currentListName ?: stringResource(string.saved_places_title_case),
-                navigationStack = navigationStack,
-                viewModel = viewModel,
-                canGoBack = viewModel.canNavigateBack(),
-                onBackClick = { viewModel.navigateBack() },
+                breadcrumbNames = parents.plus(currentListName ?: ""),
+                onBackClick = { navController.popBackStack() },
                 onCloseClick = { navController.popBackStack() }
             )
         }
@@ -136,8 +138,20 @@ fun ManagePlacesScreen(
                         }
 
                         is ListContentItem -> {
-                            // Navigate to the sublist
-                            viewModel.navigateToList(item.id)
+                            Log.d(
+                                "TAG",
+                                "thing $parents $currentListName ${parents.plus(currentListName ?: "")}"
+                            )
+                            currentListId?.let { currentListId ->
+                                NavigationUtils.navigate(
+                                    navController,
+                                    Screen.ManagePlaces(
+                                        item.id,
+                                        parents = parents.plus(currentListName ?: "")
+                                    ),
+                                    avoidCycles = false
+                                )
+                            }
                         }
                     }
                 }
@@ -245,20 +259,13 @@ fun ManagePlacesScreen(
 
 @Composable
 private fun ManagePlacesTopBar(
+    navController: NavController,
     title: String,
-    navigationStack: List<String>,
-    viewModel: ManagePlacesViewModel,
-    canGoBack: Boolean,
+    breadcrumbNames: List<String>,
     onBackClick: () -> Unit,
     onCloseClick: () -> Unit
 ) {
-    var breadcrumbNames by remember { mutableStateOf(listOf<String>()) }
-
-    // Load breadcrumb names
-    LaunchedEffect(navigationStack) {
-        breadcrumbNames = viewModel.getBreadcrumbNames()
-    }
-
+    Log.d("TAG", "$breadcrumbNames")
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -268,15 +275,11 @@ private fun ManagePlacesTopBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Back button (only if can navigate back)
-            if (canGoBack) {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        painter = painterResource(drawable.ic_arrow_back),
-                        contentDescription = stringResource(string.back)
-                    )
-                }
-            } else {
-                Spacer(modifier = Modifier.size(48.dp)) // Space for alignment
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    painter = painterResource(drawable.ic_arrow_back),
+                    contentDescription = stringResource(string.back)
+                )
             }
 
             // Title
@@ -308,7 +311,7 @@ private fun ManagePlacesTopBar(
                 breadcrumbNames.forEachIndexed { index, name ->
                     if (index > 0) {
                         Text(
-                            text = " - ",
+                            text = " - ", // Don't replace this with a carat or arrow without dealing with RTL layouts.
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -325,7 +328,7 @@ private fun ManagePlacesTopBar(
                             Modifier.clickable {
                                 // Navigate back to this level
                                 repeat(breadcrumbNames.size - 1 - index) {
-                                    viewModel.navigateBack()
+                                    navController.popBackStack()
                                 }
                             }
                         } else {

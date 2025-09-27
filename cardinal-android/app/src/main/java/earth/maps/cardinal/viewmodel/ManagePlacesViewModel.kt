@@ -79,9 +79,11 @@ class ManagePlacesViewModel @Inject constructor(
         list?.let { savedListRepository.getListContent(it.id) } ?: flowOf(null)
     }
 
-    init {
-        viewModelScope.launch {
-            // Initialize with root list
+    suspend fun setInitialList(listId: String?) {
+        if (listId != null) {
+            navigateToList(listId)
+        } else {
+            // Use root list as default
             val rootList = savedListRepository.getRootList().getOrNull()
             if (rootList != null) {
                 navigateToList(rootList.id)
@@ -89,51 +91,14 @@ class ManagePlacesViewModel @Inject constructor(
         }
     }
 
-    fun setInitialList(listId: String?) {
-        viewModelScope.launch {
-            if (listId != null) {
-                navigateToList(listId)
-            } else {
-                // Use root list as default
-                val rootList = savedListRepository.getRootList().getOrNull()
-                if (rootList != null) {
-                    navigateToList(rootList.id)
-                }
-            }
-        }
-    }
-
-    fun navigateToList(listId: String) {
-        viewModelScope.launch {
-            val list = savedListRepository.getListById(listId).getOrNull()
-            if (list != null) {
-                _navigationStack.value = _navigationStack.value + listId
-                _currentListId.value = listId
-                _currentList.value = list
-                clearSelection()
-            }
-        }
-    }
-
-    fun navigateBack(): Boolean {
-        val currentStack = _navigationStack.value
-        if (currentStack.size > 1) {
-            val previousStack = currentStack.dropLast(1)
-            _navigationStack.value = previousStack
-            _currentListId.value = previousStack.lastOrNull()
-            viewModelScope.launch {
-                _currentListId.value?.let { listId ->
-                    _currentList.value = savedListRepository.getListById(listId).getOrNull()
-                }
-            }
+    private suspend fun navigateToList(listId: String) {
+        val list = savedListRepository.getListById(listId).getOrNull()
+        if (list != null) {
+            _currentListId.value = listId
+            _currentList.value = list
             clearSelection()
-            return true
         }
-        return false // At root level, can't go back
     }
-
-    fun canNavigateBack(): Boolean = _navigationStack.value.size > 1
-
 
     // Selection management functions
     fun toggleSelection(itemId: String) {
