@@ -102,6 +102,7 @@ fun ManagePlacesScreen(
     val showEditDialog = remember { mutableStateOf(false) }
     val editingItem = remember { mutableStateOf<ListContent?>(null) }
     var newListName by remember { mutableStateOf("") }
+    var showEmptyNameWarning by remember { mutableStateOf(false) }
     var editName by remember { mutableStateOf("") }
     var editDescription by remember { mutableStateOf("") }
     var editPinned by remember { mutableStateOf(false) }
@@ -324,22 +325,39 @@ fun ManagePlacesScreen(
             onDismissRequest = {
                 showCreateListDialog.value = false
                 newListName = ""
+                showEmptyNameWarning = false
             },
             title = { Text(stringResource(string.add_new_list)) },
             text = {
-                OutlinedTextField(
-                    value = newListName,
-                    onValueChange = { newListName = it },
-                    label = { Text(stringResource(string.list_name)) },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column {
+                    OutlinedTextField(
+                        value = newListName,
+                        onValueChange = {
+                            newListName = it
+                            if (showEmptyNameWarning) showEmptyNameWarning = false
+                        },
+                        label = { Text(stringResource(string.list_name)) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (showEmptyNameWarning) {
+                        Text(
+                            modifier = Modifier.padding(4.dp),
+                            text = stringResource(string.list_name_cannot_be_empty),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
             },
             confirmButton = {
                 Button(onClick = {
-                    if (newListName.isNotBlank()) {
+                    if (newListName.isBlank()) {
+                        showEmptyNameWarning = true
+                    } else {
                         viewModel.createNewListWithSelected(newListName)
                         showCreateListDialog.value = false
                         newListName = ""
+                        showEmptyNameWarning = false
                     }
                 }) {
                     Text(stringResource(string.add_new_list))
@@ -349,6 +367,7 @@ fun ManagePlacesScreen(
                 Button(onClick = {
                     showCreateListDialog.value = false
                     newListName = ""
+                    showEmptyNameWarning = false
                 }) {
                     Text(stringResource(string.cancel))
                 }
