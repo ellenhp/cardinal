@@ -34,12 +34,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -232,12 +232,25 @@ fun TransitScreenRouteDepartures(
             Card(modifier = Modifier.padding(bottom = dimensionResource(dimen.padding_minor))) {
                 Box {
                     // Route name at top
-                    Text(
-                        text = routeName,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
+                    Row(
                         modifier = Modifier.padding(dimensionResource(dimen.padding_minor))
-                    )
+                    ) {
+                        val routeColorRaw = departures.firstOrNull()?.routeColor?.let {
+                            Color("#$it".toColorInt())
+                        } ?: MaterialTheme.colorScheme.surfaceVariant
+                        Text(
+                            text = stringResource(string.square_char),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = routeColorRaw
+                        )
+                        Spacer(modifier = Modifier.width(dimensionResource(dimen.padding_minor)))
+                        Text(
+                            text = routeName,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
 
                     Column(modifier = Modifier.fillMaxWidth()) {
                         // Page indicator
@@ -323,25 +336,13 @@ fun TransitScreenRouteDepartures(
                                     }
                                 }
 
-                                if (routeColor.isYellow()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.CenterVertically)
-                                            .padding(end = dimensionResource(dimen.padding))
-                                            .defaultMinSize(minWidth = 50.dp, minHeight = 50.dp),
-                                    ) {
-                                        containerContent()
-                                    }
-                                } else {
-                                    Card(
-                                        modifier = Modifier
-                                            .align(Alignment.CenterVertically)
-                                            .padding(end = dimensionResource(dimen.padding))
-                                            .defaultMinSize(minWidth = 50.dp, minHeight = 50.dp),
-                                        colors = CardDefaults.cardColors(containerColor = cardContainerColor)
-                                    ) {
-                                        containerContent()
-                                    }
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.CenterVertically)
+                                        .padding(end = dimensionResource(dimen.padding))
+                                        .defaultMinSize(minWidth = 50.dp, minHeight = 50.dp),
+                                ) {
+                                    containerContent()
                                 }
                             }
                         }

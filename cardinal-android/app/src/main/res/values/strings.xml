@@ -220,4 +220,5 @@
     <string name="description">Description</string>
     <string name="save">Save</string>
     <string name="list_name_cannot_be_empty">List name cannot be empty</string>
+    <string name="square_char">■</string>
 </resources>

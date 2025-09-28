@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -35,7 +36,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -182,14 +182,6 @@ fun RouteDepartures(
     val departuresByRoute = stopTimes.groupBy { it.routeShortName }
 
     departuresByRoute.forEach { (routeName, departures) ->
-        val routeColor = departures.firstOrNull()?.routeColor?.let {
-            Color(
-                "#$it".toColorInt()
-            )
-        } ?: MaterialTheme.colorScheme.surfaceVariant
-
-        val onRouteColor = routeColor.contrastColor()
-
         // Group departures by headsign within each route
         val departuresByHeadsign = departures.groupBy { it.headsign }.map { (key, value) ->
             (key to value.take(maxDepartures))
@@ -221,11 +213,7 @@ fun RouteDepartures(
                             place
                         )
                     }
-                }),
-            colors = CardDefaults.cardColors(
-                containerColor = routeColor,
-                contentColor = onRouteColor,
-            )
+                })
         ) {
             val scrollScope = rememberCoroutineScope()
             val density = LocalDensity.current
@@ -233,16 +221,29 @@ fun RouteDepartures(
 
             Box {
                 // Route name header
-                Text(
-                    text = routeName,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = onRouteColor,
+                Row(
                     modifier = Modifier
                         .padding(dimensionResource(dimen.padding))
                         .onGloballyPositioned {
                             routeNamePadding.value = with(density) { it.size.height.toDp() }
-                        })
+                        }
+                ) {
+                    val routeColor = departures.firstOrNull()?.routeColor?.let {
+                        Color("#$it".toColorInt())
+                    } ?: MaterialTheme.colorScheme.surfaceVariant
+                    Text(
+                        text = stringResource(string.square_char),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = routeColor
+                    )
+                    Spacer(modifier = Modifier.width(dimensionResource(dimen.padding_minor)))
+                    Text(
+                        text = routeName,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
                 Box(modifier = Modifier.align(Alignment.TopCenter)) {
                     PageIndicator(headsigns.size, currentPage = pagerState.currentPage)
@@ -254,7 +255,6 @@ fun RouteDepartures(
                         state = pagerState,
                         departuresByHeadsign = departuresByHeadsign,
                         headsigns = headsigns,
-                        onRouteColor = onRouteColor,
                         routeNamePaddingLocal
                     )
                 }
@@ -291,11 +291,11 @@ fun PageIndicator(pageCount: Int, currentPage: Int) {
 @OptIn(ExperimentalTime::class)
 @Composable
 fun DepartureRow(
-    stopTime: StopTime, isFirst: Boolean, onRouteColor: Color, showStop: Boolean = false
+    stopTime: StopTime, isFirst: Boolean, showStop: Boolean = false
 ) {
     val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val isoFormatter = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.systemDefault())
-    val textColor = onRouteColor
+    val textColor = MaterialTheme.colorScheme.onSurface
 
     val scheduledDepartureInstant = stopTime.place.scheduledDeparture?.let {
         try {
@@ -385,7 +385,6 @@ fun FixedHeightHorizontalPager(
     state: PagerState,
     departuresByHeadsign: Map<String, List<StopTime>>,
     headsigns: List<String>,
-    onRouteColor: Color,
     headsignTopPadding: Dp,
 ) {
     val topPadding = dimensionResource(
@@ -417,8 +416,7 @@ fun FixedHeightHorizontalPager(
                             .fillMaxWidth(0.6f),
                         text = selectedHeadsign,
                         textAlign = TextAlign.Start,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = onRouteColor
+                        style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
                         modifier = Modifier
@@ -429,8 +427,7 @@ fun FixedHeightHorizontalPager(
                             .fillMaxWidth(0.6f),
                         text = departuresForSelectedHeadsign.first().place.name,
                         textAlign = TextAlign.Start,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = onRouteColor
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
 
@@ -448,8 +445,7 @@ fun FixedHeightHorizontalPager(
                     departuresForSelectedHeadsign.forEachIndexed { index, stopTime ->
                         DepartureRow(
                             stopTime = stopTime,
-                            isFirst = index == 0,
-                            onRouteColor = onRouteColor,
+                            isFirst = index == 0
                         )
                         // Add divider between departure rows, but not after the last one
                         if (index < departuresForSelectedHeadsign.size - 1) {
@@ -507,4 +503,3 @@ fun formatDepartureTime(stopTime: StopTime): String {
         scheduledDepartureTime ?: stringResource(string.unknown_departure)
     }
 }
-
