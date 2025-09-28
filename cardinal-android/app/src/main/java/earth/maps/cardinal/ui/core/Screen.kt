@@ -40,6 +40,7 @@ sealed class Screen(val route: String) {
         const val ROUTING_PROFILES = "routing_profile_settings"
         const val PROFILE_EDITOR = "edit_routing_profile?profileId={profileId}"
         const val DIRECTIONS = "directions?fromPlace={fromPlace}&toPlace={toPlace}"
+        const val TRANSIT_ITINERARY_DETAIL = "transit_itinerary_detail?itinerary={itinerary}"
         const val TURN_BY_TURN = "turn_by_turn?routeId={routeId}&routingMode={routingMode}"
     }
 
@@ -71,6 +72,9 @@ sealed class Screen(val route: String) {
 
     data class Directions(val fromPlace: Place?, val toPlace: Place?) :
         Screen(DIRECTIONS)
+
+    data class TransitItineraryDetail(val itinerary: earth.maps.cardinal.transit.Itinerary) :
+        Screen(TRANSIT_ITINERARY_DETAIL)
 
     data class TurnByTurnNavigation(val routeId: String, val routingMode: RoutingMode) :
         Screen(TURN_BY_TURN)
@@ -118,6 +122,11 @@ object NavigationUtils {
                 val fromPlaceJson = screen.fromPlace?.let { Uri.encode(gson.toJson(it)) } ?: ""
                 val toPlaceJson = screen.toPlace?.let { Uri.encode(gson.toJson(it)) } ?: ""
                 "directions?fromPlace=$fromPlaceJson&toPlace=$toPlaceJson"
+            }
+
+            is Screen.TransitItineraryDetail -> {
+                val itineraryJson = Uri.encode(gson.toJson(screen.itinerary))
+                "transit_itinerary_detail?itinerary=$itineraryJson"
             }
 
             is Screen.TurnByTurnNavigation -> "turn_by_turn?routeId=${Uri.encode(screen.routeId)}&routingMode=${screen.routingMode.value}"

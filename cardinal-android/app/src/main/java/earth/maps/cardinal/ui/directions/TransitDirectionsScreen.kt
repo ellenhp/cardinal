@@ -51,7 +51,10 @@ import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TransitDirectionsScreen(viewModel: DirectionsViewModel) {
+fun TransitDirectionsScreen(
+    viewModel: DirectionsViewModel,
+    onItineraryClick: (earth.maps.cardinal.transit.Itinerary) -> Unit = {}
+) {
     val planState = viewModel.planState
     when {
         planState.isLoading -> {
@@ -76,6 +79,7 @@ fun TransitDirectionsScreen(viewModel: DirectionsViewModel) {
         planState.planResponse != null -> {
             TransitTimelineResults(
                 planResponse = planState.planResponse,
+                onItineraryClick = onItineraryClick,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -95,6 +99,7 @@ fun TransitDirectionsScreen(viewModel: DirectionsViewModel) {
 @Composable
 private fun TransitTimelineResults(
     planResponse: earth.maps.cardinal.transit.PlanResponse,
+    onItineraryClick: (earth.maps.cardinal.transit.Itinerary) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Log.d("TAG", "${planResponse.itineraries.size}")
@@ -104,6 +109,7 @@ private fun TransitTimelineResults(
 
             TransitItineraryCard(
                 itinerary = itinerary,
+                onItineraryClick = onItineraryClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = dimensionResource(dimen.padding))
@@ -115,11 +121,13 @@ private fun TransitTimelineResults(
 @Composable
 private fun TransitItineraryCard(
     itinerary: earth.maps.cardinal.transit.Itinerary,
+    onItineraryClick: (earth.maps.cardinal.transit.Itinerary) -> Unit,
     modifier: Modifier = Modifier
 ) {
     androidx.compose.material3.Card(
         modifier = modifier,
-        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 2.dp),
+        onClick = { onItineraryClick(itinerary) }
     ) {
         Column(
             modifier = Modifier
@@ -356,4 +364,3 @@ private fun Mode.getIcon(): Int {
         else -> drawable.mode_walk
     }
 }
-

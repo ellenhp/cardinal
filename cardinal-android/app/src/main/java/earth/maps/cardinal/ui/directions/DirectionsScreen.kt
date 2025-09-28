@@ -83,6 +83,8 @@ import earth.maps.cardinal.transit.Itinerary
 import earth.maps.cardinal.transit.Leg
 import earth.maps.cardinal.transit.Mode
 import earth.maps.cardinal.transit.PlanResponse
+import earth.maps.cardinal.ui.core.NavigationUtils
+import earth.maps.cardinal.ui.core.Screen
 import earth.maps.cardinal.ui.place.SearchResults
 import earth.maps.cardinal.ui.saved.QuickSuggestions
 import io.github.dellisd.spatialk.geojson.BoundingBox
@@ -309,9 +311,14 @@ fun DirectionsScreen(
                     }
 
                     planState.planResponse != null -> {
-                        TransitTimelineResults(
-                            planResponse = planState.planResponse,
-                            modifier = Modifier.fillMaxWidth()
+                        TransitDirectionsScreen(
+                            viewModel = viewModel,
+                            onItineraryClick = { itinerary ->
+                                NavigationUtils.navigate(
+                                    navController,
+                                    Screen.TransitItineraryDetail(itinerary)
+                                )
+                            }
                         )
                     }
 

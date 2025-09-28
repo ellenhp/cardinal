@@ -695,6 +695,51 @@ fun AppContent(
             )
         }
 
+        composable(
+            Screen.TRANSIT_ITINERARY_DETAIL,
+            enterTransition = { slideInVertically(initialOffsetY = { it }) },
+            exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
+            showToolbar = false
+
+            val bottomSheetState = rememberBottomSheetState(
+                initialValue = BottomSheetValue.Collapsed
+            )
+            val scaffoldState =
+                rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
+
+            LaunchedEffect(key1 = Unit) {
+                coroutineScope.launch {
+                    scaffoldState.bottomSheetState.collapse()
+                }
+            }
+
+            val itineraryJson = backStackEntry.arguments?.getString("itinerary")
+            val itinerary = itineraryJson?.let { 
+                Gson().fromJson(Uri.decode(it), earth.maps.cardinal.transit.Itinerary::class.java) 
+            }
+            
+            itinerary?.let { itinerary ->
+                CardinalAppScaffold(
+                    scaffoldState = scaffoldState, 
+                    peekHeight = peekHeight,
+                    content = {
+                        earth.maps.cardinal.ui.directions.TransitItineraryDetailScreen(
+                            itinerary = itinerary,
+                            onBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    },
+                    showToolbar = false,
+                    fabHeightCallback = {
+                        if (topOfBackStack == backStackEntry) {
+                            fabHeight = it
+                        }
+                    },
+                )
+            }
+        }
+
         composable(Screen.TURN_BY_TURN) { backStackEntry ->
             showToolbar = false
             val routeId = backStackEntry.arguments?.getString("routeId")
