@@ -70,7 +70,6 @@ import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
-import earth.maps.cardinal.data.isYellow
 import earth.maps.cardinal.transit.StopTime
 import earth.maps.cardinal.viewmodel.TransitScreenViewModel
 import kotlinx.coroutines.delay
@@ -190,14 +189,6 @@ fun TransitScreenRouteDepartures(
             Color("#$it".toColorInt())
         } ?: MaterialTheme.colorScheme.surfaceVariant
 
-        val cardContainerColor = if (routeColor.isYellow()) {
-            MaterialTheme.colorScheme.surfaceVariant
-        } else {
-            routeColor
-        }
-
-        val onRouteColor = cardContainerColor.contrastColor()
-
         // Group departures by headsign within each route
         val departuresByHeadsign = departures.groupBy { it.headsign }.map { (key, value) ->
             (key to value.take(1))
@@ -308,7 +299,7 @@ fun TransitScreenRouteDepartures(
                                             val infiniteTransition =
                                                 rememberInfiniteTransition(label = "alpha animation")
                                             val animatedAlpha by infiniteTransition.animateFloat(
-                                                initialValue = 0.5f,
+                                                initialValue = 0.3f,
                                                 targetValue = 1f,
                                                 animationSpec = infiniteRepeatable(
                                                     animation = tween(
@@ -320,7 +311,9 @@ fun TransitScreenRouteDepartures(
                                             Text(
                                                 modifier = Modifier.padding(end = 4.dp),
                                                 text = stringResource(string.live_indicator_short),
-                                                color = onRouteColor.copy(alpha = animatedAlpha),
+                                                color = MaterialTheme.colorScheme.onSurface.copy(
+                                                    alpha = animatedAlpha
+                                                ),
                                                 style = MaterialTheme.typography.headlineSmall
                                             )
                                         }
@@ -329,7 +322,7 @@ fun TransitScreenRouteDepartures(
                                             style = MaterialTheme.typography.bodyLarge.copy(
                                                 fontWeight = if (soonestDeparture.realTime) FontWeight.Bold else FontWeight.Normal
                                             ),
-                                            color = onRouteColor.copy(alpha = if (soonestDeparture.realTime) 1f else 0.5f),
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (soonestDeparture.realTime) 1f else 0.5f),
                                             textAlign = TextAlign.End
                                         )
                                     }
