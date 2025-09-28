@@ -128,6 +128,8 @@
     <string name="pelias_api_key_title">Pelias API Key</string>
     <string name="valhalla_base_url_title">Valhalla Base URL</string>
     <string name="valhalla_api_key_title">Valhalla API Key</string>
+    <string name="continuous_location_tracking_disabled_title">Continuous Location Tracking</string>
+    <string name="continuous_location_tracking_disabled_help_text">Turning this off can save battery</string>
     <string name="routing_profiles_title">Routing Profiles</string>
     <string name="content_description_collapse">Collapse</string>
     <string name="content_description_expand">Expand</string>

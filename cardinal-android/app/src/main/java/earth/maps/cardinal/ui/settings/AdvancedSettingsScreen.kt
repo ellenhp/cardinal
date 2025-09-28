@@ -16,8 +16,10 @@
 
 package earth.maps.cardinal.ui.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -43,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
@@ -251,6 +255,54 @@ fun AdvancedSettingsScreen(
                             visualTransformation = PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                         )
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        thickness = DividerDefaults.Thickness,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
+                    // Continuous Location Tracking
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = dimensionResource(dimen.padding),
+                                vertical = dimensionResource(dimen.padding_minor)
+                            )
+                    ) {
+                        Text(
+                            text = stringResource(string.continuous_location_tracking_disabled_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(string.continuous_location_tracking_disabled_help_text),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        val continuousLocationTracking by viewModel.continuousLocationTracking.collectAsState()
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (continuousLocationTracking) stringResource(string.enabled) else stringResource(
+                                    string.disabled
+                                ), style = MaterialTheme.typography.bodyMedium
+                            )
+                            Switch(
+                                checked = continuousLocationTracking,
+                                onCheckedChange = { newValue ->
+                                    viewModel.setContinuousLocationTrackingEnabled(newValue)
+                                }
+                            )
+                        }
                     }
                 }
             }

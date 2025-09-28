@@ -24,6 +24,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import dagger.hilt.android.lifecycle.HiltViewModel
+import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.GeocodeResult
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
@@ -77,6 +78,7 @@ class DirectionsViewModel @Inject constructor(
     private val locationRepository: LocationRepository,
     private val routingProfileRepository: RoutingProfileRepository,
     private val routeRepository: RouteRepository,
+    private val appPreferenceRepository: AppPreferenceRepository,
 ) : ViewModel() {
 
     // Search query flow for debouncing
@@ -147,6 +149,9 @@ class DirectionsViewModel @Inject constructor(
     }
 
     suspend fun initializeDeparture() {
+        if (!appPreferenceRepository.continuousLocationTracking.value) {
+            return
+        }
         val defaultDeparture = getCurrentLocationAsPlace()
         defaultDeparture?.let {
             if (!haveManuallySetDeparture) {
