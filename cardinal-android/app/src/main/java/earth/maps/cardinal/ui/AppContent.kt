@@ -134,6 +134,8 @@ fun AppContent(
     port: Int?,
     onRequestLocationPermission: () -> Unit,
     hasLocationPermission: Boolean,
+    onRequestNotificationPermission: () -> Unit,
+    hasNotificationPermission: Boolean,
     routeRepository: RouteRepository,
     appPreferenceRepository: AppPreferenceRepository,
 ) {
@@ -678,6 +680,8 @@ fun AppContent(
                         navController = navController,
                         hasLocationPermission = hasLocationPermission,
                         onRequestLocationPermission = onRequestLocationPermission,
+                        hasNotificationPermission = hasNotificationPermission,
+                        onRequestNotificationPermission = onRequestNotificationPermission,
                         appPreferences = appPreferenceRepository
                     )
                 },
@@ -713,7 +717,9 @@ fun AppContent(
 
             port?.let { port ->
                 TurnByTurnNavigationScreen(
-                    port = port, mode = routingMode, route = ferrostarRoute
+                    port = port,
+                    mode = routingMode,
+                    route = ferrostarRoute,
                 )
             }
         }

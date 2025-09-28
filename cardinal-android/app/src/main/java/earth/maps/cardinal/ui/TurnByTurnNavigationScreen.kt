@@ -53,7 +53,9 @@ fun TurnByTurnNavigationScreen(
         RoutingMode.MOTORCYCLE -> ferrostarWrapperRepository.motorcycle
     }
 
-    val ferrostarCore = ferrostarWrapper.core
+    val ferrostarCore = remember(ferrostarWrapper) {
+        ferrostarWrapper.core
+    }
 
     // Start navigation when a route is provided
     LaunchedEffect(route) {
@@ -72,15 +74,12 @@ fun TurnByTurnNavigationScreen(
     // Only display the navigation view if we have a route
     if (route != null) {
         DynamicallyOrientingNavigationView(
-            styleUrl = styleUrl,
-            modifier = Modifier,
-            viewModel = viewModel
+            styleUrl = styleUrl, modifier = Modifier, viewModel = viewModel
         )
     } else {
         // Show a placeholder or loading state when no route is available
         Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "No route available for navigation",
