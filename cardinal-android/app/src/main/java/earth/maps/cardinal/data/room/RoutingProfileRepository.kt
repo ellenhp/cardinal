@@ -181,8 +181,10 @@ class RoutingProfileRepository @Inject constructor(
                 }
 
                 // Create default profile
-                val defaultOptions =
-                    createDefaultOptionsForMode(routingMode)!! // This will be caught and turned into a failure.
+                val defaultOptions = createDefaultOptionsForMode(routingMode)
+                if (defaultOptions == null) {
+                    return@withContext Result.failure(IllegalStateException("Failed to create default options for routing mode: ${routingMode.name}"))
+                }
                 val profileName = "Default ${routingMode.label}"
 
                 createProfile(profileName, routingMode, defaultOptions, isDefault = true).fold(

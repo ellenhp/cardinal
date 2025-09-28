@@ -134,7 +134,7 @@ class MapViewModel @Inject constructor(
     private fun escapeJsonString(input: String): JsonElement {
         return Json.parseToJsonElement(
             Json.Default.encodeToString(
-                String.Companion.serializer(),
+                String.serializer(),
                 input
             )
         )

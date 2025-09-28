@@ -160,7 +160,7 @@ class TransitousService @Inject constructor(private val appPreferenceRepository:
                 parameter("toPlace", "${to.latitude},${to.longitude}")
                 via?.let { via ->
                     parameter("via", via.map {
-                        "${from.latitude},${from.longitude}"
+                        "${it.latitude},${it.longitude}"
                     })
                 }
                 viaMinimumStay?.let { parameter("viaMinimumStay", it.joinToString(",")) }

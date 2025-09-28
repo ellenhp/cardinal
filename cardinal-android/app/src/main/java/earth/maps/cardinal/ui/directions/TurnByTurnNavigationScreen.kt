@@ -63,44 +63,56 @@ fun TurnByTurnNavigationScreen(
         RoutingMode.TRUCK -> ferrostarWrapperRepository.truck
         RoutingMode.MOTOR_SCOOTER -> ferrostarWrapperRepository.motorScooter
         RoutingMode.MOTORCYCLE -> ferrostarWrapperRepository.motorcycle
-        else -> return // This is an extremely heavy-handed way to deal with this problem for a composable function.
+        else -> null
     }
-
-    val ferrostarCore = remember(ferrostarWrapper) {
-        ferrostarWrapper.core
-    }
-
-    // Start navigation when a route is provided
-    LaunchedEffect(route) {
-        route?.let {
-            ferrostarCore.startNavigation(route = it)
-        }
-    }
-
-    // TODO: Make this configurable.
-    KeepScreenOn()
-
-    // Create and remember the navigation view model
-    val viewModel = remember { DefaultNavigationViewModel(ferrostarCore = ferrostarCore) }
-
-    // Determine the style URL based on theme
-    val styleVariant = if (isSystemInDarkTheme()) "dark" else "light"
-    val styleUrl = "http://127.0.0.1:$port/style_$styleVariant.json"
-
-    // Only display the navigation view if we have a route
-    if (route != null) {
-        DynamicallyOrientingNavigationView(
-            styleUrl = styleUrl, modifier = Modifier, viewModel = viewModel
-        )
-    } else {
-        // Show a placeholder or loading state when no route is available
+    if (ferrostarWrapper == null) {
         Box(
-            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "No route available for navigation",
+                text = "Unsupported routing mode",
                 style = MaterialTheme.typography.headlineSmall
             )
+        }
+        return
+    } else {
+        val ferrostarCore = remember(ferrostarWrapper) {
+            ferrostarWrapper.core
+        }
+
+        // Start navigation when a route is provided
+        LaunchedEffect(route) {
+            route?.let {
+                ferrostarCore.startNavigation(route = it)
+            }
+        }
+
+        // TODO: Make this configurable.
+        KeepScreenOn()
+
+        // Create and remember the navigation view model
+        val viewModel = remember { DefaultNavigationViewModel(ferrostarCore = ferrostarCore) }
+
+        // Determine the style URL based on theme
+        val styleVariant = if (isSystemInDarkTheme()) "dark" else "light"
+        val styleUrl = "http://127.0.0.1:$port/style_$styleVariant.json"
+
+        // Only display the navigation view if we have a route
+        if (route != null) {
+            DynamicallyOrientingNavigationView(
+                styleUrl = styleUrl, modifier = Modifier, viewModel = viewModel
+            )
+        } else {
+            // Show a placeholder or loading state when no route is available
+            Box(
+                modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No route available for navigation",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
         }
     }
 }
