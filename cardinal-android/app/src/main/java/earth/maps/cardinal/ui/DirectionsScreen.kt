@@ -95,6 +95,8 @@ fun DirectionsScreen(
     navController: NavController,
     hasLocationPermission: Boolean,
     onRequestLocationPermission: () -> Unit,
+    hasNotificationPermission: Boolean,
+    onRequestNotificationPermission: () -> Unit,
     appPreferences: AppPreferenceRepository
 ) {
     val availableProfiles by viewModel.getAvailableProfilesForCurrentMode()
@@ -293,7 +295,9 @@ fun DirectionsScreen(
                         navController = navController,
                         distanceUnit = appPreferences.distanceUnit.collectAsState().value,
                         availableProfiles = viewModel.getAvailableProfilesForCurrentMode()
-                            .collectAsState(initial = emptyList()).value
+                            .collectAsState(initial = emptyList()).value,
+                        hasNotificationPermission = hasNotificationPermission,
+                        onRequestNotificationPermission = onRequestNotificationPermission
                     )
                 }
 
@@ -644,10 +648,21 @@ private fun FerrostarRouteResults(
     modifier: Modifier = Modifier,
     navController: NavController,
     distanceUnit: Int,
-    availableProfiles: List<RoutingProfile>
+    availableProfiles: List<RoutingProfile>,
+    hasNotificationPermission: Boolean,
+    onRequestNotificationPermission: () -> Unit
 ) {
     var showProfileDialog by remember { mutableStateOf(false) }
+    var showNotificationDialog by remember { mutableStateOf(false) }
+    var pendingNavigation by remember { mutableStateOf(false) }
     val selectedProfile = viewModel.selectedRoutingProfile
+
+    LaunchedEffect(hasNotificationPermission, pendingNavigation) {
+        if (pendingNavigation && hasNotificationPermission) {
+            pendingNavigation = false
+            viewModel.startNavigation(navController)
+        }
+    }
 
     LazyColumn(modifier = modifier) {
         item {
@@ -700,7 +715,11 @@ private fun FerrostarRouteResults(
 
                     Button(
                         onClick = {
-                            viewModel.startNavigation(navController)
+                            if (hasNotificationPermission) {
+                                viewModel.startNavigation(navController)
+                            } else {
+                                showNotificationDialog = true
+                            }
                         }, modifier = Modifier.fillMaxWidth(), enabled = true
                     ) {
                         Text(stringResource(string.start_navigation))
@@ -795,6 +814,28 @@ private fun FerrostarRouteResults(
             confirmButton = {
                 TextButton(onClick = { showProfileDialog = false }) {
                     Text(stringResource(string.cancel_change_routing_profile))
+                }
+            })
+    }
+
+    // Notification permission dialog
+    if (showNotificationDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotificationDialog = false },
+            title = { Text(stringResource(string.notification_ask_title)) },
+            text = { Text(stringResource(string.notification_ask_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showNotificationDialog = false
+                    pendingNavigation = true
+                    onRequestNotificationPermission()
+                }) {
+                    Text(stringResource(string.got_it))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNotificationDialog = false }) {
+                    Text(stringResource(string.cancel))
                 }
             })
     }

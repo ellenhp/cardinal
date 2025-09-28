@@ -19,7 +19,6 @@ package earth.maps.cardinal.routing
 import android.content.Context
 import com.stadiamaps.ferrostar.core.AndroidTtsObserver
 import dagger.hilt.android.qualifiers.ApplicationContext
-import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.room.RoutingProfileRepository
 import javax.inject.Inject
@@ -29,7 +28,6 @@ import javax.inject.Singleton
 class FerrostarWrapperRepository @Inject constructor(
     @param:ApplicationContext
     private val context: Context,
-    private val appPreferences: AppPreferenceRepository,
     private val routingProfileRepository: RoutingProfileRepository
 ) {
     lateinit var walking: FerrostarWrapper
@@ -47,7 +45,6 @@ class FerrostarWrapperRepository @Inject constructor(
             RoutingMode.PEDESTRIAN,
             endpoint,
             androidTtsObserver,
-            appPreferences,
             routingProfileRepository
         )
         cycling = FerrostarWrapper(
@@ -55,7 +52,6 @@ class FerrostarWrapperRepository @Inject constructor(
             RoutingMode.BICYCLE,
             endpoint,
             androidTtsObserver,
-            appPreferences,
             routingProfileRepository
         )
         driving = FerrostarWrapper(
@@ -63,7 +59,6 @@ class FerrostarWrapperRepository @Inject constructor(
             RoutingMode.AUTO,
             endpoint,
             androidTtsObserver,
-            appPreferences,
             routingProfileRepository
         )
         truck = FerrostarWrapper(
@@ -71,7 +66,6 @@ class FerrostarWrapperRepository @Inject constructor(
             RoutingMode.TRUCK,
             endpoint,
             androidTtsObserver,
-            appPreferences,
             routingProfileRepository
         )
         motorScooter = FerrostarWrapper(
@@ -79,7 +73,6 @@ class FerrostarWrapperRepository @Inject constructor(
             RoutingMode.MOTOR_SCOOTER,
             endpoint,
             androidTtsObserver,
-            appPreferences,
             routingProfileRepository
         )
         motorcycle = FerrostarWrapper(
@@ -87,7 +80,6 @@ class FerrostarWrapperRepository @Inject constructor(
             RoutingMode.MOTORCYCLE,
             endpoint,
             androidTtsObserver,
-            appPreferences,
             routingProfileRepository
         )
     }

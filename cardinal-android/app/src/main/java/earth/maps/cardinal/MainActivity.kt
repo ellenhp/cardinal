@@ -87,13 +87,33 @@ class MainActivity : ComponentActivity() {
     private var bound by mutableStateOf(false)
     private var port by mutableStateOf<Int?>(null)
     private var hasLocationPermission by mutableStateOf(false)
+    private var hasNotificationPermission by mutableStateOf(false)
     private var deepLinkDestination by mutableStateOf<String?>(null)
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1001
+        private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 1002
         private const val TAG = "MainActivity"
         const val EXTRA_DEEP_LINK_DESTINATION = "deep_link_destination"
         const val DEEP_LINK_OFFLINE_AREAS = "offline_areas"
+    }
+
+    private fun checkNotificationPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            hasNotificationPermission = true
+        }
     }
 
     private fun requestLocationPermission() {
@@ -108,6 +128,7 @@ class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
+        hasNotificationPermission = isGranted
         if (isGranted) {
             Log.d(TAG, "Notification permission granted")
             lifecycleScope.launch {
@@ -149,6 +170,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        hasNotificationPermission = checkNotificationPermission()
+
         CoroutineScope(Dispatchers.IO).launch {
             migrationHelper.migratePlacesToSavedPlaces()
             savedListRepository.cleanupUnparentedElements()
@@ -188,6 +211,8 @@ class MainActivity : ComponentActivity() {
                     hasLocationPermission = hasLocationPermission,
                     routeRepository = routeRepository,
                     appPreferenceRepository = appPreferenceRepository,
+                    onRequestNotificationPermission = { requestNotificationPermission() },
+                    hasNotificationPermission = hasNotificationPermission
                 )
             }
         }

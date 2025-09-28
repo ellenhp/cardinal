@@ -24,7 +24,6 @@ import com.stadiamaps.ferrostar.core.FerrostarCore
 import com.stadiamaps.ferrostar.core.http.OkHttpClientProvider
 import com.stadiamaps.ferrostar.core.service.FerrostarForegroundServiceManager
 import com.stadiamaps.ferrostar.core.service.ForegroundServiceManager
-import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.room.RoutingProfileRepository
 import okhttp3.OkHttpClient
@@ -41,7 +40,6 @@ class FerrostarWrapper(
     private val mode: RoutingMode,
     private val localValhallaEndpoint: String,
     private val androidTtsObserver: AndroidTtsObserver,
-    appPreferences: AppPreferenceRepository,
     routingProfileRepository: RoutingProfileRepository,
     routingOptions: RoutingOptions? = null
 ) {
@@ -52,6 +50,7 @@ class FerrostarWrapper(
             DefaultForegroundNotificationBuilder(context)
         )
     private val locationProvider = AndroidSystemLocationProvider(context = context)
+    private var previousRouteOptions: RoutingOptions? = null
 
     var core =
         FerrostarCore(
@@ -82,12 +81,16 @@ class FerrostarWrapper(
      * Updates the routing options by recreating the core with new options.
      * This allows changing routing behavior without creating a new wrapper instance.
      */
-    fun setOptions(routingOptions: RoutingOptions) {
+    fun setOptions(
+        newRoutingOptions: RoutingOptions? = null,
+    ) {
+        val routingOptions = newRoutingOptions ?: previousRouteOptions
+        previousRouteOptions = routingOptions
         core = FerrostarCore(
             routeAdapter = RouteAdapter.newValhallaHttp(
                 endpointUrl = localValhallaEndpoint,
                 profile = mode.value,
-                optionsJson = routingOptions.toValhallaOptionsJson()
+                optionsJson = previousRouteOptions?.toValhallaOptionsJson()
             ),
             httpClient = OkHttpClientProvider(OkHttpClient()),
             locationProvider = locationProvider,
@@ -98,7 +101,7 @@ class FerrostarWrapper(
                 routeDeviationTracking = RouteDeviationTracking.StaticThreshold(15U, 50.0),
                 snappedLocationCourseFiltering = CourseFiltering.SNAP_TO_ROUTE
             ),
-            foregroundServiceManager = foregroundServiceManager,
+            foregroundServiceManager = foregroundServiceManager
         )
         core.spokenInstructionObserver = androidTtsObserver
     }
