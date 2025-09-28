@@ -194,9 +194,6 @@ fun AppContent(
                 onMapPoiClick = {
                     NavigationUtils.navigate(navController, Screen.PlaceCard(it))
                 },
-                onTransitStopClick = {
-                    NavigationUtils.navigate(navController, Screen.PlaceCard(it))
-                },
                 onDropPin = {
                     val place = Place(
                         name = droppedPinName,

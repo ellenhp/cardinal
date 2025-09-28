@@ -32,11 +32,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import earth.maps.cardinal.R
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.ViewportPreferences
 import earth.maps.cardinal.data.ViewportRepository
+import earth.maps.cardinal.data.room.SavedPlace
 import earth.maps.cardinal.data.room.SavedPlaceDao
 import earth.maps.cardinal.geocoding.OfflineGeocodingService
 import io.github.dellisd.spatialk.geojson.Feature
@@ -50,11 +50,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.Json.Default.parseToJsonElement
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.CameraState
-import java.lang.Integer.parseInt
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
@@ -103,21 +105,39 @@ class MapViewModel @Inject constructor(
     var screenWidth: Dp = 0.dp
 
     val savedPlacesFlow: Flow<FeatureCollection> = placeDao.getAllPlacesAsFlow().map { placeList ->
-        FeatureCollection(placeList.map {
-            Feature(
-                geometry = Point(Position(latitude = it.latitude, longitude = it.longitude)),
-                properties = mapOf(
-                    "name" to parseToJsonElement(
-                        "\"${
-                            // Best-effort.
-                            it.name.replace(
-                                "\"", "\\\""
-                            )
-                        }\""
-                    ), "saved_poi_id" to parseToJsonElement(it.id)
-                )
-            )
-        })
+        FeatureCollection(placeList.map { createFeatureFromPlace(it) })
+    }
+
+    /**
+     * Creates a Feature from a SavedPlace with proper JSON escaping.
+     */
+    private fun createFeatureFromPlace(place: SavedPlace): Feature {
+        val name = place.customName ?: place.name
+        val description = place.customDescription ?: place.type
+
+        val properties = mutableMapOf(
+            "saved_poi_id" to escapeJsonString(place.id),
+            "name" to escapeJsonString(name),
+            "description" to escapeJsonString(description)
+        )
+
+        place.houseNumber?.let { properties["addr:housenumber"] = escapeJsonString(it) }
+        place.road?.let { properties["addr:street"] = escapeJsonString(it) }
+        place.city?.let { properties["addr:city"] = escapeJsonString(it) }
+        place.postcode?.let { properties["addr:postcode"] = escapeJsonString(it) }
+        place.state?.let { properties["addr:state"] = escapeJsonString(it) }
+        place.country?.let { properties["addr:country"] = escapeJsonString(it) }
+        place.countryCode?.let { properties["country_code"] = escapeJsonString(it) }
+        place.transitStopId?.let { properties["transit_stop_id"] = escapeJsonString(it) }
+
+        return Feature(
+            geometry = Point(Position(latitude = place.latitude, longitude = place.longitude)),
+            properties = properties
+        )
+    }
+
+    private fun escapeJsonString(input: String): JsonElement {
+        return parseToJsonElement(Json.encodeToString(String.serializer(), input))
     }
 
     /**
@@ -155,7 +175,6 @@ class MapViewModel @Inject constructor(
         cameraState: CameraState,
         dpOffset: DpOffset,
         onMapPoiClick: (Place) -> Unit,
-        onTransitStopClick: (Place) -> Unit,
         onMapInteraction: () -> Unit
     ) {
         val features = cameraState.projection?.queryRenderedFeatures(
@@ -173,30 +192,16 @@ class MapViewModel @Inject constructor(
         val feature = savedFeatures?.firstOrNull() ?: transitFeatures?.firstOrNull()
         ?: namedFeatures?.firstOrNull() ?: filteredFeatures?.firstOrNull()
         if (feature != null) {
-            val properties =
-                feature.properties.map { (key, value) -> key to value.jsonPrimitive.content }
-                    .toMap()
-            if (properties["class"] == "bus") {
-                onTransitStopClick(
-                    convertFeatureToPlace(
-                        feature,
-                        description = context.getString(R.string.transit_stop)
-                    )
-                )
-            } else {
-                onMapPoiClick(
-                    convertFeatureToPlace(
-                        feature,
-                        description = locationRepository.mapOsmTagsToDescription(properties)
-                    )
-                )
-            }
+            val feature = convertFeatureToPlace(
+                feature
+            )
+            onMapPoiClick(feature)
         } else {
             onMapInteraction()
         }
     }
 
-    fun convertFeatureToPlace(feature: Feature, description: String? = null): Place {
+    fun convertFeatureToPlace(feature: Feature): Place {
         // Convert JsonElement properties to Map<String, String>
         val tags = feature.properties.mapValues { (_, value) ->
             value.jsonPrimitive.content
@@ -207,15 +212,15 @@ class MapViewModel @Inject constructor(
         val coordinates = point.coordinates
         val longitude = coordinates.longitude
         val latitude = coordinates.latitude
-        val savedPoiId = try {
-            tags["saved_poi_id"]?.let { parseInt(it) }
-        } catch (_: NumberFormatException) {
-            null
-        }
 
+        // These two lines are not ideal. Ideally we'd have a less heavyweight way to format the address.
         val result =
             offlineGeocodingService.buildResult(tags, latitude = latitude, longitude = longitude)
-        return locationRepository.createSearchResultPlace(result)
+        return locationRepository.createSearchResultPlace(result).copy(
+            transitStopId = tags["transit_stop_id"],
+            isTransitStop = tags.containsKey("transit_stop_id"),
+            id = tags["saved_poi_id"]
+        )
     }
 
     /**
