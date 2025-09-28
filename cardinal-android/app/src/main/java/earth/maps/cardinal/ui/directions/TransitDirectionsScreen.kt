@@ -247,7 +247,7 @@ private fun TransitLegTimelineItem(
                 Column(modifier = Modifier.weight(1f)) {
                     // Route name and headsign
                     val routeText =
-                        leg.routeShortName ?: leg.mode.name.lowercase().capitalize()
+                        leg.routeShortName ?: leg.mode.name.lowercase()
                             .replaceFirstChar { it.uppercase() }
                     Text(
                         text = "$routeText ${leg.headsign ?: ""}".trim(),
