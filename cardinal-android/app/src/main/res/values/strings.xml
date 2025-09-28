@@ -226,4 +226,13 @@
     <string name="notification_ask_body">Cardinal Maps needs to send notifications to prevent navigation from being interrupted.</string>
     <string name="notification_ask_title">Send Notifications</string>
     <string name="got_it">Got it</string>
+    <string name="total_walking_distance">Total walking distance: %1$s</string>
+    <string name="journey_overview">Journey Overview</string>
+    <string name="depart">Depart: %1$s</string>
+    <string name="arrive">Arrive: %1$s</string>
+    <string name="stops">Stops:</string>
+    <string name="stops_qty">%1$d stops</string>
+    <string name="trip_details">Trip Details</string>
+    <string name="step_by_step_journey">Step-by-Step Journey</string>
+    <string name="distance_not_available">Distance not available</string>
 </resources>
