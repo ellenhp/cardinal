@@ -88,7 +88,6 @@ fun MapView(
     port: Int,
     mapViewModel: MapViewModel,
     onMapPoiClick: (Place) -> Unit,
-    onTransitStopClick: (Place) -> Unit,
     onMapInteraction: () -> Unit,
     onDropPin: (LatLng) -> Unit,
     onRequestLocationPermission: () -> Unit,
@@ -155,7 +154,7 @@ fun MapView(
                 ),
                 onMapClick = { position, dpOffset ->
                     mapViewModel.handleMapTap(
-                        cameraState, dpOffset, onMapPoiClick, onTransitStopClick, onMapInteraction
+                        cameraState, dpOffset, onMapPoiClick, onMapInteraction
                     )
                     ClickResult.Consume
                 },
