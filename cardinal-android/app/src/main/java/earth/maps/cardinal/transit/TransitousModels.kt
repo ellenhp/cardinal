@@ -16,6 +16,8 @@
 
 package earth.maps.cardinal.transit
 
+import androidx.compose.ui.graphics.Color
+import androidx.core.graphics.toColorInt
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -70,7 +72,15 @@ data class StopTime(
     @SerialName("cancelled") val cancelled: Boolean,
     @SerialName("tripCancelled") val tripCancelled: Boolean,
     @SerialName("source") val source: String
-)
+) {
+    fun parseRouteColor(): Color? {
+        try {
+            return Color("#$routeColor".toColorInt())
+        } catch (_: IllegalArgumentException) {
+            return null
+        }
+    }
+}
 
 @Serializable
 data class StopPlace(

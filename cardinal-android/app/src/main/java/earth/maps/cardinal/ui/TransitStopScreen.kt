@@ -63,7 +63,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.toColorInt
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.LatLng
@@ -228,9 +227,8 @@ fun RouteDepartures(
                             routeNamePadding.value = with(density) { it.size.height.toDp() }
                         }
                 ) {
-                    val routeColor = departures.firstOrNull()?.routeColor?.let {
-                        Color("#$it".toColorInt())
-                    } ?: MaterialTheme.colorScheme.surfaceVariant
+                    val routeColor = departures.firstOrNull()?.parseRouteColor()
+                        ?: MaterialTheme.colorScheme.surfaceVariant
                     Text(
                         text = stringResource(string.square_char),
                         style = MaterialTheme.typography.titleLarge,

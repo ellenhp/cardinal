@@ -235,14 +235,13 @@ fun TransitScreenRouteDepartures(
                     Row(
                         modifier = Modifier.padding(dimensionResource(dimen.padding_minor))
                     ) {
-                        val routeColorRaw = departures.firstOrNull()?.routeColor?.let {
-                            Color("#$it".toColorInt())
-                        } ?: MaterialTheme.colorScheme.surfaceVariant
+                        val routeColor = departures.firstOrNull()?.parseRouteColor()
+                            ?: MaterialTheme.colorScheme.surfaceVariant
                         Text(
                             text = stringResource(string.square_char),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = routeColorRaw
+                            color = routeColor
                         )
                         Spacer(modifier = Modifier.width(dimensionResource(dimen.padding_minor)))
                         Text(
