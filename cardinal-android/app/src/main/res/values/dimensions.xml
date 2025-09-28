@@ -16,6 +16,7 @@
 
 <resources>
     <dimen name="padding">16dp</dimen>
+    <dimen name="fab_height">56dp</dimen>
     <dimen name="padding_minor">12dp</dimen>
     <dimen name="icon_size">24dp</dimen>
 </resources>

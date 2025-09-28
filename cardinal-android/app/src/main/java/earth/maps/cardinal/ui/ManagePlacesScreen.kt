@@ -22,12 +22,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -68,6 +68,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -131,45 +132,49 @@ fun ManagePlacesScreen(
 
         val coroutineScope = rememberCoroutineScope()
         val currentListContent = currentListContent
-        AnimatedVisibility(
-            visible = currentListContent?.isNotEmpty() == true,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            ListContentGrid(
-                viewModel = viewModel,
-                content = currentListContent ?: emptyList(),
-                selectedItems = selectedItems,
-                paddingValues = paddingValues,
-                clipboard = clipboard,
-                onItemClick = { item ->
-                    when (item) {
-                        is PlaceContent -> {
-                            coroutineScope.launch {
-                                val place = viewModel.getSavedPlace(item.id) ?: return@launch
-                                NavigationUtils.navigate(
-                                    navController,
-                                    Screen.PlaceCard(place)
-                                )
+        Box(modifier = Modifier.padding(paddingValues)) {
+            AnimatedVisibility(
+                visible = currentListContent?.isNotEmpty() == true,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                ListContentGrid(
+                    viewModel = viewModel,
+                    content = currentListContent ?: emptyList(),
+                    selectedItems = selectedItems,
+                    bottomSpacer = TOOLBAR_HEIGHT_DP + dimensionResource(
+                        dimen.padding
+                    ) + dimensionResource(dimen.fab_height), // FAB height.
+                    clipboard = clipboard,
+                    onItemClick = { item ->
+                        when (item) {
+                            is PlaceContent -> {
+                                coroutineScope.launch {
+                                    val place = viewModel.getSavedPlace(item.id) ?: return@launch
+                                    NavigationUtils.navigate(
+                                        navController,
+                                        Screen.PlaceCard(place)
+                                    )
+                                }
                             }
-                        }
 
-                        is ListContentItem -> {
-                            currentListId?.let { currentListId ->
-                                NavigationUtils.navigate(
-                                    navController,
-                                    Screen.ManagePlaces(
-                                        item.id,
-                                        parents = parents.plus(currentListName ?: "")
-                                    ),
-                                    avoidCycles = false
-                                )
+                            is ListContentItem -> {
+                                currentListId?.let { currentListId ->
+                                    NavigationUtils.navigate(
+                                        navController,
+                                        Screen.ManagePlaces(
+                                            item.id,
+                                            parents = parents.plus(currentListName ?: "")
+                                        ),
+                                        avoidCycles = false
+                                    )
+                                }
                             }
                         }
-                    }
-                },
-                onEditClick = { editingItem.value = it; showEditDialog.value = true }
-            )
+                    },
+                    onEditClick = { editingItem.value = it; showEditDialog.value = true }
+                )
+            }
         }
         val modifier = if (fabMenuExpanded) {
             Modifier
@@ -526,7 +531,7 @@ private fun ListContentGrid(
     selectedItems: Set<String>,
     onItemClick: (ListContent) -> Unit,
     onEditClick: (ListContent) -> Unit,
-    paddingValues: PaddingValues
+    bottomSpacer: Dp
 ) {
     val states = content.map {
         it.collectAsState(null).value
@@ -536,7 +541,7 @@ private fun ListContentGrid(
     val pinnedPlaces = places.filter { it.isPinned }
     val unpinnedPlaces = places.filter { !it.isPinned }
 
-    LazyColumn(modifier = Modifier.padding(paddingValues)) {
+    LazyColumn {
         // Lists section
         val shouldShowListsHeader = lists.isNotEmpty()
         if (shouldShowListsHeader) {
@@ -605,6 +610,13 @@ private fun ListContentGrid(
                 onSelectionChange = { viewModel.toggleSelection(item.id) },
                 onClick = { onItemClick(item) },
                 onEditClick = onEditClick
+            )
+        }
+        item {
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(bottomSpacer)
             )
         }
     }
