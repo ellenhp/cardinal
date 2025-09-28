@@ -119,6 +119,8 @@ class DirectionsViewModel @Inject constructor(
     var isGettingLocation by mutableStateOf(false)
         private set
 
+    private var haveManuallySetDeparture: Boolean = false
+
     init {
         // Set up debounced search
         searchQueryFlow
@@ -144,7 +146,17 @@ class DirectionsViewModel @Inject constructor(
         _searchQueryFlow.value = query
     }
 
+    suspend fun initializeDeparture() {
+        val defaultDeparture = getCurrentLocationAsPlace()
+        defaultDeparture?.let {
+            if (!haveManuallySetDeparture) {
+                updateFromPlace(it)
+            }
+        }
+    }
+
     fun updateFromPlace(place: Place?) {
+        haveManuallySetDeparture = true
         fromPlace = place
         fetchRouteIfNeeded()
     }
