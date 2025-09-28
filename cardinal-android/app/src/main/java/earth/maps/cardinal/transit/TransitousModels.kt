@@ -203,21 +203,16 @@ data class Alert(
 
 @Serializable
 data class EncodedPolyline(
-    val points: String
+    val points: String,
+    val precision: Int,
 )
 
 @Serializable
 data class StepInstruction(
     val relativeDirection: String,
     val distance: Double,
-    val polyline: MotisPolyline,
+    val polyline: EncodedPolyline,
     val streetName: String,
-)
-
-@Serializable
-data class MotisPolyline(
-    val points: String,
-    val precision: Int,
 )
 
 @Serializable
@@ -294,7 +289,7 @@ data class Leg(
     val cancelled: Boolean? = null,
     val source: String? = null,
     val intermediateStops: List<Place>? = null,
-    val geometry: EncodedPolyline? = null,
+    val legGeometry: EncodedPolyline? = null,
     val steps: List<StepInstruction>? = null,
     val rental: Rental? = null,
     val fareTransferIndex: Int? = null,

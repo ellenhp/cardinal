@@ -160,6 +160,11 @@ fun AppContent(
 
     // Route state for displaying on map
     var currentRoute by remember { mutableStateOf<Route?>(null) }
+    var currentTransitItinerary by remember {
+        mutableStateOf<earth.maps.cardinal.transit.Itinerary?>(
+            null
+        )
+    }
 
     val droppedPinName = stringResource(string.dropped_pin)
     var screenHeightDp by remember { mutableStateOf(0.dp) }
@@ -230,7 +235,8 @@ fun AppContent(
                 mapPins = mapPins,
                 appPreferences = appPreferenceRepository,
                 selectedOfflineArea = selectedOfflineArea,
-                currentRoute = currentRoute
+                currentRoute = currentRoute,
+                currentTransitItinerary = currentTransitItinerary
             )
         } else {
             LaunchedEffect(key1 = port) {
@@ -625,7 +631,7 @@ fun AppContent(
                 rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
 
             val viewModel: DirectionsViewModel = hiltViewModel()
-            val currentLocation = mapViewModel.locationFlow.collectAsState().value
+            mapViewModel.locationFlow.collectAsState().value
 
             // Handle initial place setup
             LaunchedEffect(key1 = Unit) {
@@ -714,13 +720,72 @@ fun AppContent(
             }
 
             val itineraryJson = backStackEntry.arguments?.getString("itinerary")
-            val itinerary = itineraryJson?.let { 
-                Gson().fromJson(Uri.decode(it), earth.maps.cardinal.transit.Itinerary::class.java) 
+            val itinerary = itineraryJson?.let {
+                Gson().fromJson(Uri.decode(it), earth.maps.cardinal.transit.Itinerary::class.java)
             }
-            
+
             itinerary?.let { itinerary ->
+                LaunchedEffect(itinerary) {
+                    // Set current transit itinerary for map display
+                    currentTransitItinerary = itinerary
+
+                    // Extract all leg geometries and calculate bounding box
+                    val allPositions = mutableListOf<Position>()
+
+                    itinerary.legs.forEach { leg ->
+                        leg.legGeometry?.let { geometry ->
+                            try {
+                                val positions =
+                                    earth.maps.cardinal.data.PolylineUtils.decodePolyline(
+                                        geometry.points,
+                                        geometry.precision
+                                    )
+                                allPositions.addAll(positions)
+                            } catch (e: Exception) {
+                                // Ignore decoding errors for individual legs
+                            }
+                        }
+                    }
+
+                    // If we have route geometry, fit camera to the route
+                    if (allPositions.isNotEmpty()) {
+                        earth.maps.cardinal.data.PolylineUtils.calculateBoundingBox(allPositions)
+                            ?.let { boundingBox ->
+                                coroutineScope.launch {
+                                    cameraState.animateTo(
+                                        boundingBox = BoundingBox(
+                                            west = boundingBox.west,
+                                            south = boundingBox.south,
+                                            east = boundingBox.east,
+                                            north = boundingBox.north
+                                        ),
+                                        padding = PaddingValues(
+                                            start = screenWidthDp / 8,
+                                            top = screenHeightDp / 8,
+                                            end = screenWidthDp / 8,
+                                            bottom = min(
+                                                3f * screenHeightDp / 4,
+                                                peekHeight + screenHeightDp / 8
+                                            )
+                                        ),
+                                        duration = appPreferenceRepository.animationSpeedDurationValue
+                                    )
+                                }
+                            }
+                    }
+
+                    // Clear any existing pins
+                    mapPins.clear()
+                }
+
+                DisposableEffect(key1 = Unit) {
+                    onDispose {
+                        currentTransitItinerary = null
+                    }
+                }
+
                 CardinalAppScaffold(
-                    scaffoldState = scaffoldState, 
+                    scaffoldState = scaffoldState,
                     peekHeight = peekHeight,
                     content = {
                         earth.maps.cardinal.ui.directions.TransitItineraryDetailScreen(

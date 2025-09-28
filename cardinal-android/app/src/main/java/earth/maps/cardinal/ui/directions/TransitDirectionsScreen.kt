@@ -16,7 +16,6 @@
 
 package earth.maps.cardinal.ui.directions
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -102,7 +101,6 @@ private fun TransitTimelineResults(
     onItineraryClick: (earth.maps.cardinal.transit.Itinerary) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Log.d("TAG", "${planResponse.itineraries.size}")
     LazyColumn(modifier = modifier) {
         items(planResponse.itineraries.size) { index ->
             val itinerary = planResponse.itineraries[index]

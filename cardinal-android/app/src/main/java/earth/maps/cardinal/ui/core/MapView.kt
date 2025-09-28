@@ -44,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.zIndex
+import androidx.core.graphics.toColorInt
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
@@ -51,9 +52,11 @@ import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.PolylineUtils
 import earth.maps.cardinal.data.room.OfflineArea
+import earth.maps.cardinal.transit.Itinerary
+import earth.maps.cardinal.transit.Mode
 import earth.maps.cardinal.ui.map.LocationPuck
-import earth.maps.cardinal.ui.core.MapViewModel
 import io.github.dellisd.spatialk.geojson.Feature
 import io.github.dellisd.spatialk.geojson.FeatureCollection
 import io.github.dellisd.spatialk.geojson.LineString
@@ -99,6 +102,7 @@ fun MapView(
     appPreferences: AppPreferenceRepository,
     selectedOfflineArea: OfflineArea? = null,
     currentRoute: Route? = null,
+    currentTransitItinerary: Itinerary? = null,
 ) {
     val context = LocalContext.current
     val styleState = rememberStyleState()
@@ -257,6 +261,70 @@ fun MapView(
                     )
                 }
 
+                // Display transit itinerary polylines if available
+                currentTransitItinerary?.let { itinerary ->
+                    itinerary.legs.forEachIndexed { legIndex, leg ->
+                        leg.legGeometry?.let { geometry ->
+                            val positions = PolylineUtils.decodePolyline(
+                                encoded = geometry.points,
+                                precision = geometry.precision
+                            )
+                            if (positions.isNotEmpty()) {
+                                val lineString = LineString(positions)
+                                val feature = Feature(geometry = lineString)
+                                val source = rememberGeoJsonSource(
+                                    GeoJsonData.Features(FeatureCollection(features = listOf(feature)))
+                                )
+
+                                // Parse route color or use default based on mode
+                                val routeColor = try {
+                                    leg.routeColor?.let {
+                                        androidx.compose.ui.graphics.Color("#$it".toColorInt())
+                                    } ?: getDefaultModeColor(leg.mode)
+                                } catch (e: Exception) {
+                                    getDefaultModeColor(leg.mode)
+                                }
+
+                                // Different styling for walking vs transit legs
+                                val (lineWidth, dashArray) = when (leg.mode) {
+                                    Mode.WALK, Mode.BIKE -> Pair(4.dp, null) // Solid line, thinner
+                                    else -> Pair(6.dp, null) // Solid line, thicker for transit
+                                }
+
+                                // Line casing for better visibility
+                                LineLayer(
+                                    id = "transit_leg_${legIndex}_casing",
+                                    source = source,
+                                    color = rgbColor(
+                                        const((routeColor.red * 127).toInt()),
+                                        const((routeColor.green * 127).toInt()),
+                                        const((routeColor.blue * 127).toInt())
+                                    ),
+                                    width = const(lineWidth + 2.dp),
+                                    opacity = const(0.8f),
+                                    cap = const(LineCap.Round),
+                                    join = const(LineJoin.Round),
+                                )
+
+                                // Main line
+                                LineLayer(
+                                    id = "transit_leg_$legIndex",
+                                    source = source,
+                                    color = rgbColor(
+                                        const((routeColor.red * 255).toInt()),
+                                        const((routeColor.green * 255).toInt()),
+                                        const((routeColor.blue * 255).toInt())
+                                    ),
+                                    width = const(lineWidth),
+                                    opacity = const(1f),
+                                    cap = const(LineCap.Round),
+                                    join = const(LineJoin.Round),
+                                )
+                            }
+                        }
+                    }
+                }
+
                 SymbolLayer(
                     id = "map_pins",
                     source = rememberGeoJsonSource(GeoJsonData.Features(FeatureCollection(features = pinFeatures))),
@@ -290,6 +358,25 @@ fun MapView(
             appPreferences = appPreferences,
             context = context
         )
+    }
+}
+
+/**
+ * Get default color for transit mode when route color is not available
+ */
+private fun getDefaultModeColor(mode: Mode): androidx.compose.ui.graphics.Color {
+    return when (mode) {
+        Mode.WALK -> androidx.compose.ui.graphics.Color(0xFF4CAF50) // Green
+        Mode.BIKE -> androidx.compose.ui.graphics.Color(0xFF2196F3) // Blue
+        Mode.BUS -> androidx.compose.ui.graphics.Color(0xFF9C27B0) // Purple
+        Mode.TRAM -> androidx.compose.ui.graphics.Color(0xFFFF9800) // Orange
+        Mode.SUBWAY -> androidx.compose.ui.graphics.Color(0xFFF44336) // Red
+        Mode.RAIL, Mode.HIGHSPEED_RAIL, Mode.REGIONAL_RAIL, Mode.REGIONAL_FAST_RAIL -> androidx.compose.ui.graphics.Color(
+            0xFF607D8B
+        ) // Blue Grey
+        Mode.FERRY -> androidx.compose.ui.graphics.Color(0xFF00BCD4) // Cyan
+        Mode.AIRPLANE -> androidx.compose.ui.graphics.Color(0xFF795548) // Brown
+        else -> androidx.compose.ui.graphics.Color(0xFF757575) // Grey
     }
 }
 

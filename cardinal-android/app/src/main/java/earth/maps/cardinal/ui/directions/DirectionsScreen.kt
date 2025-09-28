@@ -16,10 +16,8 @@
 
 package earth.maps.cardinal.ui.directions
 
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,10 +25,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -79,10 +75,6 @@ import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.deduplicateSearchResults
 import earth.maps.cardinal.data.room.RoutingProfile
-import earth.maps.cardinal.transit.Itinerary
-import earth.maps.cardinal.transit.Leg
-import earth.maps.cardinal.transit.Mode
-import earth.maps.cardinal.transit.PlanResponse
 import earth.maps.cardinal.ui.core.NavigationUtils
 import earth.maps.cardinal.ui.core.Screen
 import earth.maps.cardinal.ui.place.SearchResults
@@ -90,10 +82,7 @@ import earth.maps.cardinal.ui.saved.QuickSuggestions
 import io.github.dellisd.spatialk.geojson.BoundingBox
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.datetime.toLocalDateTime
 import uniffi.ferrostar.Route
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 enum class FieldFocusState {
     NONE, FROM, TO
@@ -478,265 +467,6 @@ fun DirectionsScreen(
     }
 }
 
-@Composable
-private fun TransitTimelineResults(
-    planResponse: PlanResponse,
-    modifier: Modifier = Modifier
-) {
-    Log.d("TAG", "${planResponse.itineraries.size}")
-    LazyColumn(modifier = modifier) {
-        items(planResponse.itineraries.size) { index ->
-            val itinerary = planResponse.itineraries[index]
-
-            TransitItineraryCard(
-                itinerary = itinerary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = dimensionResource(dimen.padding))
-            )
-        }
-    }
-}
-
-@Composable
-private fun TransitItineraryCard(
-    itinerary: Itinerary,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dimensionResource(dimen.padding))
-        ) {
-            // Itinerary summary
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = dimensionResource(dimen.padding)),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Depart: ${itinerary.startTime.formatTime()}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "Arrive: ${itinerary.endTime.formatTime()}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = formatDuration(itinerary.duration),
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "${itinerary.transfers} ${if (itinerary.transfers == 1) "transfer" else "transfers"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            // Timeline of legs
-            Column(modifier = Modifier.fillMaxWidth()) {
-                itinerary.legs.forEachIndexed { index, leg ->
-                    TransitLegTimelineItem(
-                        leg = leg,
-                        isLast = index == itinerary.legs.lastIndex,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TransitLegTimelineItem(
-    leg: Leg,
-    isLast: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.Top
-    ) {
-        // Timeline indicator
-        Column(
-            modifier = Modifier
-                .padding(end = dimensionResource(dimen.padding))
-                .width(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Mode icon
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(
-                        color = leg.routeColor?.let {
-                            androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor("#${it}"))
-                        }
-                            ?: MaterialTheme.colorScheme.primary,
-                        shape = androidx.compose.foundation.shape.CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(leg.mode.getIcon()),
-                    contentDescription = null,
-                    tint = leg.routeTextColor?.let {
-                        androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor("#${it}"))
-                    }
-                        ?: MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-
-            // Connection line (except for last item)
-            if (!isLast) {
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .height(24.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(1.dp)
-                        )
-                )
-            }
-        }
-
-        // Leg details
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    // Route name and headsign
-                    val routeText =
-                        leg.routeShortName ?: leg.mode.name.lowercase()
-                            .replaceFirstChar { it.uppercase() }
-                    Text(
-                        text = "$routeText ${leg.headsign ?: ""}".trim(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 2
-                    )
-
-                    // Agency
-                    leg.agencyName?.let { agency ->
-                        Text(
-                            text = agency,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                // Duration
-                Text(
-                    text = formatDuration(leg.duration),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            // Walking/Transit details
-            when (leg.mode) {
-                Mode.WALK, Mode.BIKE -> {
-                    leg.distance?.let { distance ->
-                        Text(
-                            text = "${String.format("%.1f", distance / 1000)} km",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
-
-                else -> {
-                    // Show transfer info or other transit details
-                    leg.intermediateStops?.size?.let { stops ->
-                        Text(
-                            text = "${stops} stops",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
-            }
-
-            // Add spacing before next leg
-            if (!isLast) {
-                androidx.compose.foundation.layout.Spacer(
-                    modifier = androidx.compose.ui.Modifier.height(
-                        8.dp
-                    )
-                )
-            }
-        }
-    }
-
-    // Add spacing between legs
-    if (!isLast) {
-        androidx.compose.foundation.layout.Spacer(
-            modifier = androidx.compose.ui.Modifier.height(
-                dimensionResource(dimen.padding)
-            )
-        )
-    }
-}
-
-@OptIn(ExperimentalTime::class)
-private fun String.formatTime(): String {
-    // Parse ISO 8601 time and format to readable time
-    return try {
-        val instant = Instant.parse(this)
-        val localDateTime =
-            instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-        "${localDateTime.hour.toString().padStart(2, '0')}:${
-            localDateTime.minute.toString().padStart(2, '0')
-        }"
-    } catch (e: Exception) {
-        this // fallback to original string
-    }
-}
-
-private fun formatDuration(seconds: Int): String {
-    val minutes = seconds / 60
-    return if (minutes < 60) {
-        "$minutes min"
-    } else {
-        val hours = minutes / 60
-        val remainingMinutes = minutes % 60
-        "${hours}h ${remainingMinutes}min"
-    }
-}
-
-private fun Mode.getIcon(): Int {
-    return when (this) {
-        Mode.WALK -> drawable.mode_walk
-        Mode.BIKE -> drawable.mode_bike
-        Mode.CAR, Mode.CAR_PARKING, Mode.CAR_DROPOFF -> drawable.mode_car
-        Mode.BUS -> drawable.ic_bus_railway
-        Mode.TRAM -> drawable.ic_bus_railway
-        Mode.SUBWAY -> drawable.ic_subway_walk
-        Mode.RAIL, Mode.HIGHSPEED_RAIL, Mode.REGIONAL_RAIL, Mode.REGIONAL_FAST_RAIL -> drawable.ic_bus_railway
-        Mode.FERRY -> drawable.ic_bus_railway
-        Mode.AIRPLANE -> drawable.ic_bus_railway
-        else -> drawable.mode_walk
-    }
-}
-
 /**
  * Handles route display and camera animation for the directions screen.
  * This composable manages the route state and automatically animates the camera
@@ -751,31 +481,37 @@ fun RouteDisplayHandler(
     onRouteUpdate: (Route?) -> Unit
 ) {
     val routeState = viewModel.routeState
+    val selectedMode = viewModel.selectedRoutingMode
     val coroutineScope = rememberCoroutineScope()
 
     // Update the route state and animate camera when route changes
-    LaunchedEffect(routeState.route) {
-        onRouteUpdate(routeState.route)
+    LaunchedEffect(routeState.route, selectedMode) {
+        if (selectedMode != RoutingMode.PUBLIC_TRANSPORT) {
+            onRouteUpdate(routeState.route)
+            // Animate camera to show the full route when it's calculated
+            routeState.route?.let { route ->
+                val coordinates = route.geometry
+                if (coordinates.isNotEmpty()) {
+                    val lats = coordinates.map { it.lat }
+                    val lngs = coordinates.map { it.lng }
+                    val minLat = lats.minOrNull() ?: 0.0
+                    val maxLat = lats.maxOrNull() ?: 0.0
+                    val minLng = lngs.minOrNull() ?: 0.0
+                    val maxLng = lngs.maxOrNull() ?: 0.0
 
-        // Animate camera to show the full route when it's calculated
-        routeState.route?.let { route ->
-            val coordinates = route.geometry
-            if (coordinates.isNotEmpty()) {
-                val lats = coordinates.map { it.lat }
-                val lngs = coordinates.map { it.lng }
-                val minLat = lats.minOrNull() ?: 0.0
-                val maxLat = lats.maxOrNull() ?: 0.0
-                val minLng = lngs.minOrNull() ?: 0.0
-                val maxLng = lngs.maxOrNull() ?: 0.0
-
-                coroutineScope.launch {
-                    cameraState.animateTo(
-                        boundingBox = BoundingBox(
-                            west = minLng, south = minLat, east = maxLng, north = maxLat
-                        ), padding = padding, duration = appPreferences.animationSpeedDurationValue
-                    )
+                    coroutineScope.launch {
+                        cameraState.animateTo(
+                            boundingBox = BoundingBox(
+                                west = minLng, south = minLat, east = maxLng, north = maxLat
+                            ),
+                            padding = padding,
+                            duration = appPreferences.animationSpeedDurationValue
+                        )
+                    }
                 }
             }
+        } else {
+            onRouteUpdate(null)
         }
     }
 }

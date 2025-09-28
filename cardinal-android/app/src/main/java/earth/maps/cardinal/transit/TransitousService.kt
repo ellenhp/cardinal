@@ -28,7 +28,6 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
-import io.ktor.client.statement.request
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -203,7 +202,6 @@ class TransitousService @Inject constructor(private val appPreferenceRepository:
                 parameter("withFares", withFares)
                 language?.let { parameter("language", it) }
             }
-            Log.d("TAG", "${response.request.url}")
 
             val result = response.body<PlanResponse>()
             Log.d(TAG, "Plan response: ${result.itineraries.size} itineraries")
