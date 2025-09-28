@@ -141,7 +141,7 @@ class SavedPlaceRepository @Inject constructor(
         return Place(
             id = savedPlace.id,
             name = savedPlace.customName ?: savedPlace.name,
-            description = savedPlace.type,
+            description = savedPlace.customDescription ?: savedPlace.type,
             icon = savedPlace.icon,
             latLng = earth.maps.cardinal.data.LatLng(
                 latitude = savedPlace.latitude, longitude = savedPlace.longitude

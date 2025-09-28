@@ -20,7 +20,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -74,12 +76,18 @@ fun SavedPlacesList(
                 )
             }
         } else {
-
             LazyColumn {
                 items(savedPlaces) { place ->
                     PlaceItem(place = place, onClick = {
                         onPlaceSelected(viewModel.convertToPlace(place))
                     })
+                }
+                item {
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(TOOLBAR_HEIGHT_DP + dimensionResource(dimen.padding_minor))
+                    )
                 }
             }
         }
@@ -88,6 +96,8 @@ fun SavedPlacesList(
 
 @Composable
 private fun PlaceItem(place: SavedPlace, onClick: () -> Unit) {
+    val name = place.customName ?: place.name
+    val description = place.customDescription ?: place.type
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -143,12 +153,12 @@ private fun PlaceItem(place: SavedPlace, onClick: () -> Unit) {
                     .padding(start = dimensionResource(dimen.padding))
             ) {
                 Text(
-                    text = place.name,
+                    text = name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = place.customDescription ?: place.type,
+                    text = description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
