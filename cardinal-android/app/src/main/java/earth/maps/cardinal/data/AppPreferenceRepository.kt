@@ -57,6 +57,10 @@ class AppPreferenceRepository @Inject constructor(
     private val _allowTransitInOfflineMode = MutableStateFlow(true)
     val allowTransitInOfflineMode: StateFlow<Boolean> = _allowTransitInOfflineMode.asStateFlow()
 
+    private val _continuousLocationTracking = MutableStateFlow(true)
+    val continuousLocationTracking: StateFlow<Boolean> =
+        _continuousLocationTracking.asStateFlow()
+
     // Pelias API configuration
     private val _peliasApiConfig = MutableStateFlow(
         ApiConfiguration(
@@ -81,6 +85,7 @@ class AppPreferenceRepository @Inject constructor(
         loadOfflineMode()
         loadDistanceUnit()
         loadAllowTransitInOfflineMode()
+        loadContinuousLocationTracking()
         loadApiConfigurations()
     }
 
@@ -137,10 +142,22 @@ class AppPreferenceRepository @Inject constructor(
         _allowTransitInOfflineMode.value = allowTransitInOfflineMode
     }
 
+    private fun loadContinuousLocationTracking() {
+        val enabled = appPreferences.loadContinuousLocationTracking()
+        _continuousLocationTracking.value = enabled
+    }
+
     fun setAllowTransitInOfflineMode(allowTransitInOfflineMode: Boolean) {
         _allowTransitInOfflineMode.value = allowTransitInOfflineMode
         viewModelScope.launch {
             appPreferences.saveAllowTransitInOfflineMode(allowTransitInOfflineMode)
+        }
+    }
+
+    fun setContinuousLocationTracking(enabled: Boolean) {
+        _continuousLocationTracking.value = enabled
+        viewModelScope.launch {
+            appPreferences.saveContinuousLocationTracking(enabled)
         }
     }
 

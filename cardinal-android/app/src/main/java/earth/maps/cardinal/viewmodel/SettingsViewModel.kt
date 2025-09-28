@@ -72,6 +72,13 @@ class SettingsViewModel @Inject constructor(
         appPreferenceRepository.valhallaApiConfig.value
     )
 
+    val continuousLocationTracking =
+        appPreferenceRepository.continuousLocationTracking.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            false
+        )
+
     fun setOfflineMode(enabled: Boolean) {
         appPreferenceRepository.setOfflineMode(enabled)
     }
@@ -102,6 +109,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setValhallaApiKey(apiKey: String?) {
         appPreferenceRepository.setValhallaApiKey(apiKey)
+    }
+
+    fun setContinuousLocationTrackingEnabled(enabled: Boolean) {
+        appPreferenceRepository.setContinuousLocationTracking(enabled)
     }
 
     fun getVersionName(): String? {

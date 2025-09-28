@@ -135,7 +135,7 @@ fun DirectionsScreen(
                     fieldFocusState = FieldFocusState.NONE
                 }
             }
-        } else if (hasLocationPermission) {
+        } else if (hasLocationPermission && appPreferences.continuousLocationTracking.value) {
             coroutineScope.launch {
                 viewModel.initializeDeparture()
             }

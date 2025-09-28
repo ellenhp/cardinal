@@ -43,7 +43,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class LocationRepository @Inject constructor(
-    @param:ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
+    private val appPreferenceRepository: AppPreferenceRepository
 ) {
 
     private companion object {
@@ -129,6 +130,11 @@ class LocationRepository @Inject constructor(
      */
     @SuppressLint("MissingPermission")
     fun startContinuousLocationUpdates(context: Context) {
+        // Check if continuous location tracking is disabled
+        if (!appPreferenceRepository.continuousLocationTracking.value) {
+            return
+        }
+
         try {
             val locationManager = getLocationManager(context)
 

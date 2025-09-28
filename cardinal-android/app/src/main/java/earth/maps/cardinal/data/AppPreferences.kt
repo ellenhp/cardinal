@@ -35,6 +35,8 @@ class AppPreferences(context: Context) {
         private const val KEY_DISTANCE_UNIT = "distance_unit"
         private const val KEY_ALLOW_TRANSIT_IN_OFFLINE_MODE = "allow_transit_in_offline_mode"
 
+        private const val KEY_CONTINUOUS_LOCATION_TRACKING = "continuous_location_tracking"
+
         // API configuration keys
         private const val KEY_PELIAS_BASE_URL = "pelias_base_url"
         private const val KEY_PELIAS_API_KEY = "pelias_api_key"
@@ -193,6 +195,23 @@ class AppPreferences(context: Context) {
         prefs.edit {
             remove(KEY_ALLOW_TRANSIT_IN_OFFLINE_MODE)
         }
+    }
+
+    /**
+     * Saves the continuous location tracking disabled preference.
+     */
+    fun saveContinuousLocationTracking(enabled: Boolean) {
+        prefs.edit {
+            putBoolean(KEY_CONTINUOUS_LOCATION_TRACKING, enabled)
+        }
+    }
+
+    /**
+     * Loads the saved continuous location tracking disabled preference.
+     * Returns false as default (tracking enabled by default).
+     */
+    fun loadContinuousLocationTracking(): Boolean {
+        return prefs.getBoolean(KEY_CONTINUOUS_LOCATION_TRACKING, true)
     }
 
     /**
