@@ -822,20 +822,20 @@ private fun FerrostarRouteResults(
     if (showNotificationDialog) {
         AlertDialog(
             onDismissRequest = { showNotificationDialog = false },
-            title = { Text("Notification Permission Needed") },
-            text = { Text("We need notification permissions to keep the screen on during navigation.") },
+            title = { Text(stringResource(string.notification_ask_title)) },
+            text = { Text(stringResource(string.notification_ask_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     showNotificationDialog = false
                     pendingNavigation = true
                     onRequestNotificationPermission()
                 }) {
-                    Text("Got it")
+                    Text(stringResource(string.got_it))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showNotificationDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(string.cancel))
                 }
             })
     }

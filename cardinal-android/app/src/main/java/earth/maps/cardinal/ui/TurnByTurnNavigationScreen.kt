@@ -22,16 +22,29 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.stadiamaps.ferrostar.core.DefaultNavigationViewModel
 import com.stadiamaps.ferrostar.maplibreui.views.DynamicallyOrientingNavigationView
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.viewmodel.TurnByTurnNavigationViewModel
 import uniffi.ferrostar.Route
+
+@Composable
+fun KeepScreenOn() {
+    val currentView = LocalView.current
+    DisposableEffect(Unit) {
+        currentView.keepScreenOn = true
+        onDispose {
+            currentView.keepScreenOn = false
+        }
+    }
+}
 
 @Composable
 fun TurnByTurnNavigationScreen(
@@ -63,6 +76,9 @@ fun TurnByTurnNavigationScreen(
             ferrostarCore.startNavigation(route = it)
         }
     }
+
+    // TODO: Make this configurable.
+    KeepScreenOn()
 
     // Create and remember the navigation view model
     val viewModel = remember { DefaultNavigationViewModel(ferrostarCore = ferrostarCore) }
