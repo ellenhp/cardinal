@@ -16,7 +16,7 @@
 
 package earth.maps.cardinal.data
 
-import earth.maps.cardinal.ui.generatePlaceId
+import earth.maps.cardinal.ui.home.generatePlaceId
 
 data class GeocodeResult(
     val latitude: Double,

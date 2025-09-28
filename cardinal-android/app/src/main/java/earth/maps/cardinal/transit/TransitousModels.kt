@@ -74,10 +74,10 @@ data class StopTime(
     @SerialName("source") val source: String
 ) {
     fun parseRouteColor(): Color? {
-        try {
-            return Color("#$routeColor".toColorInt())
+        return try {
+            Color("#$routeColor".toColorInt())
         } catch (_: IllegalArgumentException) {
-            return null
+            null
         }
     }
 }
@@ -98,4 +98,226 @@ data class StopPlace(
     @SerialName("pickupType") val pickupType: String? = null,
     @SerialName("dropoffType") val dropoffType: String? = null,
     @SerialName("cancelled") val cancelled: Boolean? = null
+)
+
+// New classes for plan endpoint
+
+@Serializable
+enum class Mode {
+    WALK,
+    BIKE,
+    RENTAL,
+    CAR,
+    CAR_PARKING,
+    CAR_DROPOFF,
+    ODM,
+    FLEX,
+    TRANSIT,
+    TRAM,
+    SUBWAY,
+    FERRY,
+    AIRPLANE,
+    METRO,
+    BUS,
+    COACH,
+    RAIL,
+    HIGHSPEED_RAIL,
+    LONG_DISTANCE,
+    NIGHT_RAIL,
+    REGIONAL_FAST_RAIL,
+    REGIONAL_RAIL,
+    CABLE_CAR,
+    FUNICULAR,
+    AREAL_LIFT,
+    OTHER
+}
+
+@Serializable
+enum class VertexType {
+    NORMAL,
+    BIKESHARE,
+    TRANSIT
+}
+
+@Serializable
+enum class PickupDropoffType {
+    NORMAL,
+    NOT_ALLOWED
+}
+
+@Serializable
+enum class FareTransferRule {
+    @SerialName("A_AB")
+    A_AB,
+
+    @SerialName("A_AB_B")
+    A_AB_B,
+    AB
+}
+
+@Serializable
+enum class PedestrianProfile {
+    FOOT,
+    WHEELCHAIR
+}
+
+@Serializable
+enum class ElevationCosts {
+    NONE,
+    LOW,
+    HIGH
+}
+
+@Serializable
+enum class RentalFormFactor {
+    BICYCLE,
+    CARGO_BICYCLE,
+    CAR,
+    MOPED,
+    SCOOTER_STANDING,
+    SCOOTER_SEATED,
+    OTHER
+}
+
+@Serializable
+enum class RentalPropulsionType {
+    HUMAN,
+    ELECTRIC_ASSIST,
+    ELECTRIC,
+    COMBUSTION,
+    COMBUSTION_DIESEL,
+    HYBRID,
+    PLUG_IN_HYBRID,
+    HYDROGEN_FUEL_CELL
+}
+
+@Serializable
+data class Alert(
+    val id: String? = null,
+    val headerText: String? = null,
+    val descriptionText: String? = null,
+    val url: String? = null,
+    val effectiveStartDate: Long? = null,
+    val effectiveEndDate: Long? = null
+)
+
+@Serializable
+data class EncodedPolyline(
+    val points: String
+)
+
+@Serializable
+data class StepInstruction(
+    val relativeDirection: String,
+    val distance: Double,
+    val polyline: MotisPolyline,
+    val streetName: String,
+)
+
+@Serializable
+data class MotisPolyline(
+    val points: String,
+    val precision: Int,
+)
+
+@Serializable
+data class Rental(
+    val id: String,
+    val networks: String,
+    val lon: Double,
+    val lat: Double,
+    val name: String,
+    val allowPickup: Boolean,
+    val allowDropoff: Boolean
+)
+
+@Serializable
+data class FareProduct(
+    val id: String? = null,
+    val name: String? = null
+)
+
+@Serializable
+data class FareTransfer(
+    val rule: FareTransferRule,
+    val effectiveFareLegProducts: List<List<FareProduct>>
+)
+
+@Serializable
+data class Place(
+    val name: String,
+    val stopId: String? = null,
+    val lat: Double,
+    val lon: Double,
+    val level: Double,
+    val arrival: String? = null,
+    val departure: String? = null,
+    val scheduledArrival: String? = null,
+    val scheduledDeparture: String? = null,
+    val scheduledTrack: String? = null,
+    val track: String? = null,
+    val description: String? = null,
+    val vertexType: String? = null,
+    val pickupType: String? = null,
+    val dropoffType: String? = null,
+    val cancelled: Boolean? = null,
+    val alerts: List<Alert>? = null,
+    val flex: String? = null,
+    val flexId: String? = null,
+    val flexStartPickupDropOffWindow: String? = null,
+    val flexEndPickupDropOffWindow: String? = null
+)
+
+@Serializable
+data class Leg(
+    val mode: Mode,
+    @SerialName("from") val fromPlace: Place,
+    @SerialName("to") val toPlace: Place,
+    val duration: Int,
+    val startTime: String,
+    val endTime: String,
+    val scheduledStartTime: String,
+    val scheduledEndTime: String,
+    val realTime: Boolean,
+    val scheduled: Boolean,
+    val distance: Double? = null,
+    val interlineWithPreviousLeg: Boolean? = null,
+    val headsign: String? = null,
+    val routeColor: String? = null,
+    val routeTextColor: String? = null,
+    val routeType: String? = null,
+    val agencyName: String? = null,
+    val agencyUrl: String? = null,
+    val agencyId: String? = null,
+    val tripId: String? = null,
+    val routeShortName: String? = null,
+    val cancelled: Boolean? = null,
+    val source: String? = null,
+    val intermediateStops: List<Place>? = null,
+    val geometry: EncodedPolyline? = null,
+    val steps: List<StepInstruction>? = null,
+    val rental: Rental? = null,
+    val fareTransferIndex: Int? = null,
+    val effectiveFareLegIndex: Int? = null,
+    val alerts: List<Alert>? = null,
+    val loopedCalendarSince: String? = null
+)
+
+@Serializable
+data class Itinerary(
+    val duration: Int,
+    val startTime: String,
+    val endTime: String,
+    val transfers: Int,
+    val legs: List<Leg>
+)
+
+@Serializable
+data class PlanResponse(
+    val from: Place,
+    val to: Place,
+    val direct: List<Itinerary>,
+    val itineraries: List<Itinerary>,
+    val previousPageCursor: String,
+    val nextPageCursor: String
 )

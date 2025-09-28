@@ -59,7 +59,7 @@ class FerrostarWrapper(
                 profile = mode.value,
                 optionsJson = routingOptions?.toValhallaOptionsJson()
                     ?: routingProfileRepository.createDefaultOptionsForMode(mode)
-                        .toValhallaOptionsJson()
+                        ?.toValhallaOptionsJson()
             ),
             httpClient = OkHttpClientProvider(OkHttpClient()),
             locationProvider = locationProvider,

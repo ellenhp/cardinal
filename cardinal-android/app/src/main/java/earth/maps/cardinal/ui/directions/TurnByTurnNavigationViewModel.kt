@@ -14,16 +14,14 @@
  *    limitations under the License.
  */
 
-package earth.maps.cardinal.data
+package earth.maps.cardinal.ui.directions
 
-import earth.maps.cardinal.R.drawable
+import androidx.lifecycle.ViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import earth.maps.cardinal.routing.FerrostarWrapperRepository
+import javax.inject.Inject
 
-enum class RoutingMode(val value: String, val label: String, val icon: Int) {
-    AUTO("auto", "Driving", drawable.mode_car),
-    TRUCK("truck", "Truck", drawable.mode_truck),
-    MOTOR_SCOOTER("motor_scooter", "Motor Scooter", drawable.mode_moped),
-    MOTORCYCLE("motorcycle", "Motorcycle", drawable.mode_motorcycle),
-    BICYCLE("bicycle", "Cycling", drawable.mode_bike),
-    PEDESTRIAN("pedestrian", "Walking", drawable.mode_walk),
-    PUBLIC_TRANSPORT("transit", "Transit", drawable.ic_bus_railway);
-}
+@HiltViewModel
+class TurnByTurnNavigationViewModel @Inject constructor(
+    val ferrostarWrapperRepository: FerrostarWrapperRepository
+) : ViewModel()

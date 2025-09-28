@@ -50,9 +50,9 @@ import earth.maps.cardinal.routing.RouteRepository
 import earth.maps.cardinal.tileserver.LocalMapServerService
 import earth.maps.cardinal.tileserver.PermissionRequest
 import earth.maps.cardinal.tileserver.PermissionRequestManager
-import earth.maps.cardinal.ui.AppContent
+import earth.maps.cardinal.ui.core.AppContent
 import earth.maps.cardinal.ui.theme.AppTheme
-import earth.maps.cardinal.viewmodel.MapViewModel
+import earth.maps.cardinal.ui.core.MapViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
