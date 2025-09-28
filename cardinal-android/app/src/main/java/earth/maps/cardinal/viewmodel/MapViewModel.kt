@@ -19,8 +19,6 @@ package earth.maps.cardinal.viewmodel
 import android.content.Context
 import android.location.Location
 import android.location.LocationListener
-import android.location.LocationManager
-import android.os.Bundle
 import android.util.Log
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.unit.Dp
@@ -29,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.times
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import earth.maps.cardinal.data.LocationRepository
@@ -43,13 +40,10 @@ import io.github.dellisd.spatialk.geojson.Feature
 import io.github.dellisd.spatialk.geojson.FeatureCollection
 import io.github.dellisd.spatialk.geojson.Point
 import io.github.dellisd.spatialk.geojson.Position
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.Json.Default.parseToJsonElement
@@ -75,7 +69,6 @@ class MapViewModel @Inject constructor(
 
     private companion object {
         const val TAG = "MapViewModel"
-        private const val LOCATION_REQUEST_INTERVAL_MS = 15000L // 15 seconds
         private const val LOCATION_REQUEST_TIMEOUT_MS = 10000L // 10 seconds
         private const val CONTINUOUS_LOCATION_UPDATE_INTERVAL_MS = 5000L // 5 seconds
         private const val CONTINUOUS_LOCATION_UPDATE_DISTANCE_M = 5f // 5 meters
@@ -91,8 +84,7 @@ class MapViewModel @Inject constructor(
     private val _hasPendingLocationRequest = MutableStateFlow(false)
     val hasPendingLocationRequest: StateFlow<Boolean> = _hasPendingLocationRequest
 
-    private val _locationFlow: MutableStateFlow<Location?> = MutableStateFlow(null)
-    val locationFlow: StateFlow<Location?> = _locationFlow.asStateFlow()
+    val locationFlow: StateFlow<Location?> = locationRepository.locationFlow
 
     // Location listener for continuous updates
     private var locationListener: LocationListener? = null
@@ -106,6 +98,10 @@ class MapViewModel @Inject constructor(
 
     val savedPlacesFlow: Flow<FeatureCollection> = placeDao.getAllPlacesAsFlow().map { placeList ->
         FeatureCollection(placeList.map { createFeatureFromPlace(it) })
+    }
+
+    init {
+        locationRepository.startContinuousLocationUpdates(context)
     }
 
     /**
@@ -270,95 +266,5 @@ class MapViewModel @Inject constructor(
                 )
             )
         )
-    }
-
-
-    /**
-     * Starts continuous location updates.
-     * This should be called from the UI when the map is ready.
-     */
-    fun startContinuousLocationUpdates(context: Context) {
-        locationRepository.startContinuousLocationUpdates(context)
-        // Update our location flow to mirror the repository's flow
-        viewModelScope.launch {
-            locationRepository.locationFlow.collect { location ->
-                _locationFlow.value = location
-            }
-        }
-    }
-
-    /**
-     * Stops location updates when the ViewModel is cleared.
-     */
-    override fun onCleared() {
-        super.onCleared()
-        locationListener?.let { listener ->
-            // Note: We can't access context here to remove updates
-            // The UI should handle cleanup when the map is destroyed
-            locationListener = null
-        }
-    }
-
-    /**
-     * Creates a location listener that handles location updates and provider events.
-     */
-    private fun createLocationListener(
-        locationManager: LocationManager, locationDeferred: CompletableDeferred<Location?>
-    ): LocationListener {
-        return object : LocationListener {
-            override fun onLocationChanged(location: Location) {
-                // Remove updates to avoid continuous location requests
-                try {
-                    locationManager.removeUpdates(this)
-                } catch (_: Exception) {
-                    // Ignore exceptions during cleanup
-                }
-
-                // Complete the deferred with the location
-                if (locationDeferred.isActive) {
-                    synchronized(locationLock) {
-                        lastRequestedLocation = location
-                    }
-                    locationDeferred.complete(location)
-                }
-            }
-
-            override fun onProviderDisabled(provider: String) {
-                try {
-                    locationManager.removeUpdates(this)
-                } catch (_: Exception) {
-                    // Ignore exceptions during cleanup
-                }
-
-                if (locationDeferred.isActive) {
-                    locationDeferred.complete(null)
-                }
-            }
-
-            override fun onProviderEnabled(provider: String) {}
-
-            override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
-        }
-    }
-
-    /**
-     * Sets up a timeout for location requests to prevent hanging.
-     */
-    private fun setupLocationRequestTimeout(
-        locationManager: LocationManager,
-        locationListener: LocationListener,
-        locationDeferred: CompletableDeferred<Location?>
-    ) {
-        viewModelScope.launch {
-            kotlinx.coroutines.delay(LOCATION_REQUEST_TIMEOUT_MS)
-            if (locationDeferred.isActive) {
-                try {
-                    locationManager.removeUpdates(locationListener)
-                } catch (_: Exception) {
-                    // Ignore exceptions during cleanup
-                }
-                locationDeferred.complete(null)
-            }
-        }
     }
 }

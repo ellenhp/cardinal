@@ -116,7 +116,7 @@ fun DirectionsScreen(
     val coroutineScope = rememberCoroutineScope()
 
     // Auto-retry location request when permissions are granted
-    LaunchedEffect(hasLocationPermission) {
+    LaunchedEffect(hasLocationPermission, pendingLocationRequest) {
         if (hasLocationPermission && pendingLocationRequest != null) {
             val targetField = pendingLocationRequest!!
             pendingLocationRequest = null // Clear the pending request
@@ -134,6 +134,10 @@ fun DirectionsScreen(
                     // Clear focus state after selection
                     fieldFocusState = FieldFocusState.NONE
                 }
+            }
+        } else if (hasLocationPermission) {
+            coroutineScope.launch {
+                viewModel.initializeDeparture()
             }
         }
     }

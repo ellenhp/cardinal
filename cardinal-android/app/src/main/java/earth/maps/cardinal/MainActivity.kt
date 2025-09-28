@@ -108,6 +108,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun checkLocationPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                this, Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
+
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -171,6 +181,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         hasNotificationPermission = checkNotificationPermission()
+        hasLocationPermission = checkLocationPermission()
 
         CoroutineScope(Dispatchers.IO).launch {
             migrationHelper.migratePlacesToSavedPlaces()

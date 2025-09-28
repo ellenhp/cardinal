@@ -100,7 +100,6 @@ import earth.maps.cardinal.bottomsheet.BottomSheetValue
 import earth.maps.cardinal.bottomsheet.rememberBottomSheetScaffoldState
 import earth.maps.cardinal.bottomsheet.rememberBottomSheetState
 import earth.maps.cardinal.data.AppPreferenceRepository
-import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.room.OfflineArea
@@ -628,15 +627,6 @@ fun AppContent(
 
                 if (fromPlace != null) {
                     viewModel.updateFromPlace(fromPlace)
-                } else if (currentLocation != null) {
-                    viewModel.updateFromPlace(
-                        viewModel.createMyLocationPlace(
-                            LatLng(
-                                latitude = currentLocation.latitude,
-                                longitude = currentLocation.longitude,
-                            )
-                        )
-                    )
                 }
                 viewModel.updateToPlace(toPlace)
             }

@@ -127,13 +127,6 @@ fun MapView(
         mapViewModel.updateViewportCenter(cameraState.position)
     }
 
-    // Start continuous location updates when we have permission
-    LaunchedEffect(hasLocationPermission) {
-        if (hasLocationPermission) {
-            mapViewModel.startContinuousLocationUpdates(context)
-        }
-    }
-
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
