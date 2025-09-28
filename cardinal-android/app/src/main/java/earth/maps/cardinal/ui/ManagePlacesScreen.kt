@@ -144,7 +144,7 @@ fun ManagePlacesScreen(
                     selectedItems = selectedItems,
                     bottomSpacer = TOOLBAR_HEIGHT_DP + dimensionResource(
                         dimen.padding
-                    ) + 56.dp, // FAB height.
+                    ) + dimensionResource(dimen.fab_height), // FAB height.
                     clipboard = clipboard,
                     onItemClick = { item ->
                         when (item) {
