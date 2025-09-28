@@ -198,7 +198,7 @@ class AppPreferences(context: Context) {
     }
 
     /**
-     * Saves the continuous location tracking disabled preference.
+     * Saves the continuous location tracking preference.
      */
     fun saveContinuousLocationTracking(enabled: Boolean) {
         prefs.edit {
@@ -207,8 +207,8 @@ class AppPreferences(context: Context) {
     }
 
     /**
-     * Loads the saved continuous location tracking disabled preference.
-     * Returns false as default (tracking enabled by default).
+     * Loads the saved continuous location tracking preference.
+     * Returns true as default (tracking enabled by default).
      */
     fun loadContinuousLocationTracking(): Boolean {
         return prefs.getBoolean(KEY_CONTINUOUS_LOCATION_TRACKING, true)
