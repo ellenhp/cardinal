@@ -409,8 +409,8 @@ fun ManagePlacesScreen(
                 },
                 confirmButton = {
                     Button(onClick = {
-                        val name = if (editName.isBlank()) null else editName
-                        val desc = if (editDescription.isBlank()) null else editDescription
+                        val name = editName.ifBlank { null }
+                        val desc = editDescription // Allow blank descriptions.
                         when (item) {
                             is PlaceContent -> viewModel.updatePlace(
                                 item.id,
