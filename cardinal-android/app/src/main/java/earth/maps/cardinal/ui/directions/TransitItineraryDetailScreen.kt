@@ -55,12 +55,11 @@ import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.GeoUtils
+import earth.maps.cardinal.data.formatDuration
+import earth.maps.cardinal.data.formatTime
 import earth.maps.cardinal.transit.Itinerary
 import earth.maps.cardinal.transit.Leg
 import earth.maps.cardinal.transit.Mode
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 @Composable
 fun TransitItineraryDetailScreen(
@@ -182,45 +181,11 @@ fun TransitItineraryDetailScreen(
         itinerary.legs.forEachIndexed { index, leg ->
             DetailedLegCard(
                 leg = leg,
-                isFirst = index == 0,
-                isLast = index == itinerary.legs.lastIndex,
                 use24HourFormat = use24HourFormat,
                 distanceUnit = distanceUnit,
                 modifier = Modifier.padding(bottom = dimensionResource(dimen.padding))
             )
         }
-    }
-}
-
-@OptIn(ExperimentalTime::class)
-private fun String.formatTime(use24HourFormat: Boolean): String {
-    // Parse ISO 8601 time and format to readable time
-    return try {
-        val instant = Instant.parse(this)
-        val localDateTime =
-            instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-        val hour = localDateTime.hour
-        val minute = localDateTime.minute.toString().padStart(2, '0')
-        if (use24HourFormat) {
-            "${hour.toString().padStart(2, '0')}:$minute"
-        } else {
-            val displayHour = if (hour == 0) 12 else if (hour > 12) hour - 12 else hour
-            val amPm = if (hour >= 12) "PM" else "AM"
-            "$displayHour:$minute $amPm"
-        }
-    } catch (_: Exception) {
-        this // fallback to original string
-    }
-}
-
-private fun formatDuration(seconds: Int): String {
-    val minutes = seconds / 60
-    return if (minutes < 60) {
-        "$minutes min"
-    } else {
-        val hours = minutes / 60
-        val remainingMinutes = minutes % 60
-        "${hours}h ${remainingMinutes}min"
     }
 }
 
@@ -237,8 +202,6 @@ private fun calculateTotalDistance(itinerary: Itinerary, distanceUnit: Int): Str
 @Composable
 private fun DetailedLegCard(
     leg: Leg,
-    isFirst: Boolean,
-    isLast: Boolean,
     use24HourFormat: Boolean,
     distanceUnit: Int,
     modifier: Modifier = Modifier

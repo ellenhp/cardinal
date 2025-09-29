@@ -406,29 +406,29 @@ fun DirectionsScreen(
                 // Show quick suggestions when no search query
                 QuickSuggestions(
                     onMyLocationSelected = {
-                    // Check permissions before attempting to get location
-                    if (hasLocationPermission) {
-                        // Launch coroutine to get current location
-                        coroutineScope.launch {
-                            val myLocationPlace = viewModel.getCurrentLocationAsPlace()
-                            myLocationPlace?.let { place ->
-                                // Update the appropriate place based on which field is focused
-                                if (fieldFocusState == FieldFocusState.FROM) {
-                                    viewModel.updateFromPlace(place)
-                                } else {
-                                    viewModel.updateToPlace(place)
+                        // Check permissions before attempting to get location
+                        if (hasLocationPermission) {
+                            // Launch coroutine to get current location
+                            coroutineScope.launch {
+                                val myLocationPlace = viewModel.getCurrentLocationAsPlace()
+                                myLocationPlace?.let { place ->
+                                    // Update the appropriate place based on which field is focused
+                                    if (fieldFocusState == FieldFocusState.FROM) {
+                                        viewModel.updateFromPlace(place)
+                                    } else {
+                                        viewModel.updateToPlace(place)
+                                    }
+                                    // Clear focus state after selection
+                                    fieldFocusState = FieldFocusState.NONE
                                 }
-                                // Clear focus state after selection
-                                fieldFocusState = FieldFocusState.NONE
                             }
+                        } else {
+                            // Set pending request for auto-retry after permission grant
+                            pendingLocationRequest = fieldFocusState
+                            // Request location permission
+                            onRequestLocationPermission()
                         }
-                    } else {
-                        // Set pending request for auto-retry after permission grant
-                        pendingLocationRequest = fieldFocusState
-                        // Request location permission
-                        onRequestLocationPermission()
-                    }
-                },
+                    },
                     savedPlaces = savedPlaces,
                     onSavedPlaceSelected = { place ->
                         // Update the appropriate place based on which field is focused
@@ -825,7 +825,7 @@ private fun FerrostarRouteResults(
 
                     // Step distance
                     Text(
-                        text = GeoUtils.formatShortDistance(step.distance, distanceUnit),
+                        text = GeoUtils.formatDistance(step.distance, distanceUnit),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

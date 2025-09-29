@@ -58,14 +58,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.toColorInt
 import earth.maps.cardinal.R
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
@@ -97,6 +95,7 @@ fun TransitScreenContent(
     val didLoadingFail = viewModel.didLoadingFail.collectAsState()
     val scrollState = rememberScrollState()
     val departures by viewModel.departures.collectAsState(emptyList())
+    val use24HourFormat by viewModel.use24HourFormat.collectAsState()
 
     LaunchedEffect(secondsSinceStart) {
         if (secondsSinceStart % 30 == 0 && secondsSinceStart > 0) {
@@ -172,6 +171,7 @@ fun TransitScreenContent(
             TransitScreenRouteDepartures(
                 stopTimes = departures,
                 onRouteClicked = onRouteClicked,
+                use24HourFormat = use24HourFormat,
             )
         }
     }
@@ -181,16 +181,12 @@ fun TransitScreenContent(
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
 fun TransitScreenRouteDepartures(
-    stopTimes: List<StopTime>, onRouteClicked: (Place) -> Unit
+    stopTimes: List<StopTime>, onRouteClicked: (Place) -> Unit, use24HourFormat: Boolean,
 ) {
     // Group departures by route name
     val departuresByRoute = stopTimes.groupBy { it.routeShortName }
 
     departuresByRoute.forEach { (routeName, departures) ->
-        val routeColor = departures.firstOrNull()?.routeColor?.let {
-            Color("#$it".toColorInt())
-        } ?: MaterialTheme.colorScheme.surfaceVariant
-
         // Group departures by headsign within each route
         val departuresByHeadsign = departures.groupBy { it.headsign }.map { (key, value) ->
             (key to value.take(1))
@@ -289,7 +285,10 @@ fun TransitScreenRouteDepartures(
                                     )
                                 }
                                 // Right side: departure time
-                                val bestDepartureTime = formatDepartureTime(soonestDeparture)
+                                val bestDepartureTime = formatDepartureTime(
+                                    soonestDeparture,
+                                    use24HourFormat = use24HourFormat
+                                )
                                 val containerContent = @Composable {
                                     Row(
                                         modifier = Modifier.padding(

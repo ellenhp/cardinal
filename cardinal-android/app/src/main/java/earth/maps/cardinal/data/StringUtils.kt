@@ -1,4 +1,25 @@
+/*
+ *    Copyright 2025 The Cardinal Authors
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package earth.maps.cardinal.data
+
+import androidx.core.graphics.toColorInt
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * Utility class for string operations.
@@ -41,5 +62,48 @@ object StringUtils {
         }
 
         return dp[s1.length][s2.length]
+    }
+}
+
+
+// Extension functions for formatting
+@OptIn(ExperimentalTime::class)
+fun String.formatTime(use24HourFormat: Boolean): String {
+    // Parse ISO 8601 time and format to readable time
+    return try {
+        val instant = Instant.parse(this)
+        val localDateTime =
+            instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+        val hour = localDateTime.hour
+        val minute = localDateTime.minute.toString().padStart(2, '0')
+        if (use24HourFormat) {
+            "${hour.toString().padStart(2, '0')}:$minute"
+        } else {
+            val displayHour = if (hour == 0) 12 else if (hour > 12) hour - 12 else hour
+            val amPm = if (hour >= 12) "PM" else "AM"
+            "$displayHour:$minute $amPm"
+        }
+    } catch (_: Exception) {
+        this // fallback to original string
+    }
+}
+
+fun formatDuration(seconds: Int): String {
+    val minutes = seconds / 60
+    return if (minutes < 60) {
+        "$minutes min"
+    } else {
+        val hours = minutes / 60
+        val remainingMinutes = minutes % 60
+        "${hours}hr ${remainingMinutes}min"
+    }
+}
+
+fun parseRouteColor(colorString: String?): androidx.compose.ui.graphics.Color? {
+    if (colorString.isNullOrBlank()) return null
+    return try {
+        androidx.compose.ui.graphics.Color("#$colorString".toColorInt())
+    } catch (_: Exception) {
+        null
     }
 }

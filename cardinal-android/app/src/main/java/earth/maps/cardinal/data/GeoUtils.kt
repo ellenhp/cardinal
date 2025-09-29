@@ -92,29 +92,6 @@ object GeoUtils {
     }
 
     /**
-     * Formats a short distance (typically for route steps) in meters.
-     * Always shows meters for metric, feet for imperial.
-     *
-     * @param meters Distance in meters
-     * @param unitPreference Either DISTANCE_UNIT_METRIC or DISTANCE_UNIT_IMPERIAL
-     * @return Formatted short distance string (e.g., "150 m" or "490 ft")
-     */
-    fun formatShortDistance(meters: Double, unitPreference: Int): String {
-        if (meters > SHORT_DISTANCE_THRESHOLD_METERS) {
-            return formatDistance(meters, unitPreference)
-        }
-        return when (unitPreference) {
-            AppPreferences.DISTANCE_UNIT_METRIC -> "${meters.roundToInt()} m"
-            AppPreferences.DISTANCE_UNIT_IMPERIAL -> {
-                val feet = meters * METERS_TO_FEET
-                "${feet.roundToInt()} ft"
-            }
-
-            else -> "${meters.roundToInt()} m" // Default to metric
-        }
-    }
-
-    /**
      * Calculates the great-circle distance between two points on Earth using the haversine formula.
      *
      * @param latLng1 First point with latitude and longitude

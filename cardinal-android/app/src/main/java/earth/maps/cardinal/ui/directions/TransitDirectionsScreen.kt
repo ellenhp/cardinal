@@ -41,15 +41,14 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.toColorInt
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.GeoUtils
+import earth.maps.cardinal.data.formatDuration
+import earth.maps.cardinal.data.formatTime
+import earth.maps.cardinal.data.parseRouteColor
 import earth.maps.cardinal.transit.Mode
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -316,48 +315,6 @@ private fun TransitLegTimelineItem(
     // Add spacing between legs
     if (!isLast) {
         Spacer(modifier = Modifier.height(dimensionResource(dimen.padding)))
-    }
-}
-
-// Extension functions for formatting
-@OptIn(ExperimentalTime::class)
-private fun String.formatTime(use24HourFormat: Boolean): String {
-    // Parse ISO 8601 time and format to readable time
-    return try {
-        val instant = Instant.parse(this)
-        val localDateTime =
-            instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-        val hour = localDateTime.hour
-        val minute = localDateTime.minute.toString().padStart(2, '0')
-        if (use24HourFormat) {
-            "${hour.toString().padStart(2, '0')}:$minute"
-        } else {
-            val displayHour = if (hour == 0) 12 else if (hour > 12) hour - 12 else hour
-            val amPm = if (hour >= 12) "PM" else "AM"
-            "$displayHour:$minute $amPm"
-        }
-    } catch (_: Exception) {
-        this // fallback to original string
-    }
-}
-
-private fun formatDuration(seconds: Int): String {
-    val minutes = seconds / 60
-    return if (minutes < 60) {
-        "$minutes min"
-    } else {
-        val hours = minutes / 60
-        val remainingMinutes = minutes % 60
-        "${hours}h ${remainingMinutes}min"
-    }
-}
-
-private fun parseRouteColor(colorString: String?): androidx.compose.ui.graphics.Color? {
-    if (colorString.isNullOrBlank()) return null
-    return try {
-        androidx.compose.ui.graphics.Color("#$colorString".toColorInt())
-    } catch (_: Exception) {
-        null
     }
 }
 

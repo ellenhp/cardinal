@@ -49,12 +49,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
@@ -69,33 +70,26 @@ import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.formatTime
 import earth.maps.cardinal.transit.StopTime
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Date
-import java.util.Locale
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.ExperimentalTime
 import kotlin.time.toKotlinInstant
 
-fun Color.contrastColor(): Color {
-    // Calculate luminance using the standard formula
-    val luminance = (this.red * 0.299f + this.green * 0.587f + this.blue * 0.114f)
-    // Return black for light backgrounds and white for dark backgrounds
-    return if (luminance > 0.5f) Color.Black else Color.White
-}
-
 @Composable
 fun TransitStopInformation(viewModel: TransitStopCardViewModel, onRouteClicked: (Place) -> Unit) {
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
-    val isRefreshingDepartures = viewModel.isRefreshingDepartures.collectAsState()
-    val isLoading = viewModel.isLoading.collectAsState()
-    val didLoadingFail = viewModel.didLoadingFail.collectAsState()
+    val isRefreshingDepartures by viewModel.isRefreshingDepartures.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val didLoadingFail by viewModel.didLoadingFail.collectAsState()
+    val use24HourFormat by viewModel.use24HourFormat.collectAsState()
+    val departures by viewModel.departures.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.initializeDepartures()
@@ -121,7 +115,7 @@ fun TransitStopInformation(viewModel: TransitStopCardViewModel, onRouteClicked: 
             )
             // Refresh button for departures
             IconButton(onClick = { coroutineScope.launch { viewModel.refreshDepartures() } }) {
-                if (isRefreshingDepartures.value) {
+                if (isRefreshingDepartures) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp), strokeWidth = 2.dp
                     )
@@ -134,14 +128,14 @@ fun TransitStopInformation(viewModel: TransitStopCardViewModel, onRouteClicked: 
             }
         }
 
-        if (didLoadingFail.value) {
+        if (didLoadingFail) {
             Text(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
                 text = stringResource(string.failed_to_load_departures)
             )
-        } else if (isLoading.value && viewModel.departures.value.isEmpty()) {
+        } else if (isLoading && departures.isEmpty()) {
             Text(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -154,7 +148,7 @@ fun TransitStopInformation(viewModel: TransitStopCardViewModel, onRouteClicked: 
                     .fillMaxWidth()
                     .padding(16.dp)
             )
-        } else if (viewModel.departures.value.isEmpty()) {
+        } else if (departures.isEmpty()) {
             Text(
                 text = stringResource(string.no_upcoming_departures),
                 style = MaterialTheme.typography.bodyMedium,
@@ -164,9 +158,10 @@ fun TransitStopInformation(viewModel: TransitStopCardViewModel, onRouteClicked: 
             val maxDeparturesPerHeadsign = 5
             // List of departures grouped by route and headsign
             RouteDepartures(
-                stopTimes = viewModel.departures.value,
+                stopTimes = departures,
                 maxDepartures = maxDeparturesPerHeadsign,
                 onRouteClicked = onRouteClicked,
+                use24HourFormat = use24HourFormat,
             )
         }
     }
@@ -176,7 +171,10 @@ fun TransitStopInformation(viewModel: TransitStopCardViewModel, onRouteClicked: 
 @OptIn(ExperimentalTime::class, ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun RouteDepartures(
-    stopTimes: List<StopTime>, maxDepartures: Int, onRouteClicked: (Place) -> Unit
+    stopTimes: List<StopTime>,
+    maxDepartures: Int,
+    onRouteClicked: (Place) -> Unit,
+    use24HourFormat: Boolean
 ) {
     // Group departures by route name
     val departuresByRoute = stopTimes.groupBy { it.routeShortName }
@@ -215,9 +213,8 @@ fun RouteDepartures(
                     }
                 })
         ) {
-            val scrollScope = rememberCoroutineScope()
             val density = LocalDensity.current
-            var routeNamePadding = remember { mutableStateOf<Dp?>(null) }
+            var routeNamePadding by remember { mutableStateOf<Dp?>(null) }
 
             Box {
                 // Route name header
@@ -225,7 +222,7 @@ fun RouteDepartures(
                     modifier = Modifier
                         .padding(dimensionResource(dimen.padding))
                         .onGloballyPositioned {
-                            routeNamePadding.value = with(density) { it.size.height.toDp() }
+                            routeNamePadding = with(density) { it.size.height.toDp() }
                         }
                 ) {
                     val routeColor = departures.firstOrNull()?.parseRouteColor()
@@ -247,14 +244,15 @@ fun RouteDepartures(
                 Box(modifier = Modifier.align(Alignment.TopCenter)) {
                     PageIndicator(headsigns.size, currentPage = pagerState.currentPage)
                 }
-                val routeNamePaddingLocal = routeNamePadding.value
+                val routeNamePaddingLocal = routeNamePadding
                 if (routeNamePaddingLocal != null) {
                     // Swipeable pager for headsigns with fixed height
                     FixedHeightHorizontalPager(
                         state = pagerState,
                         departuresByHeadsign = departuresByHeadsign,
                         headsigns = headsigns,
-                        routeNamePaddingLocal
+                        routeNamePaddingLocal,
+                        use24HourFormat,
                     )
                 }
             }
@@ -290,26 +288,10 @@ fun PageIndicator(pageCount: Int, currentPage: Int) {
 @OptIn(ExperimentalTime::class)
 @Composable
 fun DepartureRow(
-    stopTime: StopTime, isFirst: Boolean, showStop: Boolean = false
+    stopTime: StopTime, isFirst: Boolean, use24HourFormat: Boolean,
 ) {
-    val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val isoFormatter = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.systemDefault())
     val textColor = MaterialTheme.colorScheme.onSurface
-
-    val scheduledDepartureInstant = stopTime.place.scheduledDeparture?.let {
-        try {
-            Instant.from(isoFormatter.parse(it))
-        } catch (_: Exception) {
-            null
-        }
-    }
-    val scheduledDepartureTime: String? = scheduledDepartureInstant?.let {
-        try {
-            dateFormat.format(Date.from(it))
-        } catch (_: Exception) {
-            null
-        }
-    }
 
     val bestDepartureInstant = stopTime.place.departure?.let {
         try {
@@ -317,15 +299,10 @@ fun DepartureRow(
         } catch (_: Exception) {
             null
         }
-    } ?: scheduledDepartureInstant
+    }
 
-    val bestDepartureTime: String? = bestDepartureInstant?.let {
-        try {
-            dateFormat.format(Date.from(it))
-        } catch (_: Exception) {
-            scheduledDepartureTime
-        }
-    } ?: scheduledDepartureTime
+    val bestDepartureTime: String? =
+        stopTime.place.departure?.formatTime(use24HourFormat = use24HourFormat)
 
     Row(
         modifier = Modifier
@@ -385,11 +362,12 @@ fun FixedHeightHorizontalPager(
     departuresByHeadsign: Map<String, List<StopTime>>,
     headsigns: List<String>,
     headsignTopPadding: Dp,
+    use24HourFormat: Boolean,
 ) {
     val topPadding = dimensionResource(
         dimen.padding_minor
     )
-    val maxChildHeight = remember(key1 = departuresByHeadsign) {
+    var maxChildHeight by remember(key1 = departuresByHeadsign) {
         mutableStateOf(0.dp)
     }
     val density = LocalDensity.current
@@ -433,18 +411,19 @@ fun FixedHeightHorizontalPager(
                 Column(
                     modifier = Modifier
                         .padding(top = topPadding)
-                        .defaultMinSize(minHeight = maxChildHeight.value)
+                        .defaultMinSize(minHeight = maxChildHeight)
                         .onGloballyPositioned({ coordinates ->
                             val heightDp = with(density) { coordinates.size.height.toDp() }
-                            if (heightDp > maxChildHeight.value) {
-                                maxChildHeight.value = heightDp
+                            if (heightDp > maxChildHeight) {
+                                maxChildHeight = heightDp
                             }
                         })
                 ) {
                     departuresForSelectedHeadsign.forEachIndexed { index, stopTime ->
                         DepartureRow(
                             stopTime = stopTime,
-                            isFirst = index == 0
+                            isFirst = index == 0,
+                            use24HourFormat = use24HourFormat
                         )
                         // Add divider between departure rows, but not after the last one
                         if (index < departuresForSelectedHeadsign.size - 1) {
@@ -465,40 +444,27 @@ fun FixedHeightHorizontalPager(
 
 @Composable
 @OptIn(ExperimentalTime::class, ExperimentalMaterial3Api::class)
-fun formatDepartureTime(stopTime: StopTime): String {
-    val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+fun formatDepartureTime(stopTime: StopTime, use24HourFormat: Boolean): String {
     val isoFormatter = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.systemDefault())
 
-    val scheduledDepartureInstant = stopTime.place.scheduledDeparture?.let {
+    val departureTimestamp = stopTime.place.departure ?: stopTime.place.scheduledDeparture
+
+    val departureInstant = departureTimestamp?.let {
         try {
             Instant.from(isoFormatter.parse(it))
         } catch (_: Exception) {
             null
         }
     }
-    val scheduledDepartureTime: String? = scheduledDepartureInstant?.let {
-        try {
-            dateFormat.format(Date.from(it))
-        } catch (_: Exception) {
-            null
-        }
-    }
+    val departureTime: String? = departureTimestamp?.formatTime(use24HourFormat)
 
-    val bestDepartureInstant = stopTime.place.departure?.let {
-        try {
-            Instant.from(isoFormatter.parse(it))
-        } catch (_: Exception) {
-            null
-        }
-    } ?: scheduledDepartureInstant
-
-    val timeUntilDeparture = bestDepartureInstant?.toKotlinInstant()?.minus(Clock.System.now())
+    val timeUntilDeparture = departureInstant?.toKotlinInstant()?.minus(Clock.System.now())
 
     return if (timeUntilDeparture != null && timeUntilDeparture > 30.minutes) {
-        scheduledDepartureTime ?: stringResource(string.unknown_departure)
+        departureTime ?: stringResource(string.unknown_departure)
     } else if (timeUntilDeparture != null) {
         "${timeUntilDeparture.inWholeMinutes} min"
     } else {
-        scheduledDepartureTime ?: stringResource(string.unknown_departure)
+        departureTime ?: stringResource(string.unknown_departure)
     }
 }
