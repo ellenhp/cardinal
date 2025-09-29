@@ -737,8 +737,7 @@ fun AppContent(
                             try {
                                 val positions =
                                     earth.maps.cardinal.data.PolylineUtils.decodePolyline(
-                                        geometry.points,
-                                        geometry.precision
+                                        geometry.points, geometry.precision
                                     )
                                 allPositions.addAll(positions)
                             } catch (e: Exception) {
@@ -789,10 +788,9 @@ fun AppContent(
                     peekHeight = peekHeight,
                     content = {
                         earth.maps.cardinal.ui.directions.TransitItineraryDetailScreen(
-                            itinerary = itinerary,
-                            onBack = {
+                            itinerary = itinerary, onBack = {
                                 navController.popBackStack()
-                            }
+                            }, appPreferences = appPreferenceRepository
                         )
                     },
                     showToolbar = false,
@@ -842,12 +840,10 @@ fun AppContent(
             modifier = Modifier.align(Alignment.BottomCenter),
             visible = showToolbar,
             enter = slideInVertically(
-                initialOffsetY = { it },
-                animationSpec = tween(300)
+                initialOffsetY = { it }, animationSpec = tween(300)
             ),
             exit = slideOutVertically(
-                targetOffsetY = { it },
-                animationSpec = tween(300)
+                targetOffsetY = { it }, animationSpec = tween(300)
             ),
         ) {
             CardinalToolbar(navController, onSearchDoublePress = { homeViewModel.expandSearch() })
@@ -858,15 +854,12 @@ fun AppContent(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun CardinalToolbar(
-    navController: NavController,
-    onSearchDoublePress: (() -> Unit)? = null
+    navController: NavController, onSearchDoublePress: (() -> Unit)? = null
 ) {
     FlexibleBottomAppBar {
         IconButton(onClick = {
             NavigationUtils.navigate(
-                navController,
-                screen = Screen.ManagePlaces(null),
-                popUpToHome = true
+                navController, screen = Screen.ManagePlaces(null), popUpToHome = true
             )
         }) {
             Icon(
@@ -888,9 +881,7 @@ private fun CardinalToolbar(
                 onSearchDoublePress?.invoke()
             } else {
                 NavigationUtils.navigate(
-                    navController,
-                    screen = Screen.HomeSearch,
-                    popUpToHome = true
+                    navController, screen = Screen.HomeSearch, popUpToHome = true
                 )
             }
         }) {
@@ -901,9 +892,7 @@ private fun CardinalToolbar(
         }
         IconButton(onClick = {
             NavigationUtils.navigate(
-                navController,
-                screen = Screen.NearbyTransit,
-                popUpToHome = true
+                navController, screen = Screen.NearbyTransit, popUpToHome = true
             )
         }) {
             Icon(
@@ -915,9 +904,7 @@ private fun CardinalToolbar(
         }
         IconButton(onClick = {
             NavigationUtils.navigate(
-                navController,
-                screen = Screen.OfflineAreas,
-                popUpToHome = true
+                navController, screen = Screen.OfflineAreas, popUpToHome = true
             )
         }) {
             Icon(

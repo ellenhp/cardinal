@@ -32,6 +32,8 @@ object GeoUtils {
     private const val METERS_TO_MILES = 1609.34
     private const val METERS_TO_FEET = 3.28084
 
+    private const val SHORT_DISTANCE_THRESHOLD_METERS = 200.0
+
     /**
      * Formats a distance in meters to a human-readable string based on the unit preference.
      *
@@ -98,6 +100,9 @@ object GeoUtils {
      * @return Formatted short distance string (e.g., "150 m" or "490 ft")
      */
     fun formatShortDistance(meters: Double, unitPreference: Int): String {
+        if (meters > SHORT_DISTANCE_THRESHOLD_METERS) {
+            return formatDistance(meters, unitPreference)
+        }
         return when (unitPreference) {
             AppPreferences.DISTANCE_UNIT_METRIC -> "${meters.roundToInt()} m"
             AppPreferences.DISTANCE_UNIT_IMPERIAL -> {
@@ -147,7 +152,8 @@ object GeoUtils {
 
         // Calculate the approximate delta in degrees for the given radius
         val latDelta = Math.toDegrees(radiusMeters / earthRadius)
-        val lonDelta = Math.toDegrees(radiusMeters / (earthRadius * cos(Math.toRadians(center.latitude))))
+        val lonDelta =
+            Math.toDegrees(radiusMeters / (earthRadius * cos(Math.toRadians(center.latitude))))
 
         // Create the bounding box with north, south, east, west boundaries
         return BoundingBox(

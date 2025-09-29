@@ -20,6 +20,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.text.format.DateFormat
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -85,6 +86,18 @@ class SettingsViewModel @Inject constructor(
         true
     )
 
+    val use24HourFormat = appPreferenceRepository.use24HourFormat.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        DateFormat.is24HourFormat(context)
+    )
+
+    val distanceUnit = appPreferenceRepository.distanceUnit.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        0
+    )
+
     fun setOfflineMode(enabled: Boolean) {
         appPreferenceRepository.setOfflineMode(enabled)
     }
@@ -123,6 +136,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowZoomFabsEnabled(enabled: Boolean) {
         appPreferenceRepository.setShowZoomFabs(enabled)
+    }
+
+    fun setUse24HourFormat(use24Hour: Boolean) {
+        appPreferenceRepository.setUse24HourFormat(use24Hour)
+    }
+
+    fun setDistanceUnit(distanceUnit: Int) {
+        appPreferenceRepository.setDistanceUnit(distanceUnit)
     }
 
     fun getVersionName(): String? {
