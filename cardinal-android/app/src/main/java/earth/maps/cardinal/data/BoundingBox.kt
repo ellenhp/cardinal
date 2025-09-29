@@ -18,4 +18,13 @@ package earth.maps.cardinal.data
 
 data class BoundingBox(
     val north: Double, val south: Double, val east: Double, val west: Double
-)
+) {
+    fun toGeoJsonBoundingBox(): io.github.dellisd.spatialk.geojson.BoundingBox {
+        return io.github.dellisd.spatialk.geojson.BoundingBox(
+            north = north,
+            south = south,
+            west = west,
+            east = east
+        )
+    }
+}

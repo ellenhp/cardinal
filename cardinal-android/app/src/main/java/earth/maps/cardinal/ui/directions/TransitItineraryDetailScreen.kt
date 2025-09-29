@@ -285,11 +285,11 @@ private fun DetailedLegCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = leg.fromPlace.name,
+                        text = leg.fromTransitPlace.name,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium
                     )
-                    leg.fromPlace.departure?.let { departure ->
+                    leg.fromTransitPlace.departure?.let { departure ->
                         Text(
                             text = "Depart: ${departure.formatTime(use24HourFormat)}",
                             style = MaterialTheme.typography.bodySmall,
@@ -317,11 +317,11 @@ private fun DetailedLegCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = leg.toPlace.name,
+                        text = leg.toTransitPlace.name,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium
                     )
-                    leg.toPlace.arrival?.let { arrival ->
+                    leg.toTransitPlace.arrival?.let { arrival ->
                         Text(
                             text = "Arrive: ${arrival.formatTime(use24HourFormat)}",
                             style = MaterialTheme.typography.bodySmall,

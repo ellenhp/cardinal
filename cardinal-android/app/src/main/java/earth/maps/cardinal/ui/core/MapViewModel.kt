@@ -96,7 +96,7 @@ class MapViewModel @Inject constructor(
     var screenWidth: Dp = 0.dp
 
     val savedPlacesFlow: Flow<FeatureCollection> = placeDao.getAllPlacesAsFlow().map { placeList ->
-        FeatureCollection(placeList.map { createFeatureFromPlace(it) })
+        FeatureCollection(placeList.map { createFeatureFromSavedPlace(it) })
     }
 
     init {
@@ -104,9 +104,38 @@ class MapViewModel @Inject constructor(
     }
 
     /**
+     * Creates a Feature from a Place with proper JSON escaping.
+     */
+    fun createFeatureFromPlace(place: Place): Feature {
+        val properties = mutableMapOf(
+            "name" to escapeJsonString(place.name),
+            "description" to escapeJsonString(place.description)
+        )
+
+        place.address?.houseNumber?.let { properties["addr:housenumber"] = escapeJsonString(it) }
+        place.address?.road?.let { properties["addr:street"] = escapeJsonString(it) }
+        place.address?.city?.let { properties["addr:city"] = escapeJsonString(it) }
+        place.address?.postcode?.let { properties["addr:postcode"] = escapeJsonString(it) }
+        place.address?.state?.let { properties["addr:state"] = escapeJsonString(it) }
+        place.address?.country?.let { properties["addr:country"] = escapeJsonString(it) }
+        place.address?.countryCode?.let { properties["country_code"] = escapeJsonString(it) }
+        place.transitStopId?.let { properties["transit_stop_id"] = escapeJsonString(it) }
+
+        return Feature(
+            geometry = Point(
+                Position(
+                    latitude = place.latLng.latitude,
+                    longitude = place.latLng.longitude
+                )
+            ),
+            properties = properties
+        )
+    }
+
+    /**
      * Creates a Feature from a SavedPlace with proper JSON escaping.
      */
-    private fun createFeatureFromPlace(place: SavedPlace): Feature {
+    private fun createFeatureFromSavedPlace(place: SavedPlace): Feature {
         val name = place.customName ?: place.name
         val description = place.customDescription ?: place.type
 
@@ -179,7 +208,14 @@ class MapViewModel @Inject constructor(
     ) {
         val features = cameraState.projection?.queryRenderedFeatures(
             dpOffset,
-            layerIds = setOf("user_favorites", "poi_z14", "poi_z15", "poi_z16", "poi_transit")
+            layerIds = setOf(
+                "map_pins",
+                "user_favorites",
+                "poi_z14",
+                "poi_z15",
+                "poi_z16",
+                "poi_transit"
+            )
         )
         Log.d(TAG, "${features?.count()} features available at tap location")
         val filteredFeatures = features?.filter {

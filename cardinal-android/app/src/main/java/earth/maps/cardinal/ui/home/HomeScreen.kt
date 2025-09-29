@@ -17,10 +17,7 @@
 package earth.maps.cardinal.ui.home
 
 import android.annotation.SuppressLint
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -31,11 +28,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
@@ -61,7 +56,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -84,6 +79,8 @@ fun HomeScreen(
     onPlaceSelected: (Place) -> Unit,
     onPeekHeightChange: (dp: Dp) -> Unit,
     onSearchFocusChange: (Boolean) -> Unit,
+    onResultPinsChange: (List<Place>) -> Unit,
+    onSearchEvent: () -> Unit,
 ) {
     val searchQuery = viewModel.searchQuery
 
@@ -95,7 +92,9 @@ fun HomeScreen(
                 viewModel.updateSearchQuery(query)
             },
             onSearchFocusChange = onSearchFocusChange,
+            onResultPinsChange = onResultPinsChange,
             onPeekHeightChange = onPeekHeightChange,
+            onSearchEvent = onSearchEvent,
             onPlaceSelected = onPlaceSelected,
             homeInSearchScreen = viewModel.searchQuery.text.isNotEmpty(),
         )
@@ -108,12 +107,19 @@ private fun SearchPanelContent(
     searchQuery: TextFieldValue,
     onSearchQueryChange: (TextFieldValue) -> Unit,
     onSearchFocusChange: (Boolean) -> Unit,
+    onResultPinsChange: (List<Place>) -> Unit,
+    onSearchEvent: () -> Unit,
     onPeekHeightChange: (dp: Dp) -> Unit,
     onPlaceSelected: (Place) -> Unit,
     homeInSearchScreen: Boolean,
 ) {
     val addressFormatter = remember { AddressFormatter() }
     val pinnedPlaces by viewModel.pinnedPlaces().collectAsState(emptyList())
+    val geocodePlaces by viewModel.geocodePlaces.collectAsState(emptyList())
+
+    LaunchedEffect(geocodePlaces) {
+        onResultPinsChange(geocodePlaces)
+    }
 
     Column(
         modifier = Modifier
@@ -135,6 +141,9 @@ private fun SearchPanelContent(
             TextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearchEvent() }),
+                singleLine = true,
                 modifier = Modifier
                     .focusRequester(textField)
                     .fillMaxWidth()
@@ -208,10 +217,10 @@ private fun SearchPanelContent(
 
         if (homeInSearchScreen) {
             LazyColumn {
-                items(viewModel.geocodeResults.value) {
+                items(geocodePlaces) {
                     SearchResultItem(
                         addressFormatter = addressFormatter,
-                        viewModel.geocodeResultToPlace(it),
+                        it,
                         onPlaceSelected
                     )
                 }
@@ -220,113 +229,6 @@ private fun SearchPanelContent(
         } else {
             val savedPlacesViewModel = hiltViewModel<SavedPlacesViewModel>()
             SavedPlacesList(savedPlacesViewModel, onPlaceSelected = onPlaceSelected)
-        }
-    }
-}
-
-@Composable
-private fun SavedPlacesSheetContent(
-    homeInSearchScreen: Boolean,
-    isSearching: Boolean,
-    geocodeResults: List<GeocodeResult>,
-    viewModel: HomeViewModel,
-    onPlaceSelected: (Place) -> Unit,
-    savedPlaces: List<Place>
-) {
-    val addressFormatter = remember { AddressFormatter() }
-    val scrollState = rememberScrollState()
-    // Content: either saved places or search results
-    Column(
-        modifier = Modifier
-            .verticalScroll(scrollState)
-            .padding(horizontal = dimensionResource(dimen.padding))
-            .fillMaxWidth()
-    ) {
-        if (homeInSearchScreen) {
-            // Show search results
-            if (isSearching) {
-                Text(
-                    text = stringResource(string.searching_in_progress),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(dimensionResource(dimen.padding))
-                )
-            } else {
-                for (result in geocodeResults) {
-                    SearchResultItem(
-                        addressFormatter = addressFormatter,
-                        place = viewModel.geocodeResultToPlace(result),
-                        onPlaceSelected = onPlaceSelected
-                    )
-                }
-            }
-        } else {
-            // Show saved places
-            for (place in savedPlaces) {
-                PlaceItem(place = place, onClick = {
-                    onPlaceSelected(place)
-                })
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlaceItem(place: Place, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = dimensionResource(dimen.padding))
-            .clickable(
-                true, onClick = onClick
-            ), onClick = {
-            Log.d("Place", "$place")
-            onClick()
-        }, elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dimensionResource(dimen.padding)),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Place icon (simplified)
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .padding(dimensionResource(dimen.padding) / 2),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(
-                        when (place.icon) {
-                            "home" -> drawable.ic_home
-                            "work" -> drawable.ic_work
-                            else -> drawable.ic_location_on
-                        }
-                    ),
-                    contentDescription = place.name,
-                    modifier = Modifier.size(dimensionResource(dimen.icon_size))
-                )
-            }
-
-            // Place details
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = dimensionResource(dimen.padding))
-            ) {
-                Text(
-                    text = place.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = place.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
     }
 }
