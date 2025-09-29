@@ -372,7 +372,7 @@ class TileDownloadForegroundService : Service() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error during download", e)
-            } finally {
+                // Handle download failure
                 handleDownloadCompletion(areaId, false, 0L)
             }
         }
