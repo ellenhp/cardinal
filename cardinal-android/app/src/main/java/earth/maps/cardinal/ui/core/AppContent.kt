@@ -361,7 +361,6 @@ fun AppContent(
             place?.let { place ->
                 viewModel.setPlace(place)
                 LaunchedEffect(place) {
-                    mapPins.clear()
                     // Clear any existing pins and add the new one to ensure only one pin is shown at a time
                     mapPins.clear()
                     mapPins.add(place)
