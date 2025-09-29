@@ -16,6 +16,8 @@
 
 package earth.maps.cardinal.data
 
+import io.github.dellisd.spatialk.geojson.Position
+
 data class Place(
     val id: String? = null,
     val name: String,
@@ -26,5 +28,9 @@ data class Place(
     val isMyLocation: Boolean = false,
     val isTransitStop: Boolean = false,
     val transitStopId: String? = null,
-)
+) {
+    fun toPosition(): Position {
+        return Position(latitude = latLng.latitude, longitude = latLng.longitude)
+    }
+}
 

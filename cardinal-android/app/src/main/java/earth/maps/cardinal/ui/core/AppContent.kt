@@ -101,6 +101,7 @@ import earth.maps.cardinal.bottomsheet.rememberBottomSheetScaffoldState
 import earth.maps.cardinal.bottomsheet.rememberBottomSheetState
 import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.Place
+import earth.maps.cardinal.data.PolylineUtils
 import earth.maps.cardinal.data.RoutingMode
 import earth.maps.cardinal.data.room.OfflineArea
 import earth.maps.cardinal.routing.RouteRepository
@@ -130,6 +131,7 @@ import io.github.dellisd.spatialk.geojson.BoundingBox
 import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
+import org.maplibre.compose.camera.CameraState
 import org.maplibre.compose.camera.rememberCameraState
 import uniffi.ferrostar.Route
 
@@ -149,7 +151,7 @@ fun AppContent(
     routeRepository: RouteRepository,
     appPreferenceRepository: AppPreferenceRepository,
 ) {
-    val mapPins = remember { mutableStateListOf<Position>() }
+    val mapPins = remember { mutableStateListOf<Place>() }
     val cameraState = rememberCameraState()
     var fabHeight by remember { mutableStateOf(0.dp) }
     val coroutineScope = rememberCoroutineScope()
@@ -261,6 +263,7 @@ fun AppContent(
             showToolbar = true
             HomeScreenComposable(
                 viewModel = homeViewModel,
+                cameraState = cameraState,
                 mapPins = mapPins,
                 peekHeight = peekHeight,
                 navController = navController,
@@ -272,6 +275,9 @@ fun AppContent(
                 },
                 topOfBackStack = topOfBackStack,
                 backStackEntry = backStackEntry,
+                screenWidthDp = screenWidthDp,
+                screenHeightDp = screenHeightDp,
+                appPreferenceRepository = appPreferenceRepository
             )
         }
 
@@ -356,10 +362,9 @@ fun AppContent(
                 viewModel.setPlace(place)
                 LaunchedEffect(place) {
                     mapPins.clear()
-                    val position = Position(place.latLng.longitude, place.latLng.latitude)
                     // Clear any existing pins and add the new one to ensure only one pin is shown at a time
                     mapPins.clear()
-                    mapPins.add(position)
+                    mapPins.add(place)
 
                     val previousBackStackEntry = navController.previousBackStackEntry
                     val shouldFlyToPoi =
@@ -371,7 +376,10 @@ fun AppContent(
                         coroutineScope.launch {
                             cameraState.animateTo(
                                 CameraPosition(
-                                    target = position, zoom = 15.0, padding = PaddingValues(
+                                    target = Position(
+                                        latitude = place.latLng.latitude,
+                                        longitude = place.latLng.longitude
+                                    ), zoom = 15.0, padding = PaddingValues(
                                         start = screenWidthDp / 8,
                                         top = screenHeightDp / 8,
                                         end = screenWidthDp / 8,
@@ -919,13 +927,17 @@ private fun CardinalToolbar(
 @Composable
 private fun HomeScreenComposable(
     viewModel: HomeViewModel,
-    mapPins: SnapshotStateList<Position>,
+    cameraState: CameraState,
+    mapPins: SnapshotStateList<Place>,
     peekHeight: Dp,
     navController: NavHostController,
     onPeekHeightChange: (Dp) -> Unit,
     onFabHeightChange: (Dp) -> Unit,
     topOfBackStack: NavBackStackEntry?,
     backStackEntry: NavBackStackEntry,
+    screenWidthDp: Dp,
+    screenHeightDp: Dp,
+    appPreferenceRepository: AppPreferenceRepository,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val searchExpanded: Boolean? by viewModel.searchExpanded.collectAsState(null)
@@ -994,6 +1006,31 @@ private fun HomeScreenComposable(
                         viewModel.expandSearch()
                     }
                 },
+                onResultPinsChange = {
+                    mapPins.clear()
+                    mapPins.addAll(it)
+                },
+                onSearchEvent = {
+                    viewModel.collapseSearch()
+                    coroutineScope.launch {
+                        val boundingBox =
+                            PolylineUtils.calculateBoundingBox(mapPins.map { it.toPosition() })
+                                ?: return@launch
+                        cameraState.animateTo(
+                            boundingBox = boundingBox.toGeoJsonBoundingBox(),
+                            padding = PaddingValues(
+                                start = screenWidthDp / 8,
+                                top = screenHeightDp / 8,
+                                end = screenWidthDp / 8,
+                                bottom = min(
+                                    3f * screenHeightDp / 4,
+                                    peekHeight + screenHeightDp / 8
+                                )
+                            ),
+                            duration = appPreferenceRepository.animationSpeedDurationValue
+                        )
+                    }
+                }
             )
         })
 }

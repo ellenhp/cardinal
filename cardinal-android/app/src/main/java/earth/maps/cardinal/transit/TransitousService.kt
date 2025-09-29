@@ -211,8 +211,8 @@ class TransitousService @Inject constructor(private val appPreferenceRepository:
             Log.e(TAG, "Error fetching plan", e)
             emit(
                 PlanResponse(
-                    Place("", null, 0.0, 0.0, 0.0),
-                    Place("", null, 0.0, 0.0, 0.0),
+                    TransitPlace("", null, 0.0, 0.0, 0.0),
+                    TransitPlace("", null, 0.0, 0.0, 0.0),
                     emptyList(),
                     emptyList(),
                     "",

@@ -60,7 +60,6 @@ import earth.maps.cardinal.ui.map.LocationPuck
 import io.github.dellisd.spatialk.geojson.Feature
 import io.github.dellisd.spatialk.geojson.FeatureCollection
 import io.github.dellisd.spatialk.geojson.LineString
-import io.github.dellisd.spatialk.geojson.Point
 import io.github.dellisd.spatialk.geojson.Polygon
 import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
@@ -98,7 +97,7 @@ fun MapView(
     onDropPin: (LatLng) -> Unit,
     onRequestLocationPermission: () -> Unit,
     hasLocationPermission: Boolean,
-    mapPins: List<Position>,
+    mapPins: List<Place>,
     fabInsets: PaddingValues,
     cameraState: CameraState,
     appPreferences: AppPreferenceRepository,
@@ -108,7 +107,7 @@ fun MapView(
 ) {
     val context = LocalContext.current
     val styleState = rememberStyleState()
-    val pinFeatures = mapPins.map { Feature(geometry = Point(it)) }
+    val pinFeatures = mapPins.map { mapViewModel.createFeatureFromPlace(it) }
     rememberCoroutineScope()
 
     val styleVariant = if (isSystemInDarkTheme()) "dark" else "light"

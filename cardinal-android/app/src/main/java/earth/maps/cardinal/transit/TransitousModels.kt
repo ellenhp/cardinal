@@ -239,7 +239,7 @@ data class FareTransfer(
 )
 
 @Serializable
-data class Place(
+data class TransitPlace(
     val name: String,
     val stopId: String? = null,
     val lat: Double,
@@ -266,8 +266,8 @@ data class Place(
 @Serializable
 data class Leg(
     val mode: Mode,
-    @SerialName("from") val fromPlace: Place,
-    @SerialName("to") val toPlace: Place,
+    @SerialName("from") val fromTransitPlace: TransitPlace,
+    @SerialName("to") val toTransitPlace: TransitPlace,
     val duration: Int,
     val startTime: String,
     val endTime: String,
@@ -288,7 +288,7 @@ data class Leg(
     val routeShortName: String? = null,
     val cancelled: Boolean? = null,
     val source: String? = null,
-    val intermediateStops: List<Place>? = null,
+    val intermediateStops: List<TransitPlace>? = null,
     val legGeometry: EncodedPolyline? = null,
     val steps: List<StepInstruction>? = null,
     val rental: Rental? = null,
@@ -309,8 +309,8 @@ data class Itinerary(
 
 @Serializable
 data class PlanResponse(
-    val from: Place,
-    val to: Place,
+    val from: TransitPlace,
+    val to: TransitPlace,
     val direct: List<Itinerary>,
     val itineraries: List<Itinerary>,
     val previousPageCursor: String,

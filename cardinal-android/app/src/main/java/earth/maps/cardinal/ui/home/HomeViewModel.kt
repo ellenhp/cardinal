@@ -67,7 +67,9 @@ class HomeViewModel @Inject constructor(
         TextFieldValue()
     )
 
-    val geocodeResults = mutableStateOf<List<GeocodeResult>>(emptyList())
+    val geocodeResults = MutableStateFlow<List<GeocodeResult>>(emptyList())
+
+    val geocodePlaces = geocodeResults.map { list -> list.map { geocodeResultToPlace(it) } }
 
     var isSearching by mutableStateOf(false)
         private set

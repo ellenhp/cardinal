@@ -433,4 +433,3 @@ fun calculateBoundingBoxFromViewport(
         west = viewport.farLeft.longitude,
     )
 }
-
