@@ -237,6 +237,12 @@
     <string name="trip_details">Trip Details</string>
     <string name="step_by_step_journey">Step-by-Step Journey</string>
     <string name="distance_not_available">Distance not available</string>
+    <string name="time_format_title">12/24 Hour Time</string>
+    <string name="time_format_help_text">Use 12-hour or 24-hour time format based on system setting</string>
+    <string name="distance_unit_title">Distance Unit</string>
+    <string name="distance_unit_help_text">Choose between metric or imperial units</string>
+    <string name="metric">Metric</string>
+    <string name="imperial">Imperial</string>
     <string name="zoom_in">Zoom in</string>
     <string name="zoom_out">Zoom out</string>
 </resources>

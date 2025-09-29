@@ -18,13 +18,14 @@ package earth.maps.cardinal.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.text.format.DateFormat
 import androidx.core.content.edit
 import java.util.Locale
 
 /**
  * Helper class to save and load app preferences using SharedPreferences.
  */
-class AppPreferences(context: Context) {
+class AppPreferences(private val context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
 
@@ -40,6 +41,8 @@ class AppPreferences(context: Context) {
         private const val KEY_CONTINUOUS_LOCATION_TRACKING = "continuous_location_tracking"
 
         private const val KEY_LAST_ROUTING_MODE = "last_routing_mode"
+
+        private const val KEY_USE_24_HOUR_FORMAT = "use_24_hour_format"
 
         // API configuration keys
         private const val KEY_PELIAS_BASE_URL = "pelias_base_url"
@@ -261,6 +264,25 @@ class AppPreferences(context: Context) {
     fun loadLastRoutingMode(): String {
         return prefs.getString(KEY_LAST_ROUTING_MODE, DEFAULT_LAST_ROUTING_MODE)
             ?: DEFAULT_LAST_ROUTING_MODE
+    }
+
+    /**
+     * Saves the use 24-hour format preference.
+     */
+    fun saveUse24HourFormat(use24Hour: Boolean) {
+        prefs.edit {
+            putBoolean(KEY_USE_24_HOUR_FORMAT, use24Hour)
+        }
+    }
+
+    /**
+     * Loads the saved use 24-hour format preference.
+     * Returns the system default as default value.
+     */
+    fun loadUse24HourFormat(): Boolean {
+        val systemDefault = DateFormat.is24HourFormat(context)
+        // Note: we're using the system default as the fallback, but storing user preference
+        return prefs.getBoolean(KEY_USE_24_HOUR_FORMAT, systemDefault)
     }
 
     /**

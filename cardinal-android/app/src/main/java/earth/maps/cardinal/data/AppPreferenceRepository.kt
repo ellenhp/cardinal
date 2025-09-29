@@ -17,6 +17,7 @@
 package earth.maps.cardinal.data
 
 import android.content.Context
+import android.text.format.DateFormat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -64,6 +65,9 @@ class AppPreferenceRepository @Inject constructor(
     private val _showZoomFabs = MutableStateFlow(true)
     val showZoomFabs: StateFlow<Boolean> = _showZoomFabs.asStateFlow()
 
+    private val _use24HourFormat = MutableStateFlow(DateFormat.is24HourFormat(context))
+    val use24HourFormat: StateFlow<Boolean> = _use24HourFormat.asStateFlow()
+
     private val _lastRoutingMode = MutableStateFlow(appPreferences.loadLastRoutingMode())
     val lastRoutingMode: StateFlow<String> = _lastRoutingMode.asStateFlow()
 
@@ -93,6 +97,7 @@ class AppPreferenceRepository @Inject constructor(
         loadAllowTransitInOfflineMode()
         loadContinuousLocationTracking()
         loadShowZoomFabs()
+        loadUse24HourFormat()
         loadLastRoutingMode()
         loadApiConfigurations()
     }
@@ -160,6 +165,11 @@ class AppPreferenceRepository @Inject constructor(
         _showZoomFabs.value = show
     }
 
+    private fun loadUse24HourFormat() {
+        val use24Hour = appPreferences.loadUse24HourFormat()
+        _use24HourFormat.value = use24Hour
+    }
+
     fun setAllowTransitInOfflineMode(allowTransitInOfflineMode: Boolean) {
         _allowTransitInOfflineMode.value = allowTransitInOfflineMode
         viewModelScope.launch {
@@ -178,6 +188,13 @@ class AppPreferenceRepository @Inject constructor(
         _showZoomFabs.value = show
         viewModelScope.launch {
             appPreferences.saveShowZoomFabs(show)
+        }
+    }
+
+    fun setUse24HourFormat(use24Hour: Boolean) {
+        _use24HourFormat.value = use24Hour
+        viewModelScope.launch {
+            appPreferences.saveUse24HourFormat(use24Hour)
         }
     }
 

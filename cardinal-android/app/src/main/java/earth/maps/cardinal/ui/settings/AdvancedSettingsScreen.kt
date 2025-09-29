@@ -20,9 +20,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.rememberScrollState
@@ -56,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
+import earth.maps.cardinal.ui.core.TOOLBAR_HEIGHT_DP
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,6 +183,121 @@ fun AdvancedSettingsScreen(
                             )
                         }
                     }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        thickness = DividerDefaults.Thickness,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
+                    // Time Format
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = dimensionResource(dimen.padding),
+                                vertical = dimensionResource(dimen.padding_minor)
+                            )
+                    ) {
+                        Text(
+                            text = stringResource(string.time_format_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(string.time_format_help_text),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        val use24HourFormat by viewModel.use24HourFormat.collectAsState()
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val formatText = if (use24HourFormat) {
+                                "24\u2011hour"
+                            } else {
+                                "12\u2011hour"
+                            }
+                            Text(
+                                text = formatText,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Switch(
+                                checked = use24HourFormat,
+                                onCheckedChange = { newValue ->
+                                    viewModel.setUse24HourFormat(newValue)
+                                }
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        thickness = DividerDefaults.Thickness,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
+                    // Distance Unit
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = dimensionResource(dimen.padding),
+                                vertical = dimensionResource(dimen.padding_minor)
+                            )
+                    ) {
+
+                        Text(
+                            text = stringResource(string.distance_unit_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(string.distance_unit_help_text),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        val distanceUnit by viewModel.distanceUnit.collectAsState()
+                        val isMetric = distanceUnit == 0
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val unitText = if (isMetric) {
+                                stringResource(string.metric)
+                            } else {
+                                stringResource(string.imperial)
+                            }
+                            Text(
+                                text = unitText,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Switch(
+                                checked = isMetric,
+                                onCheckedChange = { newValue ->
+                                    val newUnit = if (newValue) 0 else 1
+                                    viewModel.setDistanceUnit(newUnit)
+                                }
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        thickness = DividerDefaults.Thickness,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
+                    // NEW SETTINGS GO HERE.
 
                     // Pelias Base URL
                     Column(
@@ -352,6 +470,12 @@ fun AdvancedSettingsScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                         )
                     }
+
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(TOOLBAR_HEIGHT_DP)
+                    )
                 }
             }
         }
