@@ -84,6 +84,103 @@ fun AdvancedSettingsScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                 ) {
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        thickness = DividerDefaults.Thickness,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
+                    // Continuous Location Tracking
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = dimensionResource(dimen.padding),
+                                vertical = dimensionResource(dimen.padding_minor)
+                            )
+                    ) {
+                        Text(
+                            text = stringResource(string.continuous_location_tracking_disabled_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(string.continuous_location_tracking_disabled_help_text),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        val continuousLocationTracking by viewModel.continuousLocationTracking.collectAsState()
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (continuousLocationTracking) stringResource(string.enabled) else stringResource(
+                                    string.disabled
+                                ), style = MaterialTheme.typography.bodyMedium
+                            )
+                            Switch(
+                                checked = continuousLocationTracking,
+                                onCheckedChange = { newValue ->
+                                    viewModel.setContinuousLocationTrackingEnabled(newValue)
+                                }
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        thickness = DividerDefaults.Thickness,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
+                    // Show Zoom FABs
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = dimensionResource(dimen.padding),
+                                vertical = dimensionResource(dimen.padding_minor)
+                            )
+                    ) {
+                        Text(
+                            text = stringResource(string.show_zoom_fabs_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(string.show_zoom_fabs_help_text),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        val showZoomFabs by viewModel.showZoomFabs.collectAsState()
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (showZoomFabs) stringResource(string.enabled) else stringResource(
+                                    string.disabled
+                                ), style = MaterialTheme.typography.bodyMedium
+                            )
+                            Switch(
+                                checked = showZoomFabs,
+                                onCheckedChange = { newValue ->
+                                    viewModel.setShowZoomFabsEnabled(newValue)
+                                }
+                            )
+                        }
+                    }
+
                     // Pelias Base URL
                     Column(
                         modifier = Modifier
@@ -254,54 +351,6 @@ fun AdvancedSettingsScreen(
                             visualTransformation = PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                         )
-                    }
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        thickness = DividerDefaults.Thickness,
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-
-                    // Continuous Location Tracking
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = dimensionResource(dimen.padding),
-                                vertical = dimensionResource(dimen.padding_minor)
-                            )
-                    ) {
-                        Text(
-                            text = stringResource(string.continuous_location_tracking_disabled_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = stringResource(string.continuous_location_tracking_disabled_help_text),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        val continuousLocationTracking by viewModel.continuousLocationTracking.collectAsState()
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = if (continuousLocationTracking) stringResource(string.enabled) else stringResource(
-                                    string.disabled
-                                ), style = MaterialTheme.typography.bodyMedium
-                            )
-                            Switch(
-                                checked = continuousLocationTracking,
-                                onCheckedChange = { newValue ->
-                                    viewModel.setContinuousLocationTrackingEnabled(newValue)
-                                }
-                            )
-                        }
                     }
                 }
             }

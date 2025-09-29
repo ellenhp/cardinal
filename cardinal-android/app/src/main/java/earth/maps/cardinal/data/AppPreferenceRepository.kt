@@ -61,6 +61,9 @@ class AppPreferenceRepository @Inject constructor(
     val continuousLocationTracking: StateFlow<Boolean> =
         _continuousLocationTracking.asStateFlow()
 
+    private val _showZoomFabs = MutableStateFlow(true)
+    val showZoomFabs: StateFlow<Boolean> = _showZoomFabs.asStateFlow()
+
     private val _lastRoutingMode = MutableStateFlow(appPreferences.loadLastRoutingMode())
     val lastRoutingMode: StateFlow<String> = _lastRoutingMode.asStateFlow()
 
@@ -89,6 +92,7 @@ class AppPreferenceRepository @Inject constructor(
         loadDistanceUnit()
         loadAllowTransitInOfflineMode()
         loadContinuousLocationTracking()
+        loadShowZoomFabs()
         loadLastRoutingMode()
         loadApiConfigurations()
     }
@@ -151,6 +155,11 @@ class AppPreferenceRepository @Inject constructor(
         _continuousLocationTracking.value = enabled
     }
 
+    private fun loadShowZoomFabs() {
+        val show = appPreferences.loadShowZoomFabs()
+        _showZoomFabs.value = show
+    }
+
     fun setAllowTransitInOfflineMode(allowTransitInOfflineMode: Boolean) {
         _allowTransitInOfflineMode.value = allowTransitInOfflineMode
         viewModelScope.launch {
@@ -162,6 +171,13 @@ class AppPreferenceRepository @Inject constructor(
         _continuousLocationTracking.value = enabled
         viewModelScope.launch {
             appPreferences.saveContinuousLocationTracking(enabled)
+        }
+    }
+
+    fun setShowZoomFabs(show: Boolean) {
+        _showZoomFabs.value = show
+        viewModelScope.launch {
+            appPreferences.saveShowZoomFabs(show)
         }
     }
 
