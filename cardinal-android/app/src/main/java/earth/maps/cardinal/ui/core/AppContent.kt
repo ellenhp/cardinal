@@ -989,7 +989,6 @@ private fun HomeScreenComposable(
                         onPeekHeightChange(it)
                     }
                 },
-                homeInSearchScreen = searchExpanded == true,
                 onSearchFocusChange = {
                     if (it) {
                         viewModel.expandSearch()
