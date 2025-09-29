@@ -33,6 +33,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
@@ -43,6 +45,7 @@ import androidx.core.graphics.toColorInt
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
+import earth.maps.cardinal.data.GeoUtils
 import earth.maps.cardinal.transit.Mode
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.ExperimentalTime
@@ -52,8 +55,11 @@ import kotlin.time.Instant
 @Composable
 fun TransitDirectionsScreen(
     viewModel: DirectionsViewModel,
-    onItineraryClick: (earth.maps.cardinal.transit.Itinerary) -> Unit = {}
+    onItineraryClick: (earth.maps.cardinal.transit.Itinerary) -> Unit = {},
+    appPreferences: earth.maps.cardinal.data.AppPreferenceRepository
 ) {
+    val use24HourFormat by appPreferences.use24HourFormat.collectAsState()
+    val distanceUnit by appPreferences.distanceUnit.collectAsState()
     val planState = viewModel.planState
     when {
         planState.isLoading -> {
@@ -79,6 +85,8 @@ fun TransitDirectionsScreen(
             TransitTimelineResults(
                 planResponse = planState.planResponse,
                 onItineraryClick = onItineraryClick,
+                use24HourFormat = use24HourFormat,
+                distanceUnit = distanceUnit,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -99,6 +107,8 @@ fun TransitDirectionsScreen(
 private fun TransitTimelineResults(
     planResponse: earth.maps.cardinal.transit.PlanResponse,
     onItineraryClick: (earth.maps.cardinal.transit.Itinerary) -> Unit,
+    use24HourFormat: Boolean,
+    distanceUnit: Int,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(modifier = modifier) {
@@ -108,6 +118,8 @@ private fun TransitTimelineResults(
             TransitItineraryCard(
                 itinerary = itinerary,
                 onItineraryClick = onItineraryClick,
+                use24HourFormat = use24HourFormat,
+                distanceUnit = distanceUnit,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = dimensionResource(dimen.padding))
@@ -120,13 +132,14 @@ private fun TransitTimelineResults(
 private fun TransitItineraryCard(
     itinerary: earth.maps.cardinal.transit.Itinerary,
     onItineraryClick: (earth.maps.cardinal.transit.Itinerary) -> Unit,
+    use24HourFormat: Boolean,
+    distanceUnit: Int,
     modifier: Modifier = Modifier
 ) {
     androidx.compose.material3.Card(
         modifier = modifier,
         elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 2.dp),
-        onClick = { onItineraryClick(itinerary) }
-    ) {
+        onClick = { onItineraryClick(itinerary) }) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -142,11 +155,11 @@ private fun TransitItineraryCard(
             ) {
                 Column {
                     Text(
-                        text = "Depart: ${itinerary.startTime.formatTime()}",
+                        text = "Depart: ${itinerary.startTime.formatTime(use24HourFormat)}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = "Arrive: ${itinerary.endTime.formatTime()}",
+                        text = "Arrive: ${itinerary.endTime.formatTime(use24HourFormat)}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -170,6 +183,7 @@ private fun TransitItineraryCard(
                     TransitLegTimelineItem(
                         leg = leg,
                         isLast = index == itinerary.legs.lastIndex,
+                        distanceUnit = distanceUnit,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -182,11 +196,11 @@ private fun TransitItineraryCard(
 private fun TransitLegTimelineItem(
     leg: earth.maps.cardinal.transit.Leg,
     isLast: Boolean,
+    distanceUnit: Int,
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.Top
+        modifier = modifier, verticalAlignment = Alignment.Top
     ) {
         // Timeline indicator
         Column(
@@ -199,17 +213,13 @@ private fun TransitLegTimelineItem(
             Box(
                 modifier = Modifier
                     .size(32.dp)
-                    .background(
-                        color = leg.routeColor?.let {
-                            parseRouteColor(
-                                it
-                            )
-                        }
-                            ?: MaterialTheme.colorScheme.primary,
-                        shape = androidx.compose.foundation.shape.CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
+                    .background(color = leg.routeColor?.let {
+                        parseRouteColor(
+                            it
+                        )
+                    } ?: MaterialTheme.colorScheme.primary,
+                        shape = androidx.compose.foundation.shape.CircleShape),
+                contentAlignment = Alignment.Center) {
                 Icon(
                     painter = painterResource(leg.mode.getIcon()),
                     contentDescription = null,
@@ -217,10 +227,8 @@ private fun TransitLegTimelineItem(
                         parseRouteColor(
                             it
                         )
-                    }
-                        ?: MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(16.dp)
-                )
+                    } ?: MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(16.dp))
             }
 
             // Connection line (except for last item)
@@ -246,9 +254,8 @@ private fun TransitLegTimelineItem(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     // Route name and headsign
-                    val routeText =
-                        leg.routeShortName ?: leg.mode.name.lowercase()
-                            .replaceFirstChar { it.uppercase() }
+                    val routeText = leg.routeShortName ?: leg.mode.name.lowercase()
+                        .replaceFirstChar { it.uppercase() }
                     Text(
                         text = "$routeText ${leg.headsign ?: ""}".trim(),
                         style = MaterialTheme.typography.bodyLarge,
@@ -278,7 +285,7 @@ private fun TransitLegTimelineItem(
                 Mode.WALK, Mode.BIKE -> {
                     leg.distance?.let { distance ->
                         Text(
-                            text = "${String.format("%.1f", distance / 1000)} km",
+                            text = GeoUtils.formatDistance(distance, distanceUnit),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp)
@@ -314,16 +321,22 @@ private fun TransitLegTimelineItem(
 
 // Extension functions for formatting
 @OptIn(ExperimentalTime::class)
-private fun String.formatTime(): String {
+private fun String.formatTime(use24HourFormat: Boolean): String {
     // Parse ISO 8601 time and format to readable time
     return try {
         val instant = Instant.parse(this)
         val localDateTime =
             instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-        "${localDateTime.hour.toString().padStart(2, '0')}:${
-            localDateTime.minute.toString().padStart(2, '0')
-        }"
-    } catch (e: Exception) {
+        val hour = localDateTime.hour
+        val minute = localDateTime.minute.toString().padStart(2, '0')
+        if (use24HourFormat) {
+            "${hour.toString().padStart(2, '0')}:$minute"
+        } else {
+            val displayHour = if (hour == 0) 12 else if (hour > 12) hour - 12 else hour
+            val amPm = if (hour >= 12) "PM" else "AM"
+            "$displayHour:$minute $amPm"
+        }
+    } catch (_: Exception) {
         this // fallback to original string
     }
 }
@@ -343,7 +356,7 @@ private fun parseRouteColor(colorString: String?): androidx.compose.ui.graphics.
     if (colorString.isNullOrBlank()) return null
     return try {
         androidx.compose.ui.graphics.Color("#$colorString".toColorInt())
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         null
     }
 }

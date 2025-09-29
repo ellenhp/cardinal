@@ -40,6 +40,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
@@ -51,6 +53,8 @@ import androidx.core.graphics.toColorInt
 import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.drawable
 import earth.maps.cardinal.R.string
+import earth.maps.cardinal.data.AppPreferenceRepository
+import earth.maps.cardinal.data.GeoUtils
 import earth.maps.cardinal.transit.Itinerary
 import earth.maps.cardinal.transit.Leg
 import earth.maps.cardinal.transit.Mode
@@ -61,11 +65,15 @@ import kotlin.time.Instant
 @Composable
 fun TransitItineraryDetailScreen(
     itinerary: Itinerary,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    appPreferences: AppPreferenceRepository
 ) {
     BackHandler {
         onBack()
     }
+
+    val use24HourFormat by appPreferences.use24HourFormat.collectAsState()
+    val distanceUnit by appPreferences.distanceUnit.collectAsState()
 
     Column(
         modifier = Modifier
@@ -113,11 +121,17 @@ fun TransitItineraryDetailScreen(
                 ) {
                     Column {
                         Text(
-                            text = stringResource(string.depart, itinerary.startTime.formatTime()),
+                            text = stringResource(
+                                string.depart,
+                                itinerary.startTime.formatTime(use24HourFormat)
+                            ),
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            text = stringResource(string.arrive, itinerary.endTime.formatTime()),
+                            text = stringResource(
+                                string.arrive,
+                                itinerary.endTime.formatTime(use24HourFormat)
+                            ),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -146,7 +160,7 @@ fun TransitItineraryDetailScreen(
                 Text(
                     text = stringResource(
                         string.total_walking_distance,
-                        calculateTotalDistance(itinerary)
+                        calculateTotalDistance(itinerary, distanceUnit)
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -170,6 +184,8 @@ fun TransitItineraryDetailScreen(
                 leg = leg,
                 isFirst = index == 0,
                 isLast = index == itinerary.legs.lastIndex,
+                use24HourFormat = use24HourFormat,
+                distanceUnit = distanceUnit,
                 modifier = Modifier.padding(bottom = dimensionResource(dimen.padding))
             )
         }
@@ -177,15 +193,21 @@ fun TransitItineraryDetailScreen(
 }
 
 @OptIn(ExperimentalTime::class)
-private fun String.formatTime(): String {
+private fun String.formatTime(use24HourFormat: Boolean): String {
     // Parse ISO 8601 time and format to readable time
     return try {
         val instant = Instant.parse(this)
         val localDateTime =
             instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-        "${localDateTime.hour.toString().padStart(2, '0')}:${
-            localDateTime.minute.toString().padStart(2, '0')
-        }"
+        val hour = localDateTime.hour
+        val minute = localDateTime.minute.toString().padStart(2, '0')
+        if (use24HourFormat) {
+            "${hour.toString().padStart(2, '0')}:$minute"
+        } else {
+            val displayHour = if (hour == 0) 12 else if (hour > 12) hour - 12 else hour
+            val amPm = if (hour >= 12) "PM" else "AM"
+            "$displayHour:$minute $amPm"
+        }
     } catch (_: Exception) {
         this // fallback to original string
     }
@@ -203,10 +225,10 @@ private fun formatDuration(seconds: Int): String {
 }
 
 @Composable
-private fun calculateTotalDistance(itinerary: Itinerary): String {
+private fun calculateTotalDistance(itinerary: Itinerary, distanceUnit: Int): String {
     val totalDistanceMeters = itinerary.legs.sumOf { it.distance ?: 0.0 }
     return if (totalDistanceMeters > 0) {
-        "${String.format("%.1f", totalDistanceMeters / 1000)} km"
+        GeoUtils.formatDistance(totalDistanceMeters, distanceUnit)
     } else {
         stringResource(string.distance_not_available)
     }
@@ -217,6 +239,8 @@ private fun DetailedLegCard(
     leg: Leg,
     isFirst: Boolean,
     isLast: Boolean,
+    use24HourFormat: Boolean,
+    distanceUnit: Int,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -304,7 +328,7 @@ private fun DetailedLegCard(
                     )
                     leg.fromPlace.departure?.let { departure ->
                         Text(
-                            text = "Depart: ${departure.formatTime()}",
+                            text = "Depart: ${departure.formatTime(use24HourFormat)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -336,7 +360,7 @@ private fun DetailedLegCard(
                     )
                     leg.toPlace.arrival?.let { arrival ->
                         Text(
-                            text = "Arrive: ${arrival.formatTime()}",
+                            text = "Arrive: ${arrival.formatTime(use24HourFormat)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -364,7 +388,7 @@ private fun DetailedLegCard(
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
-                                text = "${String.format("%.1f", distance / 1000)} km",
+                                text = GeoUtils.formatDistance(distance, distanceUnit),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium
                             )

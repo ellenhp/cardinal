@@ -98,6 +98,9 @@ object GeoUtils {
      * @return Formatted short distance string (e.g., "150 m" or "490 ft")
      */
     fun formatShortDistance(meters: Double, unitPreference: Int): String {
+        if (meters > 200.0) {
+            return formatDistance(meters, unitPreference)
+        }
         return when (unitPreference) {
             AppPreferences.DISTANCE_UNIT_METRIC -> "${meters.roundToInt()} m"
             AppPreferences.DISTANCE_UNIT_IMPERIAL -> {
@@ -147,7 +150,8 @@ object GeoUtils {
 
         // Calculate the approximate delta in degrees for the given radius
         val latDelta = Math.toDegrees(radiusMeters / earthRadius)
-        val lonDelta = Math.toDegrees(radiusMeters / (earthRadius * cos(Math.toRadians(center.latitude))))
+        val lonDelta =
+            Math.toDegrees(radiusMeters / (earthRadius * cos(Math.toRadians(center.latitude))))
 
         // Create the bounding box with north, south, east, west boundaries
         return BoundingBox(
