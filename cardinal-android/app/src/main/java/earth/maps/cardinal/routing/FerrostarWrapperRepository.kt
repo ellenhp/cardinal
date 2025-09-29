@@ -95,6 +95,7 @@ class FerrostarWrapperRepository @Inject constructor(
             RoutingMode.TRUCK -> truck.setOptions(routingOptions)
             RoutingMode.MOTOR_SCOOTER -> motorScooter.setOptions(routingOptions)
             RoutingMode.MOTORCYCLE -> motorcycle.setOptions(routingOptions)
+            else -> {}
         }
     }
 
@@ -110,6 +111,7 @@ class FerrostarWrapperRepository @Inject constructor(
             RoutingMode.TRUCK -> truck.setOptions(defaultOptions)
             RoutingMode.MOTOR_SCOOTER -> motorScooter.setOptions(defaultOptions)
             RoutingMode.MOTORCYCLE -> motorcycle.setOptions(defaultOptions)
+            else -> {}
         }
     }
 }
