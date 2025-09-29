@@ -61,6 +61,9 @@ class AppPreferenceRepository @Inject constructor(
     val continuousLocationTracking: StateFlow<Boolean> =
         _continuousLocationTracking.asStateFlow()
 
+    private val _lastRoutingMode = MutableStateFlow(appPreferences.loadLastRoutingMode())
+    val lastRoutingMode: StateFlow<String> = _lastRoutingMode.asStateFlow()
+
     // Pelias API configuration
     private val _peliasApiConfig = MutableStateFlow(
         ApiConfiguration(
@@ -86,6 +89,7 @@ class AppPreferenceRepository @Inject constructor(
         loadDistanceUnit()
         loadAllowTransitInOfflineMode()
         loadContinuousLocationTracking()
+        loadLastRoutingMode()
         loadApiConfigurations()
     }
 
@@ -158,6 +162,18 @@ class AppPreferenceRepository @Inject constructor(
         _continuousLocationTracking.value = enabled
         viewModelScope.launch {
             appPreferences.saveContinuousLocationTracking(enabled)
+        }
+    }
+
+    private fun loadLastRoutingMode() {
+        val mode = appPreferences.loadLastRoutingMode()
+        _lastRoutingMode.value = mode
+    }
+
+    fun setLastRoutingMode(mode: String) {
+        _lastRoutingMode.value = mode
+        viewModelScope.launch {
+            appPreferences.saveLastRoutingMode(mode)
         }
     }
 

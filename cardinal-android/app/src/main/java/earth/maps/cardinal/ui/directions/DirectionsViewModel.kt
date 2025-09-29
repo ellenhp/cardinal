@@ -161,6 +161,11 @@ class DirectionsViewModel @Inject constructor(
 
         // Initialize with the default profile for the current routing mode
         initializeDefaultProfileForMode(selectedRoutingMode)
+
+        // Set initial routing mode from preferences
+        selectedRoutingMode = appPreferenceRepository.lastRoutingMode.value.let { modeString ->
+            RoutingMode.entries.find { it.value == modeString } ?: RoutingMode.AUTO
+        }
     }
 
     fun updateSearchQuery(query: String) {
@@ -295,6 +300,7 @@ class DirectionsViewModel @Inject constructor(
 
     fun updateRoutingMode(mode: RoutingMode) {
         selectedRoutingMode = mode
+        appPreferenceRepository.setLastRoutingMode(mode.value)
         // Load the default profile for the new mode
         initializeDefaultProfileForMode(mode)
         fetchDirectionsIfNeeded()

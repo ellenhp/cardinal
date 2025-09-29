@@ -37,6 +37,8 @@ class AppPreferences(context: Context) {
 
         private const val KEY_CONTINUOUS_LOCATION_TRACKING = "continuous_location_tracking"
 
+        private const val KEY_LAST_ROUTING_MODE = "last_routing_mode"
+
         // API configuration keys
         private const val KEY_PELIAS_BASE_URL = "pelias_base_url"
         private const val KEY_PELIAS_API_KEY = "pelias_api_key"
@@ -46,6 +48,7 @@ class AppPreferences(context: Context) {
         // Default values
         private const val DEFAULT_PELIAS_BASE_URL = "https://maps.earth/pelias/v1"
         private const val DEFAULT_VALHALLA_BASE_URL = "https://maps.earth/valhalla/route"
+        private const val DEFAULT_LAST_ROUTING_MODE = "auto"
 
         // Contrast level constants
         const val CONTRAST_LEVEL_STANDARD = 0
@@ -212,6 +215,24 @@ class AppPreferences(context: Context) {
      */
     fun loadContinuousLocationTracking(): Boolean {
         return prefs.getBoolean(KEY_CONTINUOUS_LOCATION_TRACKING, true)
+    }
+
+    /**
+     * Saves the last routing mode preference.
+     */
+    fun saveLastRoutingMode(mode: String) {
+        prefs.edit {
+            putString(KEY_LAST_ROUTING_MODE, mode)
+        }
+    }
+
+    /**
+     * Loads the saved last routing mode preference.
+     * Returns "auto" as default.
+     */
+    fun loadLastRoutingMode(): String {
+        return prefs.getString(KEY_LAST_ROUTING_MODE, DEFAULT_LAST_ROUTING_MODE)
+            ?: DEFAULT_LAST_ROUTING_MODE
     }
 
     /**
