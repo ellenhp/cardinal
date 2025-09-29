@@ -85,6 +85,8 @@ import org.maplibre.compose.style.BaseStyle
 import org.maplibre.compose.style.rememberStyleState
 import org.maplibre.compose.util.ClickResult
 import uniffi.ferrostar.Route
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -392,6 +394,7 @@ private fun MapControls(
 ) {
     val isLocating by mapViewModel.isLocating.collectAsState()
     val hasPendingLocationRequest by mapViewModel.hasPendingLocationRequest.collectAsState()
+    val showZoomButtons by appPreferences.showZoomFabs.collectAsState(true)
     val coroutineScope = rememberCoroutineScope()
 
     Box(
@@ -411,6 +414,58 @@ private fun MapControls(
                     .align(Alignment.CenterHorizontally)
                     .padding(bottom = dimensionResource(dimen.padding_minor) / 2),
             )
+            if (showZoomButtons) {
+                FloatingActionButton(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(bottom = dimensionResource(dimen.padding_minor)),
+                    onClick = {
+                        coroutineScope.launch {
+                            cameraState.animateTo(
+                                cameraState.position.copy(
+                                    zoom = min(
+                                        22.0,
+                                        cameraState.position.zoom + 1
+                                    )
+                                ),
+                                duration = appPreferences.animationSpeedDurationValue,
+                            )
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ) {
+                    Icon(
+                        painter = painterResource(drawable.zoom_in),
+                        contentDescription = stringResource(string.zoom_in)
+                    )
+                }
+
+                FloatingActionButton(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(bottom = dimensionResource(dimen.padding_minor)), onClick = {
+                        coroutineScope.launch {
+                            cameraState.animateTo(
+                                cameraState.position.copy(
+                                    zoom = max(
+                                        0.0,
+                                        cameraState.position.zoom - 1
+                                    )
+                                ),
+                                duration = appPreferences.animationSpeedDurationValue / 2,
+                            )
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ) {
+                    Icon(
+                        painter = painterResource(drawable.zoom_out),
+                        contentDescription = stringResource(string.zoom_out)
+                    )
+                }
+            }
             FloatingActionButton(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
@@ -426,12 +481,15 @@ private fun MapControls(
                                 ?.let { position ->
                                     cameraState.animateTo(
                                         position,
-                                        duration = appPreferences.animationSpeedDurationValue
+                                        duration = appPreferences.animationSpeedDurationValue / 2
                                     )
                                 }
                         }
                     }
-                }) {
+                },
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ) {
                 if (isLocating || hasPendingLocationRequest) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),

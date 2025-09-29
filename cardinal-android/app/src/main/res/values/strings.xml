@@ -130,6 +130,8 @@
     <string name="valhalla_api_key_title">Valhalla API Key</string>
     <string name="continuous_location_tracking_disabled_title">Continuous Location Tracking</string>
     <string name="continuous_location_tracking_disabled_help_text">Turning this off can save battery</string>
+    <string name="show_zoom_fabs_title">Show Zoom Buttons</string>
+    <string name="show_zoom_fabs_help_text">Show zoom in/out buttons on the map</string>
     <string name="routing_profiles_title">Routing Profiles</string>
     <string name="content_description_collapse">Collapse</string>
     <string name="content_description_expand">Expand</string>
@@ -235,4 +237,6 @@
     <string name="trip_details">Trip Details</string>
     <string name="step_by_step_journey">Step-by-Step Journey</string>
     <string name="distance_not_available">Distance not available</string>
+    <string name="zoom_in">Zoom in</string>
+    <string name="zoom_out">Zoom out</string>
 </resources>

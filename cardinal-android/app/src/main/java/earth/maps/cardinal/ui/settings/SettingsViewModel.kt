@@ -79,6 +79,12 @@ class SettingsViewModel @Inject constructor(
             false
         )
 
+    val showZoomFabs = appPreferenceRepository.showZoomFabs.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        true
+    )
+
     fun setOfflineMode(enabled: Boolean) {
         appPreferenceRepository.setOfflineMode(enabled)
     }
@@ -113,6 +119,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setContinuousLocationTrackingEnabled(enabled: Boolean) {
         appPreferenceRepository.setContinuousLocationTracking(enabled)
+    }
+
+    fun setShowZoomFabsEnabled(enabled: Boolean) {
+        appPreferenceRepository.setShowZoomFabs(enabled)
     }
 
     fun getVersionName(): String? {

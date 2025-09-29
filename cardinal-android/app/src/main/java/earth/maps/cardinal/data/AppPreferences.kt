@@ -35,6 +35,8 @@ class AppPreferences(context: Context) {
         private const val KEY_DISTANCE_UNIT = "distance_unit"
         private const val KEY_ALLOW_TRANSIT_IN_OFFLINE_MODE = "allow_transit_in_offline_mode"
 
+        private const val KEY_SHOW_ZOOM_FABS = "show_zoom_fabs"
+
         private const val KEY_CONTINUOUS_LOCATION_TRACKING = "continuous_location_tracking"
 
         private const val KEY_LAST_ROUTING_MODE = "last_routing_mode"
@@ -197,6 +199,32 @@ class AppPreferences(context: Context) {
     fun clearAllowTransitInOfflineMode() {
         prefs.edit {
             remove(KEY_ALLOW_TRANSIT_IN_OFFLINE_MODE)
+        }
+    }
+
+    /**
+     * Saves the show zoom FABs preference.
+     */
+    fun saveShowZoomFabs(enabled: Boolean) {
+        prefs.edit {
+            putBoolean(KEY_SHOW_ZOOM_FABS, enabled)
+        }
+    }
+
+    /**
+     * Loads the saved show zoom FABs preference.
+     * Returns true as default.
+     */
+    fun loadShowZoomFabs(): Boolean {
+        return prefs.getBoolean(KEY_SHOW_ZOOM_FABS, true)
+    }
+
+    /**
+     * Clears the saved show zoom FABs preference.
+     */
+    fun clearShowZoomFabs() {
+        prefs.edit {
+            remove(KEY_SHOW_ZOOM_FABS)
         }
     }
 
