@@ -24,6 +24,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.LatLng
 import earth.maps.cardinal.data.LocationRepository
 import earth.maps.cardinal.transit.StopTime
@@ -41,7 +42,8 @@ import javax.inject.Inject
 class TransitScreenViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val locationRepository: LocationRepository,
-    private val transitousService: TransitousService
+    private val transitousService: TransitousService,
+    private val appPreferenceRepository: AppPreferenceRepository,
 ) : ViewModel() {
 
     private companion object {
@@ -79,6 +81,8 @@ class TransitScreenViewModel @Inject constructor(
     val isRefreshingDepartures: StateFlow<Boolean> = _isRefreshingDepartures
 
     private var lastLocation: Location? = null
+
+    val use24HourFormat = appPreferenceRepository.use24HourFormat
 
     init {
         // Start observing location updates

@@ -73,12 +73,9 @@ import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.formatTime
 import earth.maps.cardinal.transit.StopTime
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Date
-import java.util.Locale
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.ExperimentalTime
@@ -447,40 +444,27 @@ fun FixedHeightHorizontalPager(
 
 @Composable
 @OptIn(ExperimentalTime::class, ExperimentalMaterial3Api::class)
-fun formatDepartureTime(stopTime: StopTime): String {
-    val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+fun formatDepartureTime(stopTime: StopTime, use24HourFormat: Boolean): String {
     val isoFormatter = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.systemDefault())
 
-    val scheduledDepartureInstant = stopTime.place.scheduledDeparture?.let {
+    val departureTimestamp = stopTime.place.departure ?: stopTime.place.scheduledDeparture
+
+    val departureInstant = departureTimestamp?.let {
         try {
             Instant.from(isoFormatter.parse(it))
         } catch (_: Exception) {
             null
         }
     }
-    val scheduledDepartureTime: String? = scheduledDepartureInstant?.let {
-        try {
-            dateFormat.format(Date.from(it))
-        } catch (_: Exception) {
-            null
-        }
-    }
+    val departureTime: String? = departureTimestamp?.formatTime(use24HourFormat)
 
-    val bestDepartureInstant = stopTime.place.departure?.let {
-        try {
-            Instant.from(isoFormatter.parse(it))
-        } catch (_: Exception) {
-            null
-        }
-    } ?: scheduledDepartureInstant
-
-    val timeUntilDeparture = bestDepartureInstant?.toKotlinInstant()?.minus(Clock.System.now())
+    val timeUntilDeparture = departureInstant?.toKotlinInstant()?.minus(Clock.System.now())
 
     return if (timeUntilDeparture != null && timeUntilDeparture > 30.minutes) {
-        scheduledDepartureTime ?: stringResource(string.unknown_departure)
+        departureTime ?: stringResource(string.unknown_departure)
     } else if (timeUntilDeparture != null) {
         "${timeUntilDeparture.inWholeMinutes} min"
     } else {
-        scheduledDepartureTime ?: stringResource(string.unknown_departure)
+        departureTime ?: stringResource(string.unknown_departure)
     }
 }
