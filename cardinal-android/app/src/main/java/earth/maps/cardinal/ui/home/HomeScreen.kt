@@ -84,7 +84,6 @@ fun HomeScreen(
     onPlaceSelected: (Place) -> Unit,
     onPeekHeightChange: (dp: Dp) -> Unit,
     onSearchFocusChange: (Boolean) -> Unit,
-    homeInSearchScreen: Boolean,
 ) {
     val searchQuery = viewModel.searchQuery
 
@@ -98,7 +97,7 @@ fun HomeScreen(
             onSearchFocusChange = onSearchFocusChange,
             onPeekHeightChange = onPeekHeightChange,
             onPlaceSelected = onPlaceSelected,
-            homeInSearchScreen = homeInSearchScreen,
+            homeInSearchScreen = viewModel.searchQuery.text.isNotEmpty(),
         )
     }
 }

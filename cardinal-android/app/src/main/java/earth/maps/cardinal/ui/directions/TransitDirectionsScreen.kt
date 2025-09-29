@@ -112,7 +112,7 @@ private fun TransitTimelineResults(
 ) {
     LazyColumn(modifier = modifier) {
         items(planResponse.itineraries.size) { index ->
-            val itinerary = planResponse.itineraries[index]
+            val itinerary = planResponse.itineraries.reversed()[index]
 
             TransitItineraryCard(
                 itinerary = itinerary,
