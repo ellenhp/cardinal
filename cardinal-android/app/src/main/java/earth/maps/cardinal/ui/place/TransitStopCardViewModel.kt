@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.room.SavedPlaceDao
 import earth.maps.cardinal.transit.StopTime
@@ -36,14 +37,16 @@ import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
 class TransitStopCardViewModel @Inject constructor(
-    private val placeDao: SavedPlaceDao, private val transitousService: TransitousService
+    private val placeDao: SavedPlaceDao,
+    private val transitousService: TransitousService,
+    private val appPreferenceRepository: AppPreferenceRepository,
 ) : ViewModel() {
 
     private var refreshJob: Job? = null
 
     val isPlaceSaved = mutableStateOf(false)
     val stop = mutableStateOf<Place?>(null)
-    val departures = mutableStateOf<List<StopTime>>(emptyList())
+    val departures = MutableStateFlow<List<StopTime>>(emptyList())
 
     private val _didLoadingFail = MutableStateFlow(false)
 
@@ -65,6 +68,8 @@ class TransitStopCardViewModel @Inject constructor(
      * Whether the viewmodel is refreshing departures for the provided stop.
      */
     val isRefreshingDepartures: StateFlow<Boolean> = _isRefreshingDepartures
+
+    val use24HourFormat = appPreferenceRepository.use24HourFormat;
 
     init {
         refreshJob = viewModelScope.launch {
