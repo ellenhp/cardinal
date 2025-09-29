@@ -69,7 +69,7 @@ class TransitStopCardViewModel @Inject constructor(
      */
     val isRefreshingDepartures: StateFlow<Boolean> = _isRefreshingDepartures
 
-    val use24HourFormat = appPreferenceRepository.use24HourFormat;
+    val use24HourFormat = appPreferenceRepository.use24HourFormat
 
     init {
         refreshJob = viewModelScope.launch {
