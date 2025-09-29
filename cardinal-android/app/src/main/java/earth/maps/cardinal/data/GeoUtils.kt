@@ -32,6 +32,8 @@ object GeoUtils {
     private const val METERS_TO_MILES = 1609.34
     private const val METERS_TO_FEET = 3.28084
 
+    private const val SHORT_DISTANCE_THRESHOLD_METERS = 200.0
+
     /**
      * Formats a distance in meters to a human-readable string based on the unit preference.
      *
@@ -98,7 +100,7 @@ object GeoUtils {
      * @return Formatted short distance string (e.g., "150 m" or "490 ft")
      */
     fun formatShortDistance(meters: Double, unitPreference: Int): String {
-        if (meters > 200.0) {
+        if (meters > SHORT_DISTANCE_THRESHOLD_METERS) {
             return formatDistance(meters, unitPreference)
         }
         return when (unitPreference) {
