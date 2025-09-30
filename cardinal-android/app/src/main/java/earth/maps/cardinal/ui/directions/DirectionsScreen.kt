@@ -122,31 +122,16 @@ fun DirectionsScreen(
     val coroutineScope = rememberCoroutineScope()
 
     // Auto-retry location request when permissions are granted
-    LaunchedEffect(hasLocationPermission, pendingLocationRequest) {
-        if (hasLocationPermission && pendingLocationRequest != null) {
-            val targetField = pendingLocationRequest!!
-            pendingLocationRequest = null // Clear the pending request
-
-            // Automatically fetch location for the target field
-            coroutineScope.launch {
-                val myLocationPlace = viewModel.getCurrentLocationAsPlace()
-                myLocationPlace?.let { place ->
-                    // Update the appropriate place based on which field was focused
-                    if (targetField == FieldFocusState.FROM) {
-                        viewModel.updateFromPlace(place)
-                    } else {
-                        viewModel.updateToPlace(place)
-                    }
-                    // Clear focus state after selection
-                    fieldFocusState = FieldFocusState.NONE
-                }
-            }
-        } else if (hasLocationPermission && appPreferences.continuousLocationTracking.value) {
-            coroutineScope.launch {
-                viewModel.initializeDeparture()
-            }
+    AutoRetryMyLocation(
+        hasLocationPermission = hasLocationPermission,
+        pendingLocationRequest = pendingLocationRequest,
+        coroutineScope = coroutineScope,
+        viewModel = viewModel,
+        appPreferences = appPreferences,
+        onCompletion = {
+            fieldFocusState = FieldFocusState.NONE
         }
-    }
+    )
 
     Column(
         modifier = Modifier
@@ -165,7 +150,10 @@ fun DirectionsScreen(
                 },
                 savedPlaces = savedPlaces,
                 hasLocationPermission = hasLocationPermission,
-                onRequestLocationPermission = onRequestLocationPermission,
+                onRequestLocationPermission = {
+                    pendingLocationRequest = fieldFocusState
+                    onRequestLocationPermission()
+                },
                 coroutineScope = coroutineScope
             )
         } else {
@@ -182,6 +170,40 @@ fun DirectionsScreen(
                 hasNotificationPermission = hasNotificationPermission,
                 onRequestNotificationPermission = onRequestNotificationPermission
             )
+        }
+    }
+}
+
+@Composable
+private fun AutoRetryMyLocation(
+    hasLocationPermission: Boolean,
+    pendingLocationRequest: FieldFocusState?,
+    coroutineScope: CoroutineScope,
+    viewModel: DirectionsViewModel,
+    appPreferences: AppPreferenceRepository,
+    onCompletion: () -> Unit,
+) {
+    LaunchedEffect(hasLocationPermission, pendingLocationRequest) {
+        if (hasLocationPermission && pendingLocationRequest != null) {
+            val targetField = pendingLocationRequest
+
+            // Automatically fetch location for the target field
+            coroutineScope.launch {
+                val myLocationPlace = viewModel.getCurrentLocationAsPlace()
+                myLocationPlace?.let { place ->
+                    // Update the appropriate place based on which field was focused
+                    if (targetField == FieldFocusState.FROM) {
+                        viewModel.updateFromPlace(place)
+                    } else {
+                        viewModel.updateToPlace(place)
+                    }
+                    onCompletion()
+                }
+            }
+        } else if (hasLocationPermission && appPreferences.continuousLocationTracking.value) {
+            coroutineScope.launch {
+                viewModel.initializeDeparture()
+            }
         }
     }
 }
