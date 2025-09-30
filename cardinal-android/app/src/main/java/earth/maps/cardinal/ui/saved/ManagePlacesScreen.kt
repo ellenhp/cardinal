@@ -170,102 +170,14 @@ fun ManagePlacesScreen(
                     onEditClick = { editingItem = it; showEditDialog = true })
             }
         }
-        val modifier = if (fabMenuExpanded) {
-            Modifier.clickable(
-                indication = null, interactionSource = null, onClick = { fabMenuExpanded = false })
-        } else {
-            Modifier
-        }
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(bottom = TOOLBAR_HEIGHT_DP)
-        ) {
-            FloatingActionButtonMenu(
-                modifier = Modifier.align(Alignment.BottomEnd),
-                expanded = fabMenuExpanded,
-                button = {
-                    ToggleFloatingActionButton(checked = fabMenuExpanded, onCheckedChange = {
-                        fabMenuExpanded = it
-                    }, content = {
-                        val close = painterResource(drawable.ic_close)
-                        val open = painterResource(drawable.ic_menu)
-                        val painter by remember {
-                            derivedStateOf {
-                                if (checkedProgress > 0.5f) close else open
-                            }
-                        }
-                        Icon(
-                            painter = painter,
-                            contentDescription = null,
-                            modifier = Modifier.animateIcon({ checkedProgress }),
-                        )
-                    })
-                }) {
-                FloatingActionButtonMenuItem(onClick = {
-                    showCreateListDialog = true
-                    fabMenuExpanded = false
-                }, text = {
-                    Text(
-                        text = stringResource(
-                            string.new_list
-                        )
-                    )
-                }, icon = {
-                    Icon(
-                        painter = painterResource(drawable.ic_new_list), contentDescription = null
-                    )
-                })
-
-                FloatingActionButtonMenuItem(onClick = {
-                    viewModel.cutSelected()
-                    fabMenuExpanded = false
-                }, text = {
-                    Text(text = stringResource(string.cut))
-                }, icon = {
-                    Icon(
-                        painter = painterResource(drawable.ic_content_cut),
-                        contentDescription = null
-                    )
-                })
-                FloatingActionButtonMenuItem(onClick = {
-                    viewModel.pasteSelected()
-                    fabMenuExpanded = false
-                }, text = {
-                    Text(text = stringResource(string.paste))
-                }, icon = {
-                    Icon(
-                        painter = painterResource(drawable.ic_content_paste),
-                        contentDescription = null
-                    )
-                })
-                FloatingActionButtonMenuItem(onClick = {
-                    showDeleteConfirmation = true
-                    fabMenuExpanded = false
-                }, text = {
-                    Text(text = stringResource(string.delete))
-                }, icon = {
-                    Icon(
-                        painter = painterResource(drawable.ic_delete), contentDescription = null
-                    )
-                })
-                FloatingActionButtonMenuItem(onClick = {
-                    if (isAllSelected) {
-                        viewModel.clearSelection()
-                    } else {
-                        viewModel.selectAll()
-                    }
-                }, text = {
-                    Text(text = stringResource(if (isAllSelected) string.deselect_all else string.select_all))
-                }, icon = {
-                    Icon(
-                        painter = painterResource(if (isAllSelected) drawable.ic_clear_selection else drawable.ic_select_all),
-                        contentDescription = null
-                    )
-                })
-            }
-        }
+        FloatingActionButtonMenuSection(
+            fabMenuExpanded = fabMenuExpanded,
+            onFabMenuExpandedChange = { fabMenuExpanded = it },
+            viewModel = viewModel,
+            onShowDeleteConfirmationChange = { showDeleteConfirmation = it },
+            onShowCreateListDialogChange = { showCreateListDialog = it },
+            isAllSelected = isAllSelected
+        )
     }
 
     if (showDeleteConfirmation) {
@@ -777,6 +689,118 @@ private fun ListItem(
                 contentDescription = stringResource(string.open_list),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Suppress("CognitiveComplexMethod")
+@Composable
+private fun FloatingActionButtonMenuSection(
+    fabMenuExpanded: Boolean,
+    onFabMenuExpandedChange: (Boolean) -> Unit,
+    viewModel: ManagePlacesViewModel,
+    onShowDeleteConfirmationChange: (Boolean) -> Unit,
+    onShowCreateListDialogChange: (Boolean) -> Unit,
+    isAllSelected: Boolean,
+) {
+    val modifier = if (fabMenuExpanded) {
+        Modifier.clickable(
+            indication = null,
+            interactionSource = null,
+            onClick = { onFabMenuExpandedChange(false) })
+    } else {
+        Modifier
+    }
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(bottom = TOOLBAR_HEIGHT_DP)
+    ) {
+        FloatingActionButtonMenu(
+            modifier = Modifier.align(Alignment.BottomEnd),
+            expanded = fabMenuExpanded,
+            button = {
+                ToggleFloatingActionButton(
+                    checked = fabMenuExpanded,
+                    onCheckedChange = onFabMenuExpandedChange,
+                    content = {
+                        val close = painterResource(drawable.ic_close)
+                        val open = painterResource(drawable.ic_menu)
+                        val painter by remember {
+                            derivedStateOf {
+                                if (checkedProgress > 0.5f) close else open
+                            }
+                        }
+                        Icon(
+                            painter = painter,
+                            contentDescription = null,
+                            modifier = Modifier.animateIcon({ checkedProgress }),
+                        )
+                    })
+            }) {
+            FloatingActionButtonMenuItem(onClick = {
+                onShowCreateListDialogChange(true)
+                onFabMenuExpandedChange(false)
+            }, text = {
+                Text(
+                    text = stringResource(
+                        string.new_list
+                    )
+                )
+            }, icon = {
+                Icon(
+                    painter = painterResource(drawable.ic_new_list), contentDescription = null
+                )
+            })
+
+            FloatingActionButtonMenuItem(onClick = {
+                viewModel.cutSelected()
+                onFabMenuExpandedChange(false)
+            }, text = {
+                Text(text = stringResource(string.cut))
+            }, icon = {
+                Icon(
+                    painter = painterResource(drawable.ic_content_cut),
+                    contentDescription = null
+                )
+            })
+            FloatingActionButtonMenuItem(onClick = {
+                viewModel.pasteSelected()
+                onFabMenuExpandedChange(false)
+            }, text = {
+                Text(text = stringResource(string.paste))
+            }, icon = {
+                Icon(
+                    painter = painterResource(drawable.ic_content_paste),
+                    contentDescription = null
+                )
+            })
+            FloatingActionButtonMenuItem(onClick = {
+                onShowDeleteConfirmationChange(true)
+                onFabMenuExpandedChange(false)
+            }, text = {
+                Text(text = stringResource(string.delete))
+            }, icon = {
+                Icon(
+                    painter = painterResource(drawable.ic_delete), contentDescription = null
+                )
+            })
+            FloatingActionButtonMenuItem(onClick = {
+                if (isAllSelected) {
+                    viewModel.clearSelection()
+                } else {
+                    viewModel.selectAll()
+                }
+            }, text = {
+                Text(text = stringResource(if (isAllSelected) string.deselect_all else string.select_all))
+            }, icon = {
+                Icon(
+                    painter = painterResource(if (isAllSelected) drawable.ic_clear_selection else drawable.ic_select_all),
+                    contentDescription = null
+                )
+            })
         }
     }
 }
