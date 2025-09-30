@@ -1,17 +1,19 @@
 <!--
-  ~    Copyright 2025 The Cardinal Authors
+  ~     Cardinal Maps
+  ~     Copyright (C) 2025 Cardinal Maps Authors
   ~
-  ~    Licensed under the Apache License, Version 2.0 (the "License");
-  ~    you may not use this file except in compliance with the License.
-  ~    You may obtain a copy of the License at
+  ~     This program is free software: you can redistribute it and/or modify
+  ~     it under the terms of the GNU General Public License as published by
+  ~     the Free Software Foundation, either version 3 of the License, or
+  ~     (at your option) any later version.
   ~
-  ~        http://www.apache.org/licenses/LICENSE-2.0
+  ~     This program is distributed in the hope that it will be useful,
+  ~     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~     GNU General Public License for more details.
   ~
-  ~    Unless required by applicable law or agreed to in writing, software
-  ~    distributed under the License is distributed on an "AS IS" BASIS,
-  ~    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  ~    See the License for the specific language governing permissions and
-  ~    limitations under the License.
+  ~     You should have received a copy of the GNU General Public License
+  ~     along with this program.  If not, see <https://www.gnu.org/licenses/>.
   -->
 
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -19,7 +21,7 @@
     android:height="24dp"
     android:viewportWidth="960"
     android:viewportHeight="960">
-  <path
-      android:pathData="M280,760q-50,0 -85,-35t-35,-85L80,640v-120q0,-66 47,-113t113,-47h160v200h140l140,-174v-106L560,280v-80h120q33,0 56.5,23.5T760,280v134L580,640L400,640q0,50 -35,85t-85,35ZM320,560ZM280,680q17,0 28.5,-11.5T320,640h-80q0,17 11.5,28.5T280,680ZM200,320v-80h200v80L200,320ZM760,760q-50,0 -85,-35t-35,-85q0,-50 35,-85t85,-35q50,0 85,35t35,85q0,50 -35,85t-85,35ZM760,680q17,0 28.5,-11.5T800,640q0,-17 -11.5,-28.5T760,600q-17,0 -28.5,11.5T720,640q0,17 11.5,28.5T760,680ZM160,560h160v-120h-80q-33,0 -56.5,23.5T160,520v40Z"
-      android:fillColor="#e3e3e3"/>
+    <path
+        android:pathData="M280,760q-50,0 -85,-35t-35,-85L80,640v-120q0,-66 47,-113t113,-47h160v200h140l140,-174v-106L560,280v-80h120q33,0 56.5,23.5T760,280v134L580,640L400,640q0,50 -35,85t-85,35ZM320,560ZM280,680q17,0 28.5,-11.5T320,640h-80q0,17 11.5,28.5T280,680ZM200,320v-80h200v80L200,320ZM760,760q-50,0 -85,-35t-35,-85q0,-50 35,-85t85,-35q50,0 85,35t35,85q0,50 -35,85t-85,35ZM760,680q17,0 28.5,-11.5T800,640q0,-17 -11.5,-28.5T760,600q-17,0 -28.5,11.5T720,640q0,17 11.5,28.5T760,680ZM160,560h160v-120h-80q-33,0 -56.5,23.5T160,520v40Z"
+        android:fillColor="#e3e3e3" />
 </vector>

@@ -1,5 +1,30 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:autoMirrored="true" android:height="24dp" android:viewportHeight="960" android:viewportWidth="960" android:width="24dp">
-      
-    <path android:fillColor="#e3e3e3" android:pathData="M280,360v-80h560v80L280,360ZM280,520v-80h560v80L280,520ZM280,680v-80h560v80L280,680ZM160,360q-17,0 -28.5,-11.5T120,320q0,-17 11.5,-28.5T160,280q17,0 28.5,11.5T200,320q0,17 -11.5,28.5T160,360ZM160,520q-17,0 -28.5,-11.5T120,480q0,-17 11.5,-28.5T160,440q17,0 28.5,11.5T200,480q0,17 -11.5,28.5T160,520ZM160,680q-17,0 -28.5,-11.5T120,640q0,-17 11.5,-28.5T160,600q17,0 28.5,11.5T200,640q0,17 -11.5,28.5T160,680Z"/>
-    
+<!--
+  ~     Cardinal Maps
+  ~     Copyright (C) 2025 Cardinal Maps Authors
+  ~
+  ~     This program is free software: you can redistribute it and/or modify
+  ~     it under the terms of the GNU General Public License as published by
+  ~     the Free Software Foundation, either version 3 of the License, or
+  ~     (at your option) any later version.
+  ~
+  ~     This program is distributed in the hope that it will be useful,
+  ~     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~     GNU General Public License for more details.
+  ~
+  ~     You should have received a copy of the GNU General Public License
+  ~     along with this program.  If not, see <https://www.gnu.org/licenses/>.
+  -->
+
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:autoMirrored="true"
+    android:height="24dp"
+    android:viewportHeight="960"
+    android:viewportWidth="960"
+    android:width="24dp">
+
+    <path
+        android:fillColor="#e3e3e3"
+        android:pathData="M280,360v-80h560v80L280,360ZM280,520v-80h560v80L280,520ZM280,680v-80h560v80L280,680ZM160,360q-17,0 -28.5,-11.5T120,320q0,-17 11.5,-28.5T160,280q17,0 28.5,11.5T200,320q0,17 -11.5,28.5T160,360ZM160,520q-17,0 -28.5,-11.5T120,480q0,-17 11.5,-28.5T160,440q17,0 28.5,11.5T200,480q0,17 -11.5,28.5T160,520ZM160,680q-17,0 -28.5,-11.5T120,640q0,-17 11.5,-28.5T160,600q17,0 28.5,11.5T200,640q0,17 -11.5,28.5T160,680Z" />
+
 </vector>
