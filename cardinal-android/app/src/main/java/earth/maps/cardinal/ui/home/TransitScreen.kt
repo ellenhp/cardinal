@@ -30,6 +30,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
@@ -54,7 +55,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -115,70 +115,93 @@ fun TransitScreenContent(
                 bottom = 36.dp
             )
     ) {
-        // Departures section
-        Row(
-            modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(string.next_departures),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .padding(bottom = dimensionResource(dimen.padding))
-                    .weight(1f)
-            )
-            // Refresh button for departures
-            IconButton(onClick = { coroutineScope.launch { viewModel.refreshData() } }) {
-                if (isRefreshingDepartures.value) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp), strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_refresh),
-                        contentDescription = stringResource(string.refresh_departures)
-                    )
-                }
-            }
-        }
+        DeparturesHeader(viewModel, coroutineScope, isRefreshingDepartures.value)
+        DeparturesContent(
+            didLoadingFail.value,
+            isLoading.value,
+            departures,
+            onRouteClicked,
+            use24HourFormat
+        )
+    }
+}
 
-        if (didLoadingFail.value) {
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                text = stringResource(string.failed_to_load_departures)
-            )
-        } else if (isLoading.value && departures.isEmpty()) {
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                text = stringResource(string.loading_departures)
-            )
-            // Show indeterminate progress bar while loading
-            LinearProgressIndicator(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            )
-        } else if (departures.isEmpty()) {
-            Text(
-                text = stringResource(string.no_upcoming_departures),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-        } else {
-            // List of departures grouped by route and headsign
-            TransitScreenRouteDepartures(
-                stopTimes = departures,
-                onRouteClicked = onRouteClicked,
-                use24HourFormat = use24HourFormat,
-            )
+@Composable
+private fun DeparturesHeader(
+    viewModel: TransitScreenViewModel,
+    coroutineScope: kotlinx.coroutines.CoroutineScope,
+    isRefreshing: Boolean,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(string.next_departures),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .padding(bottom = dimensionResource(dimen.padding))
+                .weight(1f)
+        )
+        // Refresh button for departures
+        IconButton(onClick = { coroutineScope.launch { viewModel.refreshData() } }) {
+            if (isRefreshing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp), strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    painter = painterResource(R.drawable.ic_refresh),
+                    contentDescription = stringResource(string.refresh_departures)
+                )
+            }
         }
     }
 }
 
+@Composable
+private fun DeparturesContent(
+    didLoadingFail: Boolean,
+    isLoading: Boolean,
+    departures: List<StopTime>,
+    onRouteClicked: (Place) -> Unit,
+    use24HourFormat: Boolean,
+) {
+    if (didLoadingFail) {
+        Text(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            text = stringResource(string.failed_to_load_departures)
+        )
+    } else if (isLoading && departures.isEmpty()) {
+        Text(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            text = stringResource(string.loading_departures)
+        )
+        // Show indeterminate progress bar while loading
+        LinearProgressIndicator(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        )
+    } else if (departures.isEmpty()) {
+        Text(
+            text = stringResource(string.no_upcoming_departures),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+    } else {
+        // List of departures grouped by route and headsign
+        TransitScreenRouteDepartures(
+            stopTimes = departures,
+            onRouteClicked = onRouteClicked,
+            use24HourFormat = use24HourFormat,
+        )
+    }
+}
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
@@ -187,163 +210,198 @@ fun TransitScreenRouteDepartures(
 ) {
     // Group departures by route name
     val departuresByRoute = stopTimes.groupBy { it.routeShortName }
+    val transitStopString = stringResource(string.transit_stop)
 
     departuresByRoute.forEach { (routeName, departures) ->
-        // Group departures by headsign within each route
-        val departuresByHeadsign = departures.groupBy { it.headsign }.map { (key, value) ->
-            (key to value.take(1))
-        }.toMap()
-        val headsigns = departuresByHeadsign.keys.toList().sorted()
+        val (departuresByHeadsign, headsigns, places) = prepareHeadsignData(
+            departures,
+            transitStopString
+        )
+        TransitRouteItem(
+            routeName,
+            departures,
+            departuresByHeadsign,
+            headsigns,
+            places,
+            onRouteClicked,
+            use24HourFormat
+        )
+    }
+}
 
-        val transitStopString = stringResource(string.transit_stop)
-        val places = remember(departures) {
-            departuresByHeadsign.map { (key, value) ->
-                key to value.firstOrNull()?.let { departure ->
-                    Place(
-                        name = departure.place.name,
-                        description = transitStopString,
-                        latLng = LatLng(departure.place.lat, departure.place.lon),
-                        isTransitStop = true,
-                        transitStopId = departure.place.stopId,
-                    )
-                }
-            }.toMap()
+private fun prepareHeadsignData(
+    departures: List<StopTime>,
+    transitStopString: String
+): Triple<Map<String, List<StopTime>>, List<String>, Map<String, Place?>> {
+    val departuresByHeadsign = departures.groupBy { it.headsign }.mapValues { it.value.take(1) }
+    val headsigns = departuresByHeadsign.keys.sorted()
+    val places = departuresByHeadsign.mapValues { (key, value) ->
+        value.firstOrNull()?.let { departure ->
+            Place(
+                name = departure.place.name,
+                description = transitStopString,
+                latLng = LatLng(departure.place.lat, departure.place.lon),
+                isTransitStop = true,
+                transitStopId = departure.place.stopId,
+            )
         }
+    }
+    return Triple(departuresByHeadsign, headsigns, places)
+}
 
-        val pagerState = rememberPagerState(pageCount = { headsigns.size })
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = {
-                    places[headsigns[pagerState.currentPage]]?.let { place ->
-                        onRouteClicked(place)
-                    }
-                }),
-        ) {
-            Card(modifier = Modifier.padding(bottom = dimensionResource(dimen.padding_minor))) {
-                Box {
-                    // Route name at top
-                    Row(
-                        modifier = Modifier.padding(dimensionResource(dimen.padding_minor))
-                    ) {
-                        val routeColor = departures.firstOrNull()?.parseRouteColor()
-                            ?: MaterialTheme.colorScheme.surfaceVariant
-                        Text(
-                            text = stringResource(string.square_char),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = routeColor
-                        )
-                        Spacer(modifier = Modifier.width(dimensionResource(dimen.padding_minor)))
-                        Text(
-                            text = routeName,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalTime::class)
+@Composable
+private fun TransitRouteItem(
+    routeName: String,
+    departures: List<StopTime>,
+    departuresByHeadsign: Map<String, List<StopTime>>,
+    headsigns: List<String>,
+    places: Map<String, Place?>,
+    onRouteClicked: (Place) -> Unit,
+    use24HourFormat: Boolean,
+) {
+    val pagerState = rememberPagerState(pageCount = { headsigns.size })
 
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        // Page indicator
-                        PageIndicator(headsigns.size, currentPage = pagerState.currentPage)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = {
+                places[headsigns[pagerState.currentPage]]?.let { place ->
+                    onRouteClicked(place)
+                }
+            }),
+    ) {
+        Card(modifier = Modifier.padding(bottom = dimensionResource(dimen.padding_minor))) {
+            Box {
+                // Route name at top
+                RouteNameHeader(routeName, departures)
 
-                        // Horizontal pager for headsigns
-                        HorizontalPager(
-                            state = pagerState,
-                            modifier = Modifier.fillMaxSize(),
-                        ) { page ->
-                            val selectedHeadsign = headsigns[page]
-                            val departuresForHeadsign =
-                                departuresByHeadsign[selectedHeadsign] ?: emptyList()
-                            val soonestDeparture = departuresForHeadsign.minByOrNull {
-                                val dep = it.place.departure ?: it.place.scheduledDeparture
-                                dep ?: ""
-                            } ?: return@HorizontalPager
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // Page indicator
+                    PageIndicator(headsigns.size, currentPage = pagerState.currentPage)
 
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        start = dimensionResource(dimen.padding),
-                                        bottom = dimensionResource(dimen.padding)
-                                    ),
-                            ) {
-                                // Left side: headsign and stop
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(top = 24.dp)
-                                        .align(Alignment.Bottom)
-                                ) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                    Text(
-                                        modifier = Modifier.basicMarquee(),
-                                        text = selectedHeadsign,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        maxLines = 1,
-                                    )
-                                    Text(
-                                        text = soonestDeparture.place.name,
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                }
-                                // Right side: departure time
-                                val bestDepartureTime = formatDepartureTime(
-                                    soonestDeparture,
-                                    use24HourFormat = use24HourFormat
-                                )
-                                val containerContent = @Composable {
-                                    Row(
-                                        modifier = Modifier.padding(
-                                            dimensionResource(dimen.padding),
-                                        ),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        if (soonestDeparture.realTime) {
-                                            val infiniteTransition =
-                                                rememberInfiniteTransition(label = "alpha animation")
-                                            val animatedAlpha by infiniteTransition.animateFloat(
-                                                initialValue = 0.3f,
-                                                targetValue = 1f,
-                                                animationSpec = infiniteRepeatable(
-                                                    animation = tween(
-                                                        durationMillis = 750, easing = LinearEasing
-                                                    ), repeatMode = RepeatMode.Reverse
-                                                ),
-                                                label = "alpha"
-                                            )
-                                            Text(
-                                                modifier = Modifier.padding(end = 4.dp),
-                                                text = stringResource(string.live_indicator_short),
-                                                color = MaterialTheme.colorScheme.onSurface.copy(
-                                                    alpha = animatedAlpha
-                                                ),
-                                                style = MaterialTheme.typography.headlineSmall
-                                            )
-                                        }
-                                        Text(
-                                            text = bestDepartureTime,
-                                            style = MaterialTheme.typography.bodyLarge.copy(
-                                                fontWeight = if (soonestDeparture.realTime) FontWeight.Bold else FontWeight.Normal
-                                            ),
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (soonestDeparture.realTime) 1f else 0.5f),
-                                            textAlign = TextAlign.End
-                                        )
-                                    }
-                                }
+                    // Horizontal pager for headsigns
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                    ) { page ->
+                        val selectedHeadsign = headsigns[page]
+                        val departuresForHeadsign =
+                            departuresByHeadsign[selectedHeadsign] ?: emptyList()
+                        val soonestDeparture = departuresForHeadsign.minByOrNull {
+                            it.place.departure ?: it.place.scheduledDeparture ?: ""
+                        } ?: return@HorizontalPager
 
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.CenterVertically)
-                                        .padding(end = dimensionResource(dimen.padding))
-                                        .defaultMinSize(minWidth = 50.dp, minHeight = 50.dp),
-                                ) {
-                                    containerContent()
-                                }
-                            }
-                        }
+                        DepartureItem(selectedHeadsign, soonestDeparture, use24HourFormat)
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RouteNameHeader(routeName: String, departures: List<StopTime>) {
+    Row(modifier = Modifier.padding(dimensionResource(dimen.padding_minor))) {
+        val routeColor = departures.firstOrNull()?.parseRouteColor()
+            ?: MaterialTheme.colorScheme.surfaceVariant
+        Text(
+            text = stringResource(string.square_char),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = routeColor
+        )
+        Spacer(modifier = Modifier.width(dimensionResource(dimen.padding_minor)))
+        Text(
+            text = routeName,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@OptIn(ExperimentalTime::class)
+@Composable
+private fun DepartureItem(
+    selectedHeadsign: String,
+    soonestDeparture: StopTime,
+    use24HourFormat: Boolean
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = dimensionResource(dimen.padding),
+                bottom = dimensionResource(dimen.padding)
+            ),
+    ) {
+        // Left side: headsign and stop
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(top = 24.dp)
+                .align(Alignment.Bottom)
+        ) {
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                modifier = Modifier.basicMarquee(),
+                text = selectedHeadsign,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+            )
+            Text(
+                text = soonestDeparture.place.name,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        // Right side: departure time
+        DepartureTimeDisplay(soonestDeparture, use24HourFormat)
+    }
+}
+
+@Composable
+private fun RowScope.DepartureTimeDisplay(soonestDeparture: StopTime, use24HourFormat: Boolean) {
+    val bestDepartureTime = formatDepartureTime(soonestDeparture, use24HourFormat = use24HourFormat)
+    val containerContent = @Composable {
+        Row(
+            modifier = Modifier.padding(dimensionResource(dimen.padding)),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (soonestDeparture.realTime) {
+                val infiniteTransition = rememberInfiniteTransition(label = "alpha animation")
+                val animatedAlpha by infiniteTransition.animateFloat(
+                    initialValue = 0.3f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 750, easing = LinearEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "alpha"
+                )
+                Text(
+                    modifier = Modifier.padding(end = 4.dp),
+                    text = stringResource(string.live_indicator_short),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = animatedAlpha),
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
+            Text(
+                text = bestDepartureTime,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = if (soonestDeparture.realTime) FontWeight.Bold else FontWeight.Normal
+                ),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (soonestDeparture.realTime) 1f else 0.5f),
+                textAlign = TextAlign.End
+            )
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .align(Alignment.CenterVertically)
+            .padding(end = dimensionResource(dimen.padding))
+            .defaultMinSize(minWidth = 50.dp, minHeight = 50.dp),
+    ) {
+        containerContent()
     }
 }
