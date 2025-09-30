@@ -74,7 +74,6 @@ class TileDownloadManager(
 
     // Service binding infrastructure
     private var serviceBinder: TileDownloadForegroundService.TileDownloadBinder? = null
-    private var progressJob: Job? = null
     private var isBound = false
 
     private val serviceConnection = object : ServiceConnection {
@@ -124,23 +123,6 @@ class TileDownloadManager(
     }
 
     /**
-     * Determines if the Valhalla download phase is complete for the given area
-     */
-    private suspend fun isValhallaPhaseComplete(areaId: String): Boolean {
-        val valhallaTiles = ValhallaTileUtils.tilesForBoundingBox(
-            offlineAreaDao.getOfflineAreaById(areaId)?.boundingBox() ?: return false
-        )
-
-        val expectedValhallaTileCount =
-            downloadedTileDao.getDownloadedTileCountForAreaAndType(areaId, TileType.VALHALLA)
-        Log.d(
-            TAG,
-            "Valhalla phase for area $areaId: $expectedValhallaTileCount/${valhallaTiles.size} tiles downloaded"
-        )
-        return expectedValhallaTileCount >= valhallaTiles.size
-    }
-
-    /**
      * Determines which phase the download should resume from based on current progress
      */
     private suspend fun determineResumePhase(areaId: String): DownloadStatus {
@@ -174,62 +156,8 @@ class TileDownloadManager(
             try {
                 Log.d(TAG, "Starting download for area: $name (ID: $areaId)")
 
-                // Check if this area already exists in the database
-                val existingArea = offlineAreaDao.getOfflineAreaById(areaId)
-                if (existingArea != null) {
-                    Log.d(
-                        TAG,
-                        "Area $areaId already exists in database with status: ${existingArea.status}"
-                    )
-
-                    // Determine which phase to resume from based on current progress
-                    val resumePhase = determineResumePhase(areaId)
-                    Log.d(TAG, "Determined resume phase for area $areaId: $resumePhase")
-
-                    // If completed, nothing to do
-                    if (resumePhase == DownloadStatus.COMPLETED) {
-                        Log.d(TAG, "Area $areaId is already completed, skipping download")
-                        return@launch
-                    }
-
-                    // Update status to indicate we're resuming
-                    val updatedArea = existingArea.copy(status = resumePhase)
-                    offlineAreaDao.updateOfflineArea(updatedArea)
-                    Log.d(TAG, "Updated area $areaId status to $resumePhase for resume")
-
-                } else {
-                    // Create OfflineArea and insert into database
-                    val offlineArea = OfflineArea(
-                        id = areaId,
-                        name = name,
-                        north = boundingBox.north,
-                        south = boundingBox.south,
-                        east = boundingBox.east,
-                        west = boundingBox.west,
-                        minZoom = minZoom,
-                        maxZoom = maxZoom,
-                        downloadDate = System.currentTimeMillis(),
-                        fileSize = 0L,
-                        status = DownloadStatus.DOWNLOADING_BASEMAP,
-                    )
-
-                    offlineAreaDao.insertOfflineArea(offlineArea)
-                    Log.d(TAG, "Created offline area: $areaId with status ${offlineArea.status}")
-                }
-
-                // Bind to the service first to ensure we can update progress
-                bindToService()
-
-                // Wait for service binding with timeout
-                val bindTimeout = 3000L // 3 seconds
-                val bindStartTime = System.currentTimeMillis()
-                while (!isBound && (System.currentTimeMillis() - bindStartTime) < bindTimeout) {
-                    delay(100)
-                }
-
-                if (!isBound) {
-                    Log.w(TAG, "Service binding timeout, starting service anyway")
-                }
+                handleExistingArea(areaId, name, boundingBox, minZoom, maxZoom)
+                bindToServiceWithTimeout()
 
                 // Start the foreground service
                 val intent = Intent(context, TileDownloadForegroundService::class.java).apply {
@@ -240,13 +168,95 @@ class TileDownloadManager(
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error starting download for area $areaId", e)
-                // Update the area status to FAILED
-                val area = offlineAreaDao.getOfflineAreaById(areaId)
-                if (area != null) {
-                    val failedArea = area.copy(status = DownloadStatus.FAILED)
-                    offlineAreaDao.updateOfflineArea(failedArea)
-                }
+                updateAreaStatus(areaId, DownloadStatus.FAILED)
             }
+        }
+    }
+
+    /**
+     * Handle logic for existing areas: check if exists, determine resume phase, skip if completed, or create new area
+     */
+    private suspend fun handleExistingArea(
+        areaId: String, name: String, boundingBox: BoundingBox, minZoom: Int, maxZoom: Int
+    ) {
+        val existingArea = offlineAreaDao.getOfflineAreaById(areaId)
+        if (existingArea != null) {
+            Log.d(
+                TAG,
+                "Area $areaId already exists in database with status: ${existingArea.status}"
+            )
+            handleResumeLogic(existingArea, areaId)
+        } else {
+            createNewOfflineArea(areaId, name, boundingBox, minZoom, maxZoom)
+        }
+    }
+
+    /**
+     * Handle resume logic for existing areas
+     */
+    private suspend fun handleResumeLogic(existingArea: OfflineArea, areaId: String) {
+        val resumePhase = determineResumePhase(areaId)
+        Log.d(TAG, "Determined resume phase for area $areaId: $resumePhase")
+
+        if (resumePhase == DownloadStatus.COMPLETED) {
+            Log.d(TAG, "Area $areaId is already completed, skipping download")
+            throw Exception("Download already completed") // Use exception to exit early
+        }
+
+        val updatedArea = existingArea.copy(status = resumePhase)
+        offlineAreaDao.updateOfflineArea(updatedArea)
+        Log.d(TAG, "Updated area $areaId status to $resumePhase for resume")
+    }
+
+    /**
+     * Create a new offline area
+     */
+    private suspend fun createNewOfflineArea(
+        areaId: String, name: String, boundingBox: BoundingBox, minZoom: Int, maxZoom: Int
+    ) {
+        val offlineArea = OfflineArea(
+            id = areaId,
+            name = name,
+            north = boundingBox.north,
+            south = boundingBox.south,
+            east = boundingBox.east,
+            west = boundingBox.west,
+            minZoom = minZoom,
+            maxZoom = maxZoom,
+            downloadDate = System.currentTimeMillis(),
+            fileSize = 0L,
+            status = DownloadStatus.DOWNLOADING_BASEMAP,
+        )
+
+        offlineAreaDao.insertOfflineArea(offlineArea)
+        Log.d(TAG, "Created offline area: $areaId with status ${offlineArea.status}")
+    }
+
+    /**
+     * Bind to the service with timeout
+     */
+    private suspend fun bindToServiceWithTimeout() {
+        bindToService()
+
+        val bindTimeout = 3000L // 3 seconds
+        val bindStartTime = System.currentTimeMillis()
+        while (!isBound && (System.currentTimeMillis() - bindStartTime) < bindTimeout) {
+            delay(100)
+        }
+
+        if (!isBound) {
+            Log.w(TAG, "Service binding timeout, starting service anyway")
+        }
+    }
+
+    /**
+     * Update area status
+     */
+    private suspend fun updateAreaStatus(areaId: String, status: DownloadStatus) {
+        val area = offlineAreaDao.getOfflineAreaById(areaId)
+        if (area != null) {
+            val updatedArea = area.copy(status = status)
+            offlineAreaDao.updateOfflineArea(updatedArea)
         }
     }
 
@@ -254,8 +264,8 @@ class TileDownloadManager(
         boundingBox: BoundingBox, minZoom: Int, maxZoom: Int, areaId: String, name: String
     ) {
         var db: SQLiteDatabase? = null
-        var basemapResult: Pair<Int, Int> = Pair(0, 0)
-        var valhallaResult: Pair<Int, Int> = Pair(0, 0)
+        var basemapResult: Pair<Int, Int>
+        var valhallaResult: Pair<Int, Int>
 
         try {
             Log.d(TAG, "Starting tile download for area: $name (ID: $areaId)")
@@ -264,260 +274,389 @@ class TileDownloadManager(
                 "Bounds: N=${boundingBox.north}, S=${boundingBox.south}, E=${boundingBox.east}, W=${boundingBox.west}, Zoom: $minZoom-$maxZoom"
             )
 
-            // Determine what phase to resume from
             val resumePhase = determineResumePhase(areaId)
             Log.d(TAG, "Resuming download from phase: $resumePhase")
 
-            // Check if we've been resumed from paused state - if so, continue existing download
-            // Note: Resume from pause should continue with the current phase, not restart determination
+            db = initializeDatabase()
+            val (totalBasemapTiles, totalValhallaTiles) =
+                calculateTotalDownloadCounts(boundingBox, minZoom, maxZoom)
+            val (downloadedBasemapTiles, downloadedValhallaTiles) =
+                getCurrentProgressCounts(areaId)
 
-            // Update service progress - starting download
-            // Note: We don't send an initial update with all zeros as this can cause stage jumping
-            // Instead, we'll wait until we have actual totals to report
-
-            // Use offline database for all downloads
-            val outputFile = File(context.filesDir, OFFLINE_DATABASE_NAME)
-            val dbExists = outputFile.exists()
-            Log.d(TAG, "Using database file: ${outputFile.absolutePath}, exists: $dbExists")
-
-            db = SQLiteDatabase.openOrCreateDatabase(outputFile, null)
-
-            // Initialize MBTiles schema only if database is new
-            if (!dbExists) {
-                Log.d(TAG, "Initializing new MBTiles schema")
-                initializeMbtilesSchema(db)
-            }
-
-            // Calculate total tiles to download
-            val totalBasemapTiles = calculateTotalTiles(
-                boundingBox, minZoom, min(maxZoom, MAX_BASEMAP_ZOOM)
+            initializeProgressReporting(
+                areaId, name, totalBasemapTiles, totalValhallaTiles,
+                downloadedBasemapTiles, downloadedValhallaTiles
             )
-            val totalValhallaTiles = ValhallaTileUtils.tilesForBoundingBox(boundingBox).size
-
-            Log.d(TAG, "Total basemap tiles to download: $totalBasemapTiles")
-            Log.d(TAG, "Total valhalla tiles to download: $totalValhallaTiles")
-
-            // Get current progress counts for accurate resume
-            val downloadedBasemapTiles =
-                downloadedTileDao.getDownloadedTileCountForAreaAndType(areaId, TileType.BASEMAP)
-            val downloadedValhallaTiles =
-                downloadedTileDao.getDownloadedTileCountForAreaAndType(areaId, TileType.VALHALLA)
-
-            Log.d(
-                TAG,
-                "Already downloaded: $downloadedBasemapTiles basemap tiles, $downloadedValhallaTiles valhalla tiles"
-            )
-
-            val currentStage = if (downloadedBasemapTiles != totalBasemapTiles) {
-                TileDownloadForegroundService.DownloadStage.BASEMAP
-            } else if (downloadedValhallaTiles != totalValhallaTiles) {
-                TileDownloadForegroundService.DownloadStage.VALHALLA
-            } else {
-                TileDownloadForegroundService.DownloadStage.PROCESSING
-            }
-            val stageProgress = when (currentStage) {
-                TileDownloadForegroundService.DownloadStage.BASEMAP -> downloadedBasemapTiles
-                TileDownloadForegroundService.DownloadStage.VALHALLA -> downloadedValhallaTiles
-                TileDownloadForegroundService.DownloadStage.PROCESSING -> 0
-            }
-            val stageTotal = when (currentStage) {
-                TileDownloadForegroundService.DownloadStage.BASEMAP -> totalBasemapTiles
-                TileDownloadForegroundService.DownloadStage.VALHALLA -> totalValhallaTiles
-                TileDownloadForegroundService.DownloadStage.PROCESSING -> 1
-            }
-
-            // Update service progress with current totals and progress
-            serviceBinder?.getService()?.updateProgress(
-                areaId = areaId,
-                areaName = name,
-                currentStage = currentStage,
-                stageProgress = stageProgress,
-                stageTotal = stageTotal,
-                isCompleted = false,
-                hasError = false
-            )
-
-            // Log the number of tiles already in the database
-            val existingTileCount = getTileCount(db)
-            Log.d(TAG, "Existing tiles in database: $existingTileCount")
 
             tileProcessor?.beginTileProcessing()
             Log.d(TAG, "Tile processor initialized")
 
-            // Download basemap tiles if needed (skip if already complete or resuming after)
-            if (resumePhase == DownloadStatus.DOWNLOADING_BASEMAP) {
-                Log.d(
-                    TAG, "Starting/continuing basemap tile download for area: $name (ID: $areaId)"
-                )
+            basemapResult = downloadBasemapPhaseIfNeeded(
+                resumePhase, boundingBox, minZoom,
+                maxZoom, areaId, name, totalValhallaTiles
+            )
+            valhallaResult = downloadValhallaPhaseIfNeeded(
+                resumePhase, boundingBox, areaId,
+                db, name
+            )
 
-                // Update status to DOWNLOADING_BASEMAP
-                val downloadingArea = offlineAreaDao.getOfflineAreaById(areaId)
-                if (downloadingArea != null) {
-                    val updatedArea =
-                        downloadingArea.copy(status = DownloadStatus.DOWNLOADING_BASEMAP)
-                    offlineAreaDao.updateOfflineArea(updatedArea)
-                }
-
-                basemapResult = downloadBasemapTiles(
-                    boundingBox, minZoom, min(maxZoom, MAX_BASEMAP_ZOOM), areaId, name
-                )
-
-                Log.d(
-                    TAG,
-                    "Basemap download complete: ${basemapResult.first} new tiles downloaded, ${basemapResult.second} failed"
-                )
-
-                // Mark basemap phase as complete
-                val basemapCompleteArea = offlineAreaDao.getOfflineAreaById(areaId)
-                if (basemapCompleteArea != null) {
-                    val updatedArea =
-                        basemapCompleteArea.copy(status = DownloadStatus.DOWNLOADING_VALHALLA)
-                    offlineAreaDao.updateOfflineArea(updatedArea)
-                    Log.d(TAG, "Updated area $areaId status to DOWNLOADING_VALHALLA")
-                }
-
-                // Update progress to show basemap completion
-                // Ensure we maintain consistent progress values to prevent stage jumping
-                serviceBinder?.getService()?.updateProgress(
-                    areaId = areaId,
-                    areaName = name,
-                    currentStage = TileDownloadForegroundService.DownloadStage.VALHALLA,
-                    stageProgress = 0,
-                    stageTotal = totalValhallaTiles,
-                    isCompleted = false,
-                    hasError = false
-                )
-            } else {
-                Log.d(TAG, "Skipping basemap download for area $areaId (already completed)")
-            }
-
-            // Download Valhalla tiles (always attempted after basemap or when resuming from Valhalla phase)
-            if (resumePhase == DownloadStatus.DOWNLOADING_BASEMAP || resumePhase == DownloadStatus.DOWNLOADING_VALHALLA) {
-
-                Log.d(
-                    TAG, "Starting/continuing Valhalla tile download for area: $name (ID: $areaId)"
-                )
-
-                // Update status to DOWNLOADING_VALHALLA if not already
-                val currentArea = offlineAreaDao.getOfflineAreaById(areaId)
-                if (currentArea != null && currentArea.status != DownloadStatus.DOWNLOADING_VALHALLA) {
-                    val updatedArea = currentArea.copy(status = DownloadStatus.DOWNLOADING_VALHALLA)
-                    offlineAreaDao.updateOfflineArea(updatedArea)
-                }
-
-                valhallaResult = downloadValhallaTiles(
-                    boundingBox, areaId, db!!, name
-                )
-
-                Log.d(
-                    TAG,
-                    "Valhalla download complete: ${valhallaResult.first} new tiles downloaded, ${valhallaResult.second} failed"
-                )
-            } else {
-                Log.d(TAG, "Skipping Valhalla download for area $areaId (already completed)")
-            }
-
-            // Note: Tiles are already inserted into database during download process
-            // No need for additional batch insert here
-
-            // Log the number of tiles in the database after download
-            val finalTileCount = getTileCount(db)
-            Log.d(TAG, "Final tiles in database after download: $finalTileCount")
-
-            // Store area metadata
-            Log.d(TAG, "Storing area metadata for $areaId")
-            storeAreaMetadata(db, areaId, boundingBox, minZoom, maxZoom, name)
-
+            finalizeAndStoreMetadata(db, areaId, boundingBox, minZoom, maxZoom, name)
             db.close()
             db = null
 
-            // Get the actual file size
-            val fileSize = outputFile.length()
+            val fileSize = calculateAndLogCompletionStats(
+                boundingBox, minZoom, maxZoom,
+                basemapResult, valhallaResult,
+                downloadedBasemapTiles, downloadedValhallaTiles
+            )
 
-            val totalBasemapDownloaded = basemapResult.first + downloadedBasemapTiles
-            val totalValhallaDownloaded = valhallaResult.first + downloadedValhallaTiles
+            processDownloadedTilesAndComplete(areaId, name, fileSize)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error downloading tiles for area $name (ID: $areaId)", e)
+            handleDownloadError(areaId, name)
+        } finally {
+            tileProcessor?.endTileProcessing()
+            Log.d(TAG, "Tile processing completed")
+            closeDatabaseSafely(db)
+        }
+    }
+
+    /**
+     * Initialize or open the MBTiles database
+     */
+    private suspend fun initializeDatabase(): SQLiteDatabase {
+        val outputFile = File(context.filesDir, OFFLINE_DATABASE_NAME)
+        val dbExists = outputFile.exists()
+        Log.d(TAG, "Using database file: ${outputFile.absolutePath}, exists: $dbExists")
+
+        val db = SQLiteDatabase.openOrCreateDatabase(outputFile, null)
+
+        // Initialize MBTiles schema only if database is new
+        if (!dbExists) {
+            Log.d(TAG, "Initializing new MBTiles schema")
+            initializeMbtilesSchema(db)
+        }
+
+        return db
+    }
+
+    /**
+     * Calculate total counts for basemap and Valhalla tiles
+     */
+    private suspend fun calculateTotalDownloadCounts(
+        boundingBox: BoundingBox, minZoom: Int, maxZoom: Int
+    ): Pair<Int, Int> {
+        val totalBasemapTiles = calculateTotalTiles(
+            boundingBox, minZoom, min(maxZoom, MAX_BASEMAP_ZOOM)
+        )
+        val totalValhallaTiles = ValhallaTileUtils.tilesForBoundingBox(boundingBox).size
+
+        Log.d(TAG, "Total basemap tiles to download: $totalBasemapTiles")
+        Log.d(TAG, "Total valhalla tiles to download: $totalValhallaTiles")
+
+        return Pair(totalBasemapTiles, totalValhallaTiles)
+    }
+
+    /**
+     * Get current download progress counts
+     */
+    private suspend fun getCurrentProgressCounts(areaId: String): Pair<Int, Int> {
+        val downloadedBasemapTiles =
+            downloadedTileDao.getDownloadedTileCountForAreaAndType(areaId, TileType.BASEMAP)
+        val downloadedValhallaTiles =
+            downloadedTileDao.getDownloadedTileCountForAreaAndType(areaId, TileType.VALHALLA)
+
+        Log.d(
+            TAG,
+            "Already downloaded: $downloadedBasemapTiles basemap tiles, $downloadedValhallaTiles valhalla tiles"
+        )
+
+        return Pair(downloadedBasemapTiles, downloadedValhallaTiles)
+    }
+
+    /**
+     * Initialize progress reporting with current state
+     */
+    private suspend fun initializeProgressReporting(
+        areaId: String, name: String, totalBasemapTiles: Int, totalValhallaTiles: Int,
+        downloadedBasemapTiles: Int, downloadedValhallaTiles: Int
+    ) {
+        val currentStage = determineCurrentStage(
+            totalBasemapTiles, totalValhallaTiles,
+            downloadedBasemapTiles, downloadedValhallaTiles
+        )
+        val stageProgress =
+            getStageProgress(currentStage, downloadedBasemapTiles, downloadedValhallaTiles)
+        val stageTotal = getStageTotal(currentStage, totalBasemapTiles, totalValhallaTiles)
+
+        serviceBinder?.getService()?.updateProgress(
+            areaId = areaId,
+            areaName = name,
+            currentStage = currentStage,
+            stageProgress = stageProgress,
+            stageTotal = stageTotal,
+            isCompleted = false,
+            hasError = false
+        )
+
+        // Log existing tile count
+        val db = SQLiteDatabase.openDatabase(
+            File(context.filesDir, OFFLINE_DATABASE_NAME).absolutePath,
+            null,
+            SQLiteDatabase.OPEN_READONLY
+        )
+        val existingTileCount = getTileCount(db)
+        Log.d(TAG, "Existing tiles in database: $existingTileCount")
+        db.close()
+    }
+
+    /**
+     * Determine current download stage based on progress
+     */
+    private fun determineCurrentStage(
+        totalBasemapTiles: Int, totalValhallaTiles: Int,
+        downloadedBasemapTiles: Int, downloadedValhallaTiles: Int
+    ): TileDownloadForegroundService.DownloadStage {
+        return if (downloadedBasemapTiles != totalBasemapTiles) {
+            TileDownloadForegroundService.DownloadStage.BASEMAP
+        } else if (downloadedValhallaTiles != totalValhallaTiles) {
+            TileDownloadForegroundService.DownloadStage.VALHALLA
+        } else {
+            TileDownloadForegroundService.DownloadStage.PROCESSING
+        }
+    }
+
+    /**
+     * Get progress for current stage
+     */
+    private fun getStageProgress(
+        currentStage: TileDownloadForegroundService.DownloadStage,
+        downloadedBasemapTiles: Int, downloadedValhallaTiles: Int
+    ): Int {
+        return when (currentStage) {
+            TileDownloadForegroundService.DownloadStage.BASEMAP -> downloadedBasemapTiles
+            TileDownloadForegroundService.DownloadStage.VALHALLA -> downloadedValhallaTiles
+            TileDownloadForegroundService.DownloadStage.PROCESSING -> 0
+        }
+    }
+
+    /**
+     * Get total for current stage
+     */
+    private fun getStageTotal(
+        currentStage: TileDownloadForegroundService.DownloadStage,
+        totalBasemapTiles: Int, totalValhallaTiles: Int
+    ): Int {
+        return when (currentStage) {
+            TileDownloadForegroundService.DownloadStage.BASEMAP -> totalBasemapTiles
+            TileDownloadForegroundService.DownloadStage.VALHALLA -> totalValhallaTiles
+            TileDownloadForegroundService.DownloadStage.PROCESSING -> 1
+        }
+    }
+
+    /**
+     * Download basemap phase if needed
+     */
+    private suspend fun downloadBasemapPhaseIfNeeded(
+        resumePhase: DownloadStatus, boundingBox: BoundingBox, minZoom: Int, maxZoom: Int,
+        areaId: String, name: String, totalValhallaTiles: Int
+    ): Pair<Int, Int> {
+        if (resumePhase == DownloadStatus.DOWNLOADING_BASEMAP) {
+            Log.d(TAG, "Starting/continuing basemap tile download for area: $name (ID: $areaId)")
+
+            updateAreaStatus(areaId, DownloadStatus.DOWNLOADING_BASEMAP)
+
+            val basemapResult = downloadBasemapTiles(
+                boundingBox, minZoom, min(maxZoom, MAX_BASEMAP_ZOOM), areaId, name
+            )
 
             Log.d(
                 TAG,
-                "Tile download completed. $totalBasemapDownloaded/${totalBasemapTiles} basemap tiles, $totalValhallaDownloaded/${totalValhallaTiles} valhalla tiles downloaded. File size: $fileSize bytes"
+                "Basemap download complete: ${basemapResult.first} new tiles downloaded, ${basemapResult.second} failed"
             )
 
-            // Update offline area status to PROCESSING
-            val area = offlineAreaDao.getOfflineAreaById(areaId)
-            if (area != null) {
-                val processingArea = area.copy(
-                    status = DownloadStatus.PROCESSING_GEOCODER, fileSize = fileSize
-                )
-                offlineAreaDao.updateOfflineArea(processingArea)
-            }
+            updateAreaStatus(areaId, DownloadStatus.DOWNLOADING_VALHALLA)
 
-            // Update service progress - downloads completed, now processing
-            // Ensure we maintain consistent progress values to prevent stage jumping
+            // Update progress to show basemap completion
             serviceBinder?.getService()?.updateProgress(
                 areaId = areaId,
                 areaName = name,
-                currentStage = TileDownloadForegroundService.DownloadStage.PROCESSING,
+                currentStage = TileDownloadForegroundService.DownloadStage.VALHALLA,
                 stageProgress = 0,
-                stageTotal = 1, // This is a bad estimate obviously but all that matters for now is that we are starting from 0%
+                stageTotal = totalValhallaTiles,
                 isCompleted = false,
                 hasError = false
             )
 
-            // Start tile processing phase
-            Log.d(TAG, "Starting tile processing phase for area $areaId")
-            processDownloadedTiles(areaId)
+            return basemapResult
+        } else {
+            Log.d(TAG, "Skipping basemap download for area $areaId (already completed)")
+            return Pair(0, 0)
+        }
+    }
 
-            // Update offline area status to COMPLETED
-            val completedArea = offlineAreaDao.getOfflineAreaById(areaId)
-            if (completedArea != null) {
-                val finalArea = completedArea.copy(
-                    status = DownloadStatus.COMPLETED, fileSize = fileSize
-                )
-                offlineAreaDao.updateOfflineArea(finalArea)
-            }
+    /**
+     * Download Valhalla phase if needed
+     */
+    private suspend fun downloadValhallaPhaseIfNeeded(
+        resumePhase: DownloadStatus, boundingBox: BoundingBox, areaId: String,
+        db: SQLiteDatabase, name: String
+    ): Pair<Int, Int> {
+        if (resumePhase == DownloadStatus.DOWNLOADING_BASEMAP || resumePhase == DownloadStatus.DOWNLOADING_VALHALLA) {
+            Log.d(TAG, "Starting/continuing Valhalla tile download for area: $name (ID: $areaId)")
 
-            // Update service progress - processing completed (unified)
-            serviceBinder?.getService()?.updateProgress(
-                areaId = areaId,
-                areaName = name,
-                currentStage = null,
-                stageProgress = 0,
-                stageTotal = 0,
-                isCompleted = true,
-                hasError = false
+            ensureValhallaStatus(areaId)
+
+            val valhallaResult = downloadValhallaTiles(boundingBox, areaId, db, name)
+
+            Log.d(
+                TAG,
+                "Valhalla download complete: ${valhallaResult.first} new tiles downloaded, ${valhallaResult.second} failed"
             )
 
-        } catch (e: Exception) {
-            Log.e(TAG, "Error downloading tiles for area $name (ID: $areaId)", e)
+            return valhallaResult
+        } else {
+            Log.d(TAG, "Skipping Valhalla download for area $areaId (already completed)")
+            return Pair(0, 0)
+        }
+    }
 
-            // Update service progress - download failed
-            serviceBinder?.getService()?.updateProgress(
-                areaId = areaId,
-                areaName = name,
-                currentStage = null,
-                stageProgress = 0,
-                stageTotal = 0,
-                isCompleted = true,
-                hasError = true
-            )
+    /**
+     * Ensure the area status is set to DOWNLOADING_VALHALLA if not already
+     */
+    private suspend fun ensureValhallaStatus(areaId: String) {
+        val currentArea = offlineAreaDao.getOfflineAreaById(areaId)
+        if (currentArea != null && currentArea.status != DownloadStatus.DOWNLOADING_VALHALLA) {
+            val updatedArea = currentArea.copy(status = DownloadStatus.DOWNLOADING_VALHALLA)
+            offlineAreaDao.updateOfflineArea(updatedArea)
+        }
+    }
 
-            // Update offline area status
-            val area = offlineAreaDao.getOfflineAreaById(areaId)
-            if (area != null) {
-                val updatedArea = area.copy(
-                    status = DownloadStatus.FAILED, fileSize = 0L
-                )
-                offlineAreaDao.updateOfflineArea(updatedArea)
-            }
-        } finally {
-            tileProcessor?.endTileProcessing()
-            Log.d(TAG, "Tile processing completed")
-            // Close database if it's open
-            try {
-                db?.close()
-            } catch (closeException: Exception) {
-                Log.e(TAG, "Error closing database", closeException)
-            }
+    /**
+     * Finalize download and store metadata
+     */
+    private suspend fun finalizeAndStoreMetadata(
+        db: SQLiteDatabase, areaId: String, boundingBox: BoundingBox,
+        minZoom: Int, maxZoom: Int, name: String
+    ) {
+        // Log final tile count
+        val finalTileCount = getTileCount(db)
+        Log.d(TAG, "Final tiles in database after download: $finalTileCount")
+
+        // Store area metadata
+        Log.d(TAG, "Storing area metadata for $areaId")
+        storeAreaMetadata(db, areaId, boundingBox, minZoom, maxZoom, name)
+    }
+
+    /**
+     * Calculate completion stats and log results
+     */
+    private suspend fun calculateAndLogCompletionStats(
+        boundingBox: BoundingBox, minZoom: Int, maxZoom: Int,
+        basemapResult: Pair<Int, Int>, valhallaResult: Pair<Int, Int>,
+        downloadedBasemapTiles: Int, downloadedValhallaTiles: Int
+    ): Long {
+        val outputFile = File(context.filesDir, OFFLINE_DATABASE_NAME)
+        val fileSize = outputFile.length()
+
+        val totalBasemapTiles =
+            calculateTotalTiles(boundingBox, minZoom, min(maxZoom, MAX_BASEMAP_ZOOM))
+        val totalValhallaTiles = ValhallaTileUtils.tilesForBoundingBox(boundingBox).size
+
+        val totalBasemapDownloaded = basemapResult.first + downloadedBasemapTiles
+        val totalValhallaDownloaded = valhallaResult.first + downloadedValhallaTiles
+
+        Log.d(
+            TAG,
+            "Tile download completed. $totalBasemapDownloaded/${totalBasemapTiles} basemap tiles, $totalValhallaDownloaded/${totalValhallaTiles} valhalla tiles downloaded. File size: $fileSize bytes"
+        )
+
+        return fileSize
+    }
+
+    /**
+     * Process downloaded tiles and mark as completed
+     */
+    private suspend fun processDownloadedTilesAndComplete(
+        areaId: String,
+        name: String,
+        fileSize: Long
+    ) {
+        // Update offline area status to PROCESSING
+        val area = offlineAreaDao.getOfflineAreaById(areaId)
+        if (area != null) {
+            val processingArea =
+                area.copy(status = DownloadStatus.PROCESSING_GEOCODER, fileSize = fileSize)
+            offlineAreaDao.updateOfflineArea(processingArea)
+        }
+
+        // Update service progress - downloads completed, now processing
+        serviceBinder?.getService()?.updateProgress(
+            areaId = areaId,
+            areaName = name,
+            currentStage = TileDownloadForegroundService.DownloadStage.PROCESSING,
+            stageProgress = 0,
+            stageTotal = 1,
+            isCompleted = false,
+            hasError = false
+        )
+
+        // Start tile processing phase
+        Log.d(TAG, "Starting tile processing phase for area $areaId")
+        processDownloadedTiles(areaId)
+
+        // Update offline area status to COMPLETED
+        val completedArea = offlineAreaDao.getOfflineAreaById(areaId)
+        if (completedArea != null) {
+            val finalArea =
+                completedArea.copy(status = DownloadStatus.COMPLETED, fileSize = fileSize)
+            offlineAreaDao.updateOfflineArea(finalArea)
+        }
+
+        // Update service progress - processing completed
+        serviceBinder?.getService()?.updateProgress(
+            areaId = areaId,
+            areaName = name,
+            currentStage = null,
+            stageProgress = 0,
+            stageTotal = 0,
+            isCompleted = true,
+            hasError = false
+        )
+    }
+
+    /**
+     * Handle download error
+     */
+    private suspend fun handleDownloadError(areaId: String, name: String) {
+        // Update service progress - download failed
+        serviceBinder?.getService()?.updateProgress(
+            areaId = areaId,
+            areaName = name,
+            currentStage = null,
+            stageProgress = 0,
+            stageTotal = 0,
+            isCompleted = true,
+            hasError = true
+        )
+
+        // Update offline area status
+        val area = offlineAreaDao.getOfflineAreaById(areaId)
+        if (area != null) {
+            val updatedArea = area.copy(status = DownloadStatus.FAILED, fileSize = 0L)
+            offlineAreaDao.updateOfflineArea(updatedArea)
+        }
+    }
+
+    /**
+     * Close database safely
+     */
+    private fun closeDatabaseSafely(db: SQLiteDatabase?) {
+        try {
+            db?.close()
+        } catch (closeException: Exception) {
+            Log.e(TAG, "Error closing database", closeException)
         }
     }
 
@@ -620,6 +759,29 @@ class TileDownloadManager(
 
         Log.d(TAG, "Total Valhalla tiles to download: $totalValhallaTiles")
 
+        logExistingValhallaTileCount(db, areaId)
+        ensureValhallaTilesDirectory()
+
+        // Process Valhalla tiles sequentially (one at a time to avoid memory issues)
+        for ((hierarchyLevel, tileIndex) in valhallaTiles) {
+            processValhallaTile(
+                hierarchyLevel, tileIndex, areaId, db, areaName,
+                totalValhallaTiles, downloadedCount
+            )?.let {
+                downloadedCount++
+            } ?: run {
+                failedCount++
+            }
+        }
+
+        performFinalValhallaConsistencyCheck(db, areaId)
+        return Pair(downloadedCount, failedCount)
+    }
+
+    /**
+     * Log the count of existing Valhalla tiles for the area
+     */
+    private fun logExistingValhallaTileCount(db: SQLiteDatabase, areaId: String) {
         // Validate consistency between expected tiles and existing tiles in database
         var cursor: Cursor? = null
         try {
@@ -637,82 +799,97 @@ class TileDownloadManager(
         } finally {
             cursor?.close()
         }
+    }
 
+    /**
+     * Ensure the valhalla tiles directory exists
+     */
+    private fun ensureValhallaTilesDirectory() {
         // Create valhalla tiles directory
         val valhallaTilesDir = File(context.filesDir, "valhalla_tiles")
         if (!valhallaTilesDir.exists()) {
             valhallaTilesDir.mkdirs()
         }
+    }
 
-        // Process Valhalla tiles sequentially (one at a time to avoid memory issues)
-        for ((hierarchyLevel, tileIndex) in valhallaTiles) {
-            // Check if this Valhalla tile already exists in the database
-            var cursor: Cursor? = null
-            var tileExists = false
-            try {
-                cursor = db.rawQuery(
-                    "SELECT COUNT(*) FROM valhalla_tiles WHERE hierarchy_level = ? AND tile_index = ? AND area_id = ?",
-                    arrayOf(hierarchyLevel.toString(), tileIndex.toString(), areaId)
-                )
-                if (cursor.moveToFirst() && cursor.getInt(0) > 0) {
-                    tileExists = true
-                }
-            } catch (e: Exception) {
-                Log.w(
-                    TAG,
-                    "Error checking existing Valhalla tile $hierarchyLevel/$tileIndex for area $areaId",
-                    e
-                )
-            } finally {
-                cursor?.close()
-            }
-
-            // If tile already exists, skip downloading
-            if (tileExists) {
-                Log.v(
-                    TAG,
-                    "Skipping already downloaded Valhalla tile $hierarchyLevel/$tileIndex for area $areaId"
-                )
-                // Update service progress without incrementing counters
-                serviceBinder?.getService()?.updateProgress(
-                    areaId = areaId,
-                    areaName = areaName,
-                    currentStage = TileDownloadForegroundService.DownloadStage.VALHALLA,
-                    stageProgress = downloadedCount,
-                    stageTotal = totalValhallaTiles,
-                    isCompleted = false,
-                    hasError = false
-                )
-                continue // Skip to next tile
-            }
-
-            val (success, filePath) = downloadValhallaTile(
-                hierarchyLevel,
-                tileIndex,
+    /**
+     * Process a single Valhalla tile - return true if downloaded successfully, null if failed
+     */
+    private suspend fun processValhallaTile(
+        hierarchyLevel: Int, tileIndex: Int, areaId: String, db: SQLiteDatabase,
+        areaName: String, totalValhallaTiles: Int, downloadedCount: Int
+    ): Boolean? {
+        // Check if this Valhalla tile already exists in the database
+        if (valhallaTileExists(db, hierarchyLevel, tileIndex, areaId)) {
+            Log.v(
+                TAG,
+                "Skipping already downloaded Valhalla tile $hierarchyLevel/$tileIndex for area $areaId"
             )
-            if (success && filePath != null) {
-                // Store tile reference in database
-                storeValhallaTileReference(db, hierarchyLevel, tileIndex, filePath, areaId)
-
-                // Update progress
-                downloadedCount++
-
-                // Update service progress
-                serviceBinder?.getService()?.updateProgress(
-                    areaId = areaId,
-                    areaName = areaName,
-                    currentStage = TileDownloadForegroundService.DownloadStage.VALHALLA,
-                    stageProgress = downloadedCount,
-                    stageTotal = totalValhallaTiles,
-                    isCompleted = false,
-                    hasError = false
-                )
-            } else {
-                failedCount++
-            }
+            // Update service progress without incrementing counters
+            serviceBinder?.getService()?.updateProgress(
+                areaId = areaId,
+                areaName = areaName,
+                currentStage = TileDownloadForegroundService.DownloadStage.VALHALLA,
+                stageProgress = downloadedCount,
+                stageTotal = totalValhallaTiles,
+                isCompleted = false,
+                hasError = false
+            )
+            return null // Skip tile (not a failure, just already exists)
         }
 
-        // Final consistency check
+        val (success, filePath) = downloadValhallaTile(hierarchyLevel, tileIndex)
+        return if (success && filePath != null) {
+            // Store tile reference in database
+            storeValhallaTileReference(db, hierarchyLevel, tileIndex, filePath, areaId)
+
+            // Update service progress
+            serviceBinder?.getService()?.updateProgress(
+                areaId = areaId,
+                areaName = areaName,
+                currentStage = TileDownloadForegroundService.DownloadStage.VALHALLA,
+                stageProgress = downloadedCount + 1, // Add 1 since we return before increment
+                stageTotal = totalValhallaTiles,
+                isCompleted = false,
+                hasError = false
+            )
+
+            true // Successfully downloaded
+        } else {
+            false // Failed to download
+        }
+    }
+
+    /**
+     * Check if a Valhalla tile already exists in the database
+     */
+    private fun valhallaTileExists(
+        db: SQLiteDatabase, hierarchyLevel: Int, tileIndex: Int, areaId: String
+    ): Boolean {
+        var cursor: Cursor? = null
+        return try {
+            cursor = db.rawQuery(
+                "SELECT COUNT(*) FROM valhalla_tiles WHERE hierarchy_level = ? AND tile_index = ? AND area_id = ?",
+                arrayOf(hierarchyLevel.toString(), tileIndex.toString(), areaId)
+            )
+            cursor.moveToFirst() && cursor.getInt(0) > 0
+        } catch (e: Exception) {
+            Log.w(
+                TAG,
+                "Error checking existing Valhalla tile $hierarchyLevel/$tileIndex for area $areaId",
+                e
+            )
+            false
+        } finally {
+            cursor?.close()
+        }
+    }
+
+    /**
+     * Perform final consistency check for Valhalla tiles
+     */
+    private fun performFinalValhallaConsistencyCheck(db: SQLiteDatabase, areaId: String) {
+        var cursor: Cursor? = null
         try {
             cursor = db.rawQuery(
                 "SELECT COUNT(*) FROM valhalla_tiles WHERE area_id = ?", arrayOf(areaId)
@@ -726,8 +903,6 @@ class TileDownloadManager(
         } finally {
             cursor?.close()
         }
-
-        return Pair(downloadedCount, failedCount)
     }
 
     /**
@@ -1175,7 +1350,6 @@ class TileDownloadManager(
         try {
             Log.d(TAG, "Starting tile deletion for area ID: $areaId")
 
-            // Open the offline database
             val outputFile = File(context.filesDir, OFFLINE_DATABASE_NAME)
             if (!outputFile.exists()) {
                 Log.d(TAG, "Offline database file does not exist, nothing to delete")
@@ -1183,83 +1357,14 @@ class TileDownloadManager(
             }
 
             db = SQLiteDatabase.openDatabase(
-                outputFile.absolutePath, null, SQLiteDatabase.OPEN_READWRITE
+                outputFile.absolutePath,
+                null,
+                SQLiteDatabase.OPEN_READWRITE
             )
 
-            // First, get all tiles for this area
-            val tilesToDelete = getTilesForArea(db, areaId)
-            Log.d(TAG, "Found ${tilesToDelete.size} tiles for area ID: $areaId")
+            deleteUnsharedTiles(db, areaId)
+            deleteUnsharedValhallaTiles(db, areaId)
 
-            // For each tile, check if it's shared with other areas
-            var actuallyDeletedTiles = 0
-            var sharedTiles = 0
-            for (tile in tilesToDelete) {
-                // Check if this tile is used by other areas
-                val isShared = isTileSharedWithOtherAreas(db, tile, areaId)
-                if (!isShared) {
-                    // Tile is not shared with other areas, we can delete it
-                    val deleted = deleteTile(db, tile, areaId)
-                    actuallyDeletedTiles += deleted
-                    Log.v(
-                        TAG,
-                        "Deleted tile ${tile.zoomLevel}/${tile.tileColumn}/${tile.tileRow} for area ID: $areaId"
-                    )
-                } else {
-                    sharedTiles++
-                    Log.v(
-                        TAG,
-                        "Skipping shared tile ${tile.zoomLevel}/${tile.tileColumn}/${tile.tileRow} for area ID: $areaId"
-                    )
-                }
-            }
-
-            Log.d(
-                TAG,
-                "Deleted $actuallyDeletedTiles tiles for area ID: $areaId (shared tiles: $sharedTiles, total: ${tilesToDelete.size})"
-            )
-
-            // Delete Valhalla tiles for this area
-            val valhallaTilesToDelete = getValhallaTilesForArea(db, areaId)
-            Log.d(TAG, "Found ${valhallaTilesToDelete.size} Valhalla tiles for area ID: $areaId")
-
-            var actuallyDeletedValhallaTiles = 0
-            var sharedValhallaTiles = 0
-            for (valhallaTile in valhallaTilesToDelete) {
-                // Check if this Valhalla tile is used by other areas
-                val isShared = isValhallaTileSharedWithOtherAreas(db, valhallaTile, areaId)
-                if (!isShared) {
-                    // Delete the physical file
-                    try {
-                        val file = File(valhallaTile.filePath)
-                        if (file.exists() && file.delete()) {
-                            Log.v(TAG, "Deleted Valhalla tile file: ${valhallaTile.filePath}")
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Error deleting Valhalla tile file: ${valhallaTile.filePath}", e)
-                    }
-
-                    // Delete from database
-                    val deleted = deleteValhallaTile(db, valhallaTile, areaId)
-                    actuallyDeletedValhallaTiles += deleted
-                    Log.v(
-                        TAG,
-                        "Deleted Valhalla tile ${valhallaTile.hierarchyLevel}/${valhallaTile.tileIndex} for area ID: $areaId"
-                    )
-                } else {
-                    sharedValhallaTiles++
-                    Log.v(
-                        TAG,
-                        "Skipping shared Valhalla tile ${valhallaTile.hierarchyLevel}/${valhallaTile.tileIndex} for area ID: $areaId"
-                    )
-                }
-            }
-
-            Log.d(
-                TAG,
-                "Deleted $actuallyDeletedValhallaTiles Valhalla tiles for area ID: $areaId (shared tiles: $sharedValhallaTiles, total: ${valhallaTilesToDelete.size})"
-            )
-
-            // Also delete the area metadata
             val deletedMetadata = db.delete("areas", "area_id = ?", arrayOf(areaId))
             Log.d(TAG, "Deleted $deletedMetadata area metadata entries for area ID: $areaId")
 
@@ -1268,12 +1373,97 @@ class TileDownloadManager(
             Log.e(TAG, "Error deleting tiles for area ID: $areaId", e)
             return false
         } finally {
-            // Close database if it's open
-            try {
-                db?.close()
-            } catch (closeException: Exception) {
-                Log.e(TAG, "Error closing database", closeException)
+            closeDatabaseSafely(db)
+        }
+    }
+
+    /**
+     * Delete tiles that are not shared with other areas
+     */
+    private fun deleteUnsharedTiles(db: SQLiteDatabase, areaId: String): TileDeletionResult {
+        val tilesToDelete = getTilesForArea(db, areaId)
+        Log.d(TAG, "Found ${tilesToDelete.size} tiles for area ID: $areaId")
+
+        var actuallyDeletedTiles = 0
+        var sharedTiles = 0
+
+        for (tile in tilesToDelete) {
+            if (!isTileSharedWithOtherAreas(db, tile, areaId)) {
+                val deleted = deleteTile(db, tile, areaId)
+                actuallyDeletedTiles += deleted
+                Log.v(
+                    TAG,
+                    "Deleted tile ${tile.zoomLevel}/${tile.tileColumn}/${tile.tileRow} for area ID: $areaId"
+                )
+            } else {
+                sharedTiles++
+                Log.v(
+                    TAG,
+                    "Skipping shared tile ${tile.zoomLevel}/${tile.tileColumn}/${tile.tileRow} for area ID: $areaId"
+                )
             }
+        }
+
+        Log.d(
+            TAG,
+            "Deleted $actuallyDeletedTiles tiles for area ID: $areaId (shared tiles: $sharedTiles, total: ${tilesToDelete.size})"
+        )
+        return TileDeletionResult(actuallyDeletedTiles, sharedTiles, tilesToDelete.size)
+    }
+
+    /**
+     * Delete Valhalla tiles that are not shared with other areas
+     */
+    private fun deleteUnsharedValhallaTiles(
+        db: SQLiteDatabase,
+        areaId: String
+    ): TileDeletionResult {
+        val valhallaTilesToDelete = getValhallaTilesForArea(db, areaId)
+        Log.d(TAG, "Found ${valhallaTilesToDelete.size} Valhalla tiles for area ID: $areaId")
+
+        var actuallyDeletedValhallaTiles = 0
+        var sharedValhallaTiles = 0
+
+        for (valhallaTile in valhallaTilesToDelete) {
+            if (!isValhallaTileSharedWithOtherAreas(db, valhallaTile, areaId)) {
+                deleteValhallaPhysicalFile(valhallaTile)
+                val deleted = deleteValhallaTile(db, valhallaTile, areaId)
+                actuallyDeletedValhallaTiles += deleted
+                Log.v(
+                    TAG,
+                    "Deleted Valhalla tile ${valhallaTile.hierarchyLevel}/${valhallaTile.tileIndex} for area ID: $areaId"
+                )
+            } else {
+                sharedValhallaTiles++
+                Log.v(
+                    TAG,
+                    "Skipping shared Valhalla tile ${valhallaTile.hierarchyLevel}/${valhallaTile.tileIndex} for area ID: $areaId"
+                )
+            }
+        }
+
+        Log.d(
+            TAG,
+            "Deleted $actuallyDeletedValhallaTiles Valhalla tiles for area ID: $areaId (shared tiles: $sharedValhallaTiles, total: ${valhallaTilesToDelete.size})"
+        )
+        return TileDeletionResult(
+            actuallyDeletedValhallaTiles,
+            sharedValhallaTiles,
+            valhallaTilesToDelete.size
+        )
+    }
+
+    /**
+     * Delete the physical file for a Valhalla tile
+     */
+    private fun deleteValhallaPhysicalFile(valhallaTile: ValhallaTileCoordinates) {
+        try {
+            val file = File(valhallaTile.filePath)
+            if (file.exists() && file.delete()) {
+                Log.v(TAG, "Deleted Valhalla tile file: ${valhallaTile.filePath}")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error deleting Valhalla tile file: ${valhallaTile.filePath}", e)
         }
     }
 
@@ -1586,6 +1776,12 @@ data class TileRange(
 
 private data class TileCoordinates(
     val zoomLevel: Int, val tileColumn: Int, val tileRow: Int
+)
+
+private data class TileDeletionResult(
+    val deletedCount: Int,
+    val sharedCount: Int,
+    val totalCount: Int
 )
 
 /**

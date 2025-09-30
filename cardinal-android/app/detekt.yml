@@ -5,4 +5,8 @@ naming:
 
 complexity:
   LongParameterList:
+    active: true
     ignoreDefaultParameters: true
+  CognitiveComplexMethod:
+    active: true
+    excludes: [ '**/cardinal/bottomsheet/**' ]

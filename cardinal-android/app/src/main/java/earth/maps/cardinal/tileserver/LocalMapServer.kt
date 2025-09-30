@@ -84,221 +84,7 @@ class LocalMapServer(
         // Find an available port
         val availablePort = findAvailablePort()
 
-        server = embeddedServer(CIO, port = availablePort, host = "127.0.0.1") {
-            routing {
-                get("/") {
-                    call.respondText("Tile Server is running!")
-                }
-
-                get("/style_light.json") {
-                    try {
-                        val styleJson = readAssetFile("style_light.json")
-                        val modifiedStyleJson = styleJson.replace("{port}", port.toString())
-                        call.respondText(
-                            modifiedStyleJson, contentType = ContentType.Application.Json
-                        )
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error reading style_light.json", e)
-                        call.respondText(
-                            "Error reading style_light.json",
-                            status = HttpStatusCode.InternalServerError
-                        )
-                    }
-                }
-
-                get("/style_dark.json") {
-                    try {
-                        val styleJson = readAssetFile("style_dark.json")
-                        val modifiedStyleJson = styleJson.replace("{port}", port.toString())
-                        call.respondText(
-                            modifiedStyleJson, contentType = ContentType.Application.Json
-                        )
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error reading style_dark.json", e)
-                        call.respondText(
-                            "Error reading style_dark.json",
-                            status = HttpStatusCode.InternalServerError
-                        )
-                    }
-                }
-
-                // Valhalla-compatible routing endpoint
-                post("/route") {
-                    try {
-                        val requestBody = call.receiveText()
-                        Log.d(TAG, "Received routing request: $requestBody")
-
-                        val routeJson = multiplexedRoutingService.getRoute(requestBody)
-
-                        // Return the route response
-                        call.respondText(
-                            routeJson, contentType = ContentType.Application.Json
-                        )
-
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error processing routing request", e)
-                        call.respondText(
-                            "{\"error\":\"${e.message}\"}",
-                            contentType = ContentType.Application.Json,
-                            status = HttpStatusCode.InternalServerError
-                        )
-                    }
-                }
-
-                // Serve tiles from terrain.mbtiles.
-                get("/terrain/{z}/{x}/{y}.png") {
-                    val terrainDatabase = terrainDatabase ?: return@get
-
-                    val z = call.parameters["z"]?.toIntOrNull()
-                    val x = call.parameters["x"]?.toLongOrNull()
-                    val y = call.parameters["y"]?.toLongOrNull()
-
-                    if (z == null || x == null || y == null) {
-                        call.respondText(
-                            "Invalid tile coordinates", status = HttpStatusCode.BadRequest
-                        )
-                        return@get
-                    }
-
-                    // MBTiles uses TMS coordinate system, but most map libraries use XYZ
-                    // Convert Y coordinate from XYZ to TMS
-                    val tmsY = (2.0.pow(z.toDouble()) - 1 - y).toLong()
-
-                    val tileData = getTileData(terrainDatabase, z, x, tmsY)
-                    if (tileData != null) {
-                        call.respondBytes(tileData, contentType = ContentType.Image.PNG)
-                    } else {
-                        call.respondBytes(
-                            bytes = ByteArray(0),
-                            contentType = ContentType.Image.PNG,
-                            status = HttpStatusCode.NotFound
-                        )
-                    }
-                }
-
-
-                // Serve tiles from landcover.mbtiles.
-                get("/landcover/{z}/{x}/{y}.pbf") {
-                    val landcoverDatabase = landcoverDatabase ?: return@get
-
-                    val z = call.parameters["z"]?.toIntOrNull()
-                    val x = call.parameters["x"]?.toLongOrNull()
-                    val y = call.parameters["y"]?.toLongOrNull()
-
-                    if (z == null || x == null || y == null) {
-                        call.respondText(
-                            "Invalid tile coordinates", status = HttpStatusCode.BadRequest
-                        )
-                        return@get
-                    }
-
-                    // MBTiles uses TMS coordinate system, but most map libraries use XYZ
-                    // Convert Y coordinate from XYZ to TMS
-                    val tmsY = (2.0.pow(z.toDouble()) - 1 - y).toLong()
-
-                    val tileData = getTileData(landcoverDatabase, z, x, tmsY)
-                    if (tileData != null) {
-                        call.response.header("content-encoding", "gzip")
-                        call.respondBytes(tileData, contentType = ContentType.Application.ProtoBuf)
-                    } else {
-                        call.respondBytes(
-                            bytes = ByteArray(0),
-                            contentType = ContentType.Application.ProtoBuf,
-                            status = HttpStatusCode.NotFound
-                        )
-                    }
-                }
-
-                // Serve tiles from basemap.mbtiles.
-                get("/openmaptiles/{z}/{x}/{y}.pbf") {
-                    val z = call.parameters["z"]?.toIntOrNull()
-                    val x = call.parameters["x"]?.toLongOrNull()
-                    val y = call.parameters["y"]?.toLongOrNull()
-
-                    if (z == null || x == null || y == null) {
-                        Log.w(TAG, "Invalid tile coordinates: z=$z, x=$x, y=$y")
-                        call.respondText(
-                            "Invalid tile coordinates", status = HttpStatusCode.BadRequest
-                        )
-                        return@get
-                    }
-
-                    Log.d(TAG, "Requesting tile: /openmaptiles/$z/$x/$y.pbf")
-
-                    // MBTiles uses TMS (Tile Map Service) coordinate system where Y=0 is at the bottom
-                    // Most map libraries use XYZ coordinate system where Y=0 is at the top
-                    // Convert Y coordinate from XYZ to TMS: TMS_Y = 2^zoom - 1 - XYZ_Y
-                    val tmsY = (2.0.pow(z.toDouble()) - 1 - y).toLong()
-
-                    var isGzipped = true
-
-                    val basemapDatabase = basemapDatabase
-
-                    // First try to get tile from built-in database
-                    var tileData = if (basemapDatabase != null) {
-                        getTileData(basemapDatabase, z, x, tmsY)
-                    } else {
-                        Log.w(TAG, "Basemap database is null")
-                        null
-                    }
-
-                    // If not found, try offline databases
-                    if (tileData == null) {
-                        Log.d(TAG, "Tile not found in basemap database, checking offline databases")
-                        tileData = getTileDataFromOfflineDatabases(z, x, y)
-                        isGzipped = false
-                    } else {
-                        Log.d(TAG, "Tile found in basemap database")
-                    }
-
-                    if (tileData != null) {
-                        Log.d(
-                            TAG,
-                            "Serving tile /openmaptiles/$z/$x/$y.pbf, size: ${tileData.size} bytes, gzipped: $isGzipped"
-                        )
-                        // Only set gzip header for built-in database tiles
-                        if (isGzipped) {
-                            call.response.header("content-encoding", "gzip")
-                        }
-                        call.respondBytes(tileData, contentType = ContentType.Application.ProtoBuf)
-                    } else {
-                        // Check if we should fetch from the internet (not in offline mode)
-                        val isOfflineMode = isOfflineMode()
-                        if (!isOfflineMode) {
-                            Log.d(
-                                TAG,
-                                "Tile not found in local caches, attempting to fetch from internet"
-                            )
-                            tileData = CoroutineScope(Dispatchers.IO).async {
-                                fetchTileFromInternet(
-                                    z, x, y
-                                )
-                            }.await()
-                            if (tileData != null) {
-                                Log.d(
-                                    TAG,
-                                    "Successfully fetched tile from internet: /openmaptiles/$z/$x/$y.pbf, size: ${tileData.size} bytes"
-                                )
-                                call.respondBytes(
-                                    tileData, contentType = ContentType.Application.ProtoBuf
-                                )
-                                return@get
-                            }
-                        }
-
-                        Log.d(TAG, "Tile not found: /openmaptiles/$z/$x/$y.pbf")
-                        // If we respond with NotFound here (as would make sense) it will cause maplibre to cache the
-                        // fact that this tile doesn't exist in this source, which we don't want because it will never
-                        // retry, nor will it overzoom the previous tiles.
-                        call.respondBytes(
-                            bytes = ByteArray(0),
-                            contentType = ContentType.Application.ProtoBuf,
-                            status = HttpStatusCode.BadGateway
-                        )
-                    }
-                }
-            }
-        }
+        server = createEmbeddedServer(availablePort)
         server?.start(wait = false)
 
         port = availablePort
@@ -327,6 +113,179 @@ class LocalMapServer(
     fun getPort(): Int {
         return port
     }
+
+    private fun createEmbeddedServer(port: Int) =
+        embeddedServer(CIO, port = port, host = "127.0.0.1") {
+            routing {
+                handleRoot()
+                handleStyleLight()
+                handleStyleDark()
+                handleRoute()
+                handleTerrainTile()
+                handleLandcoverTile()
+                handleOpenMapTiles()
+            }
+        }
+
+    private fun io.ktor.server.routing.Routing.handleRoot() = get("/") {
+        call.respondText("Tile Server is running!")
+    }
+
+    private fun io.ktor.server.routing.Routing.handleStyleLight() = get("/style_light.json") {
+        try {
+            val styleJson = readAssetFile("style_light.json")
+            val modifiedStyleJson = styleJson.replace("{port}", port.toString())
+            call.respondText(
+                modifiedStyleJson, contentType = ContentType.Application.Json
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading style_light.json", e)
+            call.respondText(
+                "Error reading style_light.json",
+                status = HttpStatusCode.InternalServerError
+            )
+        }
+    }
+
+    private fun io.ktor.server.routing.Routing.handleStyleDark() = get("/style_dark.json") {
+        try {
+            val styleJson = readAssetFile("style_dark.json")
+            val modifiedStyleJson = styleJson.replace("{port}", port.toString())
+            call.respondText(
+                modifiedStyleJson, contentType = ContentType.Application.Json
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading style_dark.json", e)
+            call.respondText(
+                "Error reading style_dark.json",
+                status = HttpStatusCode.InternalServerError
+            )
+        }
+    }
+
+    private fun io.ktor.server.routing.Routing.handleRoute() = post("/route") {
+        try {
+            val requestBody = call.receiveText()
+            Log.d(TAG, "Received routing request: $requestBody")
+
+            val routeJson = multiplexedRoutingService.getRoute(requestBody)
+
+            // Return the route response
+            call.respondText(
+                routeJson, contentType = ContentType.Application.Json
+            )
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing routing request", e)
+            call.respondText(
+                "{\"error\":\"${e.message}\"}",
+                contentType = ContentType.Application.Json,
+                status = HttpStatusCode.InternalServerError
+            )
+        }
+    }
+
+    private fun io.ktor.server.routing.Routing.handleTerrainTile() =
+        get("/terrain/{z}/{x}/{y}.png") {
+            val terrainDatabase = terrainDatabase ?: return@get
+
+            val z = call.parameters["z"]?.toIntOrNull()
+            val x = call.parameters["x"]?.toLongOrNull()
+            val y = call.parameters["y"]?.toLongOrNull()
+
+            if (z == null || x == null || y == null) {
+                call.respondText(
+                    "Invalid tile coordinates", status = HttpStatusCode.BadRequest
+                )
+                return@get
+            }
+
+            // MBTiles uses TMS coordinate system, but most map libraries use XYZ
+            // Convert Y coordinate from XYZ to TMS
+            val tmsY = (2.0.pow(z.toDouble()) - 1 - y).toLong()
+
+            val tileData = getTileData(terrainDatabase, z, x, tmsY)
+            if (tileData != null) {
+                call.respondBytes(tileData, contentType = ContentType.Image.PNG)
+            } else {
+                call.respondBytes(
+                    bytes = ByteArray(0),
+                    contentType = ContentType.Image.PNG,
+                    status = HttpStatusCode.NotFound
+                )
+            }
+        }
+
+    private fun io.ktor.server.routing.Routing.handleLandcoverTile() =
+        get("/landcover/{z}/{x}/{y}.pbf") {
+            val landcoverDatabase = landcoverDatabase ?: return@get
+
+            val z = call.parameters["z"]?.toIntOrNull()
+            val x = call.parameters["x"]?.toLongOrNull()
+            val y = call.parameters["y"]?.toLongOrNull()
+
+            if (z == null || x == null || y == null) {
+                call.respondText(
+                    "Invalid tile coordinates", status = HttpStatusCode.BadRequest
+                )
+                return@get
+            }
+
+            // MBTiles uses TMS coordinate system, but most map libraries use XYZ
+            // Convert Y coordinate from XYZ to TMS
+            val tmsY = (2.0.pow(z.toDouble()) - 1 - y).toLong()
+
+            val tileData = getTileData(landcoverDatabase, z, x, tmsY)
+            if (tileData != null) {
+                call.response.header("content-encoding", "gzip")
+                call.respondBytes(tileData, contentType = ContentType.Application.ProtoBuf)
+            } else {
+                call.respondBytes(
+                    bytes = ByteArray(0),
+                    contentType = ContentType.Application.ProtoBuf,
+                    status = HttpStatusCode.NotFound
+                )
+            }
+        }
+
+    private fun io.ktor.server.routing.Routing.handleOpenMapTiles() =
+        get("/openmaptiles/{z}/{x}/{y}.pbf") {
+            val z = call.parameters["z"]?.toIntOrNull()
+            val x = call.parameters["x"]?.toLongOrNull()
+            val y = call.parameters["y"]?.toLongOrNull()
+
+            if (z == null || x == null || y == null) {
+                Log.w(TAG, "Invalid tile coordinates: z=$z, x=$x, y=$y")
+                call.respondText(
+                    "Invalid tile coordinates", status = HttpStatusCode.BadRequest
+                )
+                return@get
+            }
+
+            val (tileData, isGzipped) = findTileData(z, x, y)
+
+            if (tileData != null) {
+                Log.d(
+                    TAG,
+                    "Serving tile /openmaptiles/$z/$x/$y.pbf, size: ${tileData.size} bytes, gzipped: $isGzipped"
+                )
+                // Only set gzip header for built-in database tiles
+                if (isGzipped) {
+                    call.response.header("content-encoding", "gzip")
+                }
+                call.respondBytes(tileData, contentType = ContentType.Application.ProtoBuf)
+            } else {
+                Log.d(TAG, "Tile not found: /openmaptiles/$z/$x/$y.pbf")
+                // If we respond with NotFound here (as would make sense) it will cause maplibre to cache the
+                // fact that this tile doesn't exist in this source, which we don't want because it will never
+                // retry, nor will it overzoom the previous tiles.
+                call.respondBytes(
+                    bytes = ByteArray(0),
+                    contentType = ContentType.Application.ProtoBuf,
+                    status = HttpStatusCode.BadGateway
+                )
+            }
+        }
 
     private fun readAssetFile(fileName: String): String {
         return context.assets.open(fileName).use { inputStream ->
@@ -550,6 +509,44 @@ class LocalMapServer(
 
         Log.d(TAG, "Tile not found in offline database")
         return null
+    }
+
+    /**
+     * Find tile data for given coordinates from available sources
+     */
+    private suspend fun findTileData(z: Int, x: Long, y: Long): Pair<ByteArray?, Boolean> {
+        val tmsY = (2.0.pow(z.toDouble()) - 1 - y).toLong()
+
+        // First try to get tile from built-in database
+        val tileData = basemapDatabase?.let { getTileData(it, z, x, tmsY) }
+        if (tileData != null) {
+            Log.d(TAG, "Tile found in basemap database")
+            return Pair(tileData, true) // gzipped
+        }
+
+        // If not found, try offline databases
+        Log.d(TAG, "Tile not found in basemap database, checking offline databases")
+        val offlineTileData = getTileDataFromOfflineDatabases(z, x, y)
+        if (offlineTileData != null) {
+            return Pair(offlineTileData, false) // not gzipped
+        }
+
+        // Check if we should fetch from the internet (not in offline mode)
+        if (!isOfflineMode()) {
+            Log.d(TAG, "Tile not found in local caches, attempting to fetch from internet")
+            val internetTileData = CoroutineScope(Dispatchers.IO).async {
+                fetchTileFromInternet(z, x, y)
+            }.await()
+            if (internetTileData != null) {
+                Log.d(
+                    TAG,
+                    "Successfully fetched tile from internet: size: ${internetTileData.size} bytes"
+                )
+                return Pair(internetTileData, false) // not gzipped
+            }
+        }
+
+        return Pair(null, false) // not found
     }
 
     /**
