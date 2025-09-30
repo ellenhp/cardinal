@@ -102,15 +102,10 @@ fun ManagePlacesScreen(
     val clipboard by viewModel.clipboard.collectAsState(emptySet())
     val selectedItems by viewModel.selectedItems.collectAsState()
     val isAllSelected by viewModel.isAllSelected.collectAsState(initial = false)
-    val showDeleteConfirmation = remember { mutableStateOf(false) }
-    val showCreateListDialog = remember { mutableStateOf(false) }
-    val showEditDialog = remember { mutableStateOf(false) }
-    val editingItem = remember { mutableStateOf<ListContent?>(null) }
-    var newListName by remember { mutableStateOf("") }
-    var showEmptyNameWarning by remember { mutableStateOf(false) }
-    var editName by remember { mutableStateOf("") }
-    var editDescription by remember { mutableStateOf("") }
-    var editPinned by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showCreateListDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var editingItem by remember { mutableStateOf<ListContent?>(null) }
     var fabMenuExpanded by remember { mutableStateOf(false) }
 
     // Initialize the view model with the listId if provided
@@ -119,8 +114,7 @@ fun ManagePlacesScreen(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = {
+        contentWindowInsets = WindowInsets.safeDrawing, topBar = {
             ManagePlacesTopBar(
                 navController = navController,
                 title = currentListName ?: stringResource(string.saved_places_title_case),
@@ -157,8 +151,7 @@ fun ManagePlacesScreen(
                                 coroutineScope.launch {
                                     val place = viewModel.getSavedPlace(item.id) ?: return@launch
                                     NavigationUtils.navigate(
-                                        navController,
-                                        Screen.PlaceCard(place)
+                                        navController, Screen.PlaceCard(place)
                                     )
                                 }
                             }
@@ -166,27 +159,20 @@ fun ManagePlacesScreen(
                             is ListContentItem -> {
                                 currentListId?.let { currentListId ->
                                     NavigationUtils.navigate(
-                                        navController,
-                                        Screen.ManagePlaces(
-                                            item.id,
-                                            parents = parents.plus(currentListName ?: "")
-                                        ),
-                                        avoidCycles = false
+                                        navController, Screen.ManagePlaces(
+                                            item.id, parents = parents.plus(currentListName ?: "")
+                                        ), avoidCycles = false
                                     )
                                 }
                             }
                         }
                     },
-                    onEditClick = { editingItem.value = it; showEditDialog.value = true }
-                )
+                    onEditClick = { editingItem = it; showEditDialog = true })
             }
         }
         val modifier = if (fabMenuExpanded) {
-            Modifier
-                .clickable(
-                    indication = null,
-                    interactionSource = null,
-                    onClick = { fabMenuExpanded = false })
+            Modifier.clickable(
+                indication = null, interactionSource = null, onClick = { fabMenuExpanded = false })
         } else {
             Modifier
         }
@@ -200,266 +186,306 @@ fun ManagePlacesScreen(
                 modifier = Modifier.align(Alignment.BottomEnd),
                 expanded = fabMenuExpanded,
                 button = {
-                    ToggleFloatingActionButton(
-                        checked = fabMenuExpanded,
-                        onCheckedChange = {
-                            fabMenuExpanded = it
-                        },
-                        content = {
-                            val close = painterResource(drawable.ic_close)
-                            val open = painterResource(drawable.ic_menu)
-                            val painter by remember {
-                                derivedStateOf {
-                                    if (checkedProgress > 0.5f) close else open
-                                }
+                    ToggleFloatingActionButton(checked = fabMenuExpanded, onCheckedChange = {
+                        fabMenuExpanded = it
+                    }, content = {
+                        val close = painterResource(drawable.ic_close)
+                        val open = painterResource(drawable.ic_menu)
+                        val painter by remember {
+                            derivedStateOf {
+                                if (checkedProgress > 0.5f) close else open
                             }
-                            Icon(
-                                painter = painter,
-                                contentDescription = null,
-                                modifier = Modifier.animateIcon({ checkedProgress }),
-                            )
                         }
-                    )
-                }
-            ) {
-                FloatingActionButtonMenuItem(
-                    onClick = {
-                        showCreateListDialog.value = true
-                        fabMenuExpanded = false
-                    },
-                    text = {
-                        Text(
-                            text = stringResource(
-                                string.new_list
-                            )
-                        )
-                    },
-                    icon = {
                         Icon(
-                            painter = painterResource(drawable.ic_new_list),
-                            contentDescription = null
+                            painter = painter,
+                            contentDescription = null,
+                            modifier = Modifier.animateIcon({ checkedProgress }),
                         )
                     })
+                }) {
+                FloatingActionButtonMenuItem(onClick = {
+                    showCreateListDialog = true
+                    fabMenuExpanded = false
+                }, text = {
+                    Text(
+                        text = stringResource(
+                            string.new_list
+                        )
+                    )
+                }, icon = {
+                    Icon(
+                        painter = painterResource(drawable.ic_new_list), contentDescription = null
+                    )
+                })
 
-                FloatingActionButtonMenuItem(
-                    onClick = {
-                        viewModel.cutSelected()
-                        fabMenuExpanded = false
-                    },
-                    text = {
-                        Text(text = stringResource(string.cut))
-                    },
-                    icon = {
-                        Icon(
-                            painter = painterResource(drawable.ic_content_cut),
-                            contentDescription = null
-                        )
+                FloatingActionButtonMenuItem(onClick = {
+                    viewModel.cutSelected()
+                    fabMenuExpanded = false
+                }, text = {
+                    Text(text = stringResource(string.cut))
+                }, icon = {
+                    Icon(
+                        painter = painterResource(drawable.ic_content_cut),
+                        contentDescription = null
+                    )
+                })
+                FloatingActionButtonMenuItem(onClick = {
+                    viewModel.pasteSelected()
+                    fabMenuExpanded = false
+                }, text = {
+                    Text(text = stringResource(string.paste))
+                }, icon = {
+                    Icon(
+                        painter = painterResource(drawable.ic_content_paste),
+                        contentDescription = null
+                    )
+                })
+                FloatingActionButtonMenuItem(onClick = {
+                    showDeleteConfirmation = true
+                    fabMenuExpanded = false
+                }, text = {
+                    Text(text = stringResource(string.delete))
+                }, icon = {
+                    Icon(
+                        painter = painterResource(drawable.ic_delete), contentDescription = null
+                    )
+                })
+                FloatingActionButtonMenuItem(onClick = {
+                    if (isAllSelected) {
+                        viewModel.clearSelection()
+                    } else {
+                        viewModel.selectAll()
                     }
-                )
-                FloatingActionButtonMenuItem(
-                    onClick = {
-                        viewModel.pasteSelected()
-                        fabMenuExpanded = false
-                    },
-                    text = {
-                        Text(text = stringResource(string.paste))
-                    },
-                    icon = {
-                        Icon(
-                            painter = painterResource(drawable.ic_content_paste),
-                            contentDescription = null
-                        )
-                    }
-                )
-                FloatingActionButtonMenuItem(
-                    onClick = {
-                        showDeleteConfirmation.value = true
-                        fabMenuExpanded = false
-                    },
-                    text = {
-                        Text(text = stringResource(string.delete))
-                    },
-                    icon = {
-                        Icon(
-                            painter = painterResource(drawable.ic_delete),
-                            contentDescription = null
-                        )
-                    }
-                )
-                FloatingActionButtonMenuItem(
-                    onClick = {
-                        if (isAllSelected) {
-                            viewModel.clearSelection()
-                        } else {
-                            viewModel.selectAll()
-                        }
-                    },
-                    text = {
-                        Text(text = stringResource(if (isAllSelected) string.deselect_all else string.select_all))
-                    },
-                    icon = {
-                        Icon(
-                            painter = painterResource(if (isAllSelected) drawable.ic_clear_selection else drawable.ic_select_all),
-                            contentDescription = null
-                        )
-                    }
-                )
+                }, text = {
+                    Text(text = stringResource(if (isAllSelected) string.deselect_all else string.select_all))
+                }, icon = {
+                    Icon(
+                        painter = painterResource(if (isAllSelected) drawable.ic_clear_selection else drawable.ic_select_all),
+                        contentDescription = null
+                    )
+                })
             }
         }
     }
 
-    if (showDeleteConfirmation.value) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirmation.value = false },
-            title = { Text(stringResource(string.confirm_delete)) },
-            text = { Text(stringResource(string.delete_confirmation_message, selectedItems.size)) },
-            confirmButton = {
-                Button(onClick = {
-                    viewModel.deleteSelected()
-                    showDeleteConfirmation.value = false
-                }) {
-                    Text(stringResource(string.delete))
-                }
-            },
-            dismissButton = {
-                Button(onClick = { showDeleteConfirmation.value = false }) {
-                    Text(stringResource(string.cancel))
-                }
-            }
-        )
+    if (showDeleteConfirmation) {
+        DeleteConfirmationDialog(
+            selectedItemsCount = selectedItems.size,
+            onDelete = { viewModel.deleteSelected() },
+            onDismiss = {
+                showCreateListDialog = false
+            })
     }
 
-    if (showCreateListDialog.value) {
-        AlertDialog(
-            onDismissRequest = {
-                showCreateListDialog.value = false
+    if (showCreateListDialog) {
+        CreateListDialog(onCreate = {
+            viewModel.createNewListWithSelected(it)
+        }, onDismiss = {
+            showCreateListDialog = false
+        })
+    }
+    if (showEditDialog) {
+        EditDialog(editingItem = editingItem, viewModel = viewModel, onDismiss = {
+            showEditDialog = false
+        })
+    }
+}
+
+@Composable
+private fun DeleteConfirmationDialog(
+    selectedItemsCount: Int,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text(stringResource(string.confirm_delete)) },
+        text = { Text(stringResource(string.delete_confirmation_message, selectedItemsCount)) },
+        confirmButton = {
+            Button(onClick = {
+                onDelete()
+                onDismiss()
+            }) {
+                Text(stringResource(string.delete))
+            }
+        },
+        dismissButton = {
+            Button(onClick = { onDismiss() }) {
+                Text(stringResource(string.cancel))
+            }
+        })
+}
+
+@Composable
+private fun CreateListDialog(
+    onCreate: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var newListName by remember { mutableStateOf("") }
+    var showEmptyNameWarning by remember { mutableStateOf(false) }
+
+    AlertDialog(onDismissRequest = {
+        onDismiss()
+        newListName = ""
+        showEmptyNameWarning = false
+    }, title = { Text(stringResource(string.add_new_list)) }, text = {
+        Column {
+            OutlinedTextField(
+                value = newListName,
+                onValueChange = {
+                    newListName = it
+                    if (showEmptyNameWarning) showEmptyNameWarning = false
+                },
+                label = { Text(stringResource(string.list_name)) },
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (showEmptyNameWarning) {
+                Text(
+                    modifier = Modifier.padding(4.dp),
+                    text = stringResource(string.list_name_cannot_be_empty),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }, confirmButton = {
+        Button(onClick = {
+            if (newListName.isBlank()) {
+                showEmptyNameWarning = true
+            } else {
+                onCreate(newListName)
+                onDismiss()
                 newListName = ""
                 showEmptyNameWarning = false
-            },
-            title = { Text(stringResource(string.add_new_list)) },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = newListName,
-                        onValueChange = {
-                            newListName = it
-                            if (showEmptyNameWarning) showEmptyNameWarning = false
-                        },
-                        label = { Text(stringResource(string.list_name)) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (showEmptyNameWarning) {
-                        Text(
-                            modifier = Modifier.padding(4.dp),
-                            text = stringResource(string.list_name_cannot_be_empty),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
+            }
+        }) {
+            Text(stringResource(string.add_new_list))
+        }
+    }, dismissButton = {
+        Button(onClick = {
+            onDismiss()
+            newListName = ""
+            showEmptyNameWarning = false
+        }) {
+            Text(stringResource(string.cancel))
+        }
+    })
+}
+
+@Composable
+private fun EditDialog(
+    editingItem: ListContent?,
+    viewModel: ManagePlacesViewModel,
+    onDismiss: () -> Unit,
+) {
+    editingItem?.let { item ->
+        var editName by remember { mutableStateOf("") }
+        var editDescription by remember { mutableStateOf("") }
+        var editPinned by remember { mutableStateOf(false) }
+
+        LaunchedEffect(item) {
+            when (item) {
+                is PlaceContent -> {
+                    editName = item.name
+                    editDescription = item.customDescription ?: ""
+                    editPinned = item.isPinned
                 }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    if (newListName.isBlank()) {
-                        showEmptyNameWarning = true
-                    } else {
-                        viewModel.createNewListWithSelected(newListName)
-                        showCreateListDialog.value = false
-                        newListName = ""
-                        showEmptyNameWarning = false
-                    }
-                }) {
-                    Text(stringResource(string.add_new_list))
-                }
-            },
-            dismissButton = {
-                Button(onClick = {
-                    showCreateListDialog.value = false
-                    newListName = ""
-                    showEmptyNameWarning = false
-                }) {
-                    Text(stringResource(string.cancel))
+
+                is ListContentItem -> {
+                    editName = item.name
+                    editDescription = item.description ?: ""
+                    editPinned = false
                 }
             }
-        )
-    }
+        }
 
-    if (showEditDialog.value) {
-        editingItem.value?.let { item ->
-            LaunchedEffect(item) {
+        val title = when (item) {
+            is PlaceContent -> stringResource(string.edit_place)
+            is ListContentItem -> stringResource(string.edit_list)
+        }
+
+        AlertDialog(onDismissRequest = { onDismiss() }, title = { Text(title) }, text = {
+            Column {
+                OutlinedTextField(
+                    value = editName,
+                    onValueChange = { editName = it },
+                    label = { Text(stringResource(string.name)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = editDescription,
+                    onValueChange = { editDescription = it },
+                    label = { Text(stringResource(string.description)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (item is PlaceContent) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = editPinned, onCheckedChange = { editPinned = it })
+                        Text(stringResource(string.pin_place))
+                    }
+                }
+            }
+        }, confirmButton = {
+            Button(onClick = {
+                val name = editName.ifBlank { null }
+                val desc = editDescription
                 when (item) {
-                    is PlaceContent -> {
-                        editName = item.name
-                        editDescription = item.customDescription ?: ""
-                        editPinned = item.isPinned
-                    }
+                    is PlaceContent -> viewModel.updatePlace(
+                        item.id, name, desc, editPinned
+                    )
 
-                    is ListContentItem -> {
-                        editName = item.name
-                        editDescription = item.description ?: ""
-                        editPinned = false
-                    }
+                    is ListContentItem -> viewModel.updateList(item.id, name, desc)
                 }
+                onDismiss()
+            }) {
+                Text(stringResource(string.save))
             }
-
-            val title = when (item) {
-                is PlaceContent -> stringResource(string.edit_place)
-                is ListContentItem -> stringResource(string.edit_list)
+        }, dismissButton = {
+            Button(onClick = { onDismiss() }) {
+                Text(stringResource(string.cancel))
             }
+        })
+    }
+}
 
-            AlertDialog(
-                onDismissRequest = { showEditDialog.value = false },
-                title = { Text(title) },
-                text = {
-                    Column {
-                        OutlinedTextField(
-                            value = editName,
-                            onValueChange = { editName = it },
-                            label = { Text(stringResource(string.name)) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        OutlinedTextField(
-                            value = editDescription,
-                            onValueChange = { editDescription = it },
-                            label = { Text(stringResource(string.description)) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        if (item is PlaceContent) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(
-                                    checked = editPinned,
-                                    onCheckedChange = { editPinned = it }
-                                )
-                                Text(stringResource(string.pin_place))
-                            }
+@Composable
+private fun Breadcrumbs(
+    navController: NavController,
+    breadcrumbNames: List<String>,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = dimensionResource(dimen.padding)),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        breadcrumbNames.forEachIndexed { index, name ->
+            if (index > 0) {
+                Text(
+                    text = " - ", // Don't replace this with a carat or arrow without dealing with RTL layouts.
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (index == breadcrumbNames.size - 1) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = if (index < breadcrumbNames.size - 1) {
+                    Modifier.clickable {
+                        // Navigate back to this level
+                        repeat(breadcrumbNames.size - 1 - index) {
+                            navController.popBackStack()
                         }
                     }
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        val name = editName.ifBlank { null }
-                        val desc = editDescription // Allow blank descriptions.
-                        when (item) {
-                            is PlaceContent -> viewModel.updatePlace(
-                                item.id,
-                                name,
-                                desc,
-                                editPinned
-                            )
-
-                            is ListContentItem -> viewModel.updateList(item.id, name, desc)
-                        }
-                        showEditDialog.value = false
-                    }) {
-                        Text(stringResource(string.save))
-                    }
-                },
-                dismissButton = {
-                    Button(onClick = { showEditDialog.value = false }) {
-                        Text(stringResource(string.cancel))
-                    }
-                }
-            )
+                } else {
+                    Modifier
+                })
         }
     }
 }
@@ -482,45 +508,10 @@ private fun ManagePlacesTopBar(
                 )
                 // Breadcrumbs
                 if (breadcrumbNames.size > 1) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = dimensionResource(dimen.padding)),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        breadcrumbNames.forEachIndexed { index, name ->
-                            if (index > 0) {
-                                Text(
-                                    text = " - ", // Don't replace this with a carat or arrow without dealing with RTL layouts.
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Text(
-                                text = name,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (index == breadcrumbNames.size - 1) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                                modifier = if (index < breadcrumbNames.size - 1) {
-                                    Modifier.clickable {
-                                        // Navigate back to this level
-                                        repeat(breadcrumbNames.size - 1 - index) {
-                                            navController.popBackStack()
-                                        }
-                                    }
-                                } else {
-                                    Modifier
-                                }
-                            )
-                        }
-                    }
+                    Breadcrumbs(navController, breadcrumbNames)
                 }
             }
-        }
-    )
+        })
 }
 
 @Composable
@@ -570,8 +561,7 @@ private fun ListContentGrid(
         if (shouldShowListsHeader) {
             item {
                 SectionHeader(
-                    title = stringResource(string.saved_lists),
-                    modifier = Modifier.padding(
+                    title = stringResource(string.saved_lists), modifier = Modifier.padding(
                         vertical = dimensionResource(dimen.padding_minor),
                         horizontal = dimensionResource(dimen.padding)
                     )
@@ -647,8 +637,7 @@ private fun ListContentGrid(
 
 @Composable
 private fun SectionHeader(
-    title: String,
-    modifier: Modifier = Modifier
+    title: String, modifier: Modifier = Modifier
 ) {
     Text(
         text = title,
