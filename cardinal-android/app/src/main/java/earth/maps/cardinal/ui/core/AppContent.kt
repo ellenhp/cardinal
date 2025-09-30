@@ -243,241 +243,35 @@ fun AppContent(
             Screen.HOME_SEARCH,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            state.showToolbar = true
-            HomeScreenComposable(
-                viewModel = homeViewModel,
-                cameraState = state.cameraState,
-                mapPins = state.mapPins,
-                peekHeight = state.peekHeight,
-                navController = navController,
-                onPeekHeightChange = {
-                    state.peekHeight = it
-                },
-                onFabHeightChange = {
-                    state.fabHeight = it
-                },
-                topOfBackStack = topOfBackStack,
-                backStackEntry = backStackEntry,
-                screenWidthDp = state.screenWidthDp,
-                screenHeightDp = state.screenHeightDp,
-                appPreferenceRepository = appPreferenceRepository
-            )
+            HomeRoute(state, homeViewModel, navController, topOfBackStack, appPreferenceRepository, backStackEntry)
         }
 
         composable(
             Screen.NEARBY_POI,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            state.showToolbar = true
-
-            val bottomSheetState = rememberBottomSheetState(
-                initialValue = BottomSheetValue.Collapsed
-            )
-            val scaffoldState =
-                rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
-
-            CardinalAppScaffold(
-                scaffoldState = scaffoldState, peekHeight = state.screenHeightDp / 3,
-                content = {
-                    NearbyScreenContent(viewModel = nearbyViewModel, onPlaceSelected = {
-                        NavigationUtils.navigate(navController, Screen.PlaceCard(it))
-                    })
-                },
-                fabHeightCallback = {
-                    if (topOfBackStack == backStackEntry) {
-                        state.fabHeight = it
-                    }
-                },
-            )
-
+            NearbyPoiRoute(state, nearbyViewModel, navController, topOfBackStack, backStackEntry)
         }
 
         composable(
             Screen.NEARBY_TRANSIT,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            state.showToolbar = true
-
-            val bottomSheetState = rememberBottomSheetState(
-                initialValue = BottomSheetValue.Collapsed
-            )
-            val scaffoldState =
-                rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
-
-            CardinalAppScaffold(
-                scaffoldState = scaffoldState, peekHeight = state.screenHeightDp / 3,
-                content = {
-                    TransitScreenContent(viewModel = transitViewModel, onRouteClicked = {
-                        NavigationUtils.navigate(navController, Screen.PlaceCard(it))
-                    })
-                },
-                fabHeightCallback = {
-                    if (topOfBackStack == backStackEntry) {
-                        state.fabHeight = it
-                    }
-                },
-            )
+            NearbyTransitRoute(state, transitViewModel, navController, topOfBackStack, backStackEntry)
         }
 
         composable(
             Screen.PLACE_CARD,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            state.showToolbar = false
-
-            val bottomSheetState = rememberBottomSheetState(
-                initialValue = BottomSheetValue.Collapsed
-            )
-            val scaffoldState =
-                rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
-
-            LaunchedEffect(key1 = Unit) {
-                // The place card starts partially expanded.
-                state.coroutineScope.launch {
-                    scaffoldState.bottomSheetState.collapse()
-                }
-            }
-
-            val viewModel: PlaceCardViewModel = hiltViewModel()
-            val placeJson = backStackEntry.arguments?.getString("place")
-            val place = placeJson?.let { Gson().fromJson(it, Place::class.java) }
-            place?.let { place ->
-                viewModel.setPlace(place)
-                LaunchedEffect(place) {
-                    // Clear any existing pins and add the new one to ensure only one pin is shown at a time
-                    state.mapPins.clear()
-                    state.mapPins.add(place)
-
-                    val previousBackStackEntry = navController.previousBackStackEntry
-                    val shouldFlyToPoi =
-                        previousBackStackEntry?.destination?.route?.startsWith(Screen.DIRECTIONS) != true
-
-                    // Only animate if we're entering from the home screen, as opposed to e.g. popping from the
-                    // settings screen. This is brittle and may break if we end up with more entry points.
-                    if (shouldFlyToPoi) {
-                        state.coroutineScope.launch {
-                            state.cameraState.animateTo(
-                                CameraPosition(
-                                    target = Position(
-                                        latitude = place.latLng.latitude,
-                                        longitude = place.latLng.longitude
-                                    ), zoom = 15.0, padding = PaddingValues(
-                                        start = state.screenWidthDp / 8,
-                                        top = state.screenHeightDp / 8,
-                                        end = state.screenWidthDp / 8,
-                                        bottom = min(
-                                            3f * state.screenHeightDp / 4,
-                                            state.peekHeight + state.screenHeightDp / 8
-                                        )
-                                    )
-                                ),
-                                duration = appPreferenceRepository.animationSpeedDurationValue,
-                            )
-                        }
-                    }
-                }
-
-                CardinalAppScaffold(
-                    scaffoldState = scaffoldState, peekHeight = state.peekHeight,
-                    content = {
-                        PlaceCardScreen(place = place, viewModel = viewModel, onBack = {
-                            navController.popBackStack()
-                        }, onGetDirections = { place ->
-                            NavigationUtils.navigate(
-                                navController, Screen.Directions(fromPlace = null, toPlace = place)
-                            )
-                        }, onPeekHeightChange = {
-                            if (topOfBackStack == backStackEntry) {
-                                state.peekHeight = it
-                            }
-                        })
-                    },
-                    showToolbar = false,
-                    fabHeightCallback = {
-                        if (topOfBackStack == backStackEntry) {
-                            state.fabHeight = it
-                        }
-                    },
-                )
-            }
+            PlaceCardRoute(state, navController, topOfBackStack, appPreferenceRepository, backStackEntry)
         }
 
         composable(
             Screen.OFFLINE_AREAS,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            state.showToolbar = true
-            val bottomSheetState = rememberBottomSheetState(
-                initialValue = BottomSheetValue.Collapsed
-            )
-            val scaffoldState =
-                rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
-
-            LaunchedEffect(key1 = Unit) {
-                state.mapPins.clear()
-                state.peekHeight = state.screenHeightDp / 3 // Approx, empirical
-                state.coroutineScope.launch {
-                    scaffoldState.bottomSheetState.collapse()
-                }
-            }
-            DisposableEffect(key1 = Unit) {
-                onDispose {
-                    state.selectedOfflineArea = null
-                }
-            }
-            val viewModel: OfflineAreasViewModel = hiltViewModel()
-            val snackBarHostState = remember { SnackbarHostState() }
-
-            // Track the current viewport reactively
-            var currentViewport by remember { mutableStateOf(state.cameraState.projection?.queryVisibleRegion()) }
-
-            // Update viewport when camera state changes
-            LaunchedEffect(state.cameraState.position) {
-                currentViewport = state.cameraState.projection?.queryVisibleRegion()
-            }
-
-            currentViewport?.let { visibleRegion ->
-                CardinalAppScaffold(
-                    scaffoldState = scaffoldState,
-                    peekHeight = state.peekHeight,
-                    fabHeightCallback = {
-                        if (topOfBackStack == backStackEntry) {
-                            state.fabHeight = it
-                        }
-                    },
-                    content = {
-                        OfflineAreasScreen(
-                            currentViewport = visibleRegion,
-                            currentZoom = state.cameraState.position.zoom,
-                            viewModel = viewModel,
-                            snackBarHostState = snackBarHostState,
-                            onDismiss = {
-                                navController.popBackStack()
-                            },
-                            onAreaSelected = { area ->
-                                state.coroutineScope.launch {
-                                    scaffoldState.bottomSheetState.collapse()
-                                    state.cameraState.animateTo(
-                                        boundingBox = BoundingBox(
-                                            area.west, area.south, area.east, area.north
-                                        ),
-                                        padding = PaddingValues(
-                                            start = state.screenWidthDp / 8,
-                                            top = state.screenHeightDp / 8,
-                                            end = state.screenWidthDp / 8,
-                                            bottom = min(
-                                                3f * state.screenHeightDp / 4,
-                                                state.peekHeight + state.screenHeightDp / 8
-                                            )
-                                        ),
-                                        duration = appPreferenceRepository.animationSpeedDurationValue
-                                    )
-                                }
-                                state.selectedOfflineArea = area
-                            })
-                    },
-                )
-            }
+            OfflineAreasRoute(state, navController, topOfBackStack, appPreferenceRepository, backStackEntry)
         }
 
         composable(
@@ -487,11 +281,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            state.showToolbar = true
-            SettingsScreen(
-                navController = navController,
-                viewModel = hiltViewModel(),
-            )
+            SettingsRoute(state, navController)
         }
 
         composable(
@@ -501,17 +291,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            state.showToolbar = true
-            val viewModel: SettingsViewModel = hiltViewModel()
-            PrivacySettingsScreen(
-                viewModel = viewModel,
-                onDismiss = { navController.popBackStack() },
-                onNavigateToOfflineAreas = {
-                    NavigationUtils.navigate(
-                        navController, Screen.OfflineAreas
-                    )
-                },
-            )
+            PrivacySettingsRoute(state, navController)
         }
 
         composable(
@@ -521,11 +301,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            state.showToolbar = true
-            val viewModel: SettingsViewModel = hiltViewModel()
-            AccessibilitySettingsScreen(
-                viewModel = viewModel, onDismiss = { navController.popBackStack() })
-
+            AccessibilitySettingsRoute(state, navController)
         }
 
         composable(
@@ -535,11 +311,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            state.showToolbar = true
-            val viewModel: SettingsViewModel = hiltViewModel()
-            AdvancedSettingsScreen(
-                viewModel = viewModel
-            )
+            AdvancedSettingsRoute(state, navController)
         }
 
         composable(
@@ -549,10 +321,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            state.showToolbar = true
-            RoutingProfilesScreen(
-                navController = navController
-            )
+            RoutingProfilesRoute(state, navController)
         }
 
         composable(
@@ -562,25 +331,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) { backStackEntry ->
-            LaunchedEffect(key1 = Unit) {
-                state.mapPins.clear()
-            }
-
-            val snackBarHostState = remember { SnackbarHostState() }
-
-            val profileId = backStackEntry.arguments?.getString("profileId")
-            Scaffold(
-                snackbarHost = { SnackbarHost(snackBarHostState) },
-                contentWindowInsets = WindowInsets.safeDrawing,
-                content = { padding ->
-                    Box(modifier = Modifier.padding(padding)) {
-                        ProfileEditorScreen(
-                            navController = navController,
-                            profileId = profileId,
-                            snackBarHostState = snackBarHostState
-                        )
-                    }
-                })
+            ProfileEditorRoute(state, navController, backStackEntry)
         }
 
         composable(
@@ -590,241 +341,25 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) { backStackEntry ->
-            state.showToolbar = true
-
-            val listIdRaw = backStackEntry.arguments?.getString("listId")
-            // The screen is set up to take a real value, or null. What we end up with at this point (sometimes?)
-            // is an empty string instead of null.
-            val listId = if (listIdRaw.isNullOrBlank()) {
-                null
-            } else {
-                listIdRaw
-            }
-            val parentsGson = backStackEntry.arguments?.getString("parents")?.let { Uri.decode(it) }
-            val parents: List<String> =
-                parentsGson?.let { Gson().fromJson(it, object : TypeToken<List<String>>() {}.type) }
-                    ?: emptyList()
-            ManagePlacesScreen(
-                navController = navController,
-                listId = listId,
-                parents = parents,
-            )
+            ManagePlacesRoute(state, navController, backStackEntry)
         }
 
         composable(
             Screen.DIRECTIONS,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            state.showToolbar = false
-            val bottomSheetState =
-                rememberBottomSheetState(initialValue = BottomSheetValue.Collapsed)
-            val scaffoldState =
-                rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
-
-            val viewModel: DirectionsViewModel = hiltViewModel()
-            mapViewModel.locationFlow.collectAsState().value
-
-            // Handle initial place setup
-            LaunchedEffect(key1 = Unit) {
-                val fromPlaceJson = backStackEntry.arguments?.getString("fromPlace")
-                val fromPlace =
-                    fromPlaceJson?.let { Gson().fromJson(Uri.decode(it), Place::class.java) }
-                val toPlaceJson = backStackEntry.arguments?.getString("toPlace")
-                val toPlace =
-                    toPlaceJson?.let { Gson().fromJson(Uri.decode(it), Place::class.java) }
-
-                if (fromPlace != null) {
-                    viewModel.updateFromPlace(fromPlace)
-                }
-                viewModel.updateToPlace(toPlace)
-            }
-
-            val polylinePadding = PaddingValues(
-                start = state.screenWidthDp / 8,
-                top = state.screenHeightDp / 8,
-                end = state.screenWidthDp / 8,
-                bottom = min(
-                    3f * state.screenHeightDp / 4,
-                    state.peekHeight + state.screenHeightDp / 8
-                )
-            )
-
-            // Handle route display and camera animation
-            RouteDisplayHandler(
-                viewModel = viewModel,
-                cameraState = state.cameraState,
-                appPreferences = appPreferenceRepository,
-                padding = polylinePadding,
-                onRouteUpdate = { route -> state.currentRoute = route })
-            DisposableEffect(key1 = Unit) {
-                onDispose {
-                    state.currentRoute = null
-                }
-            }
-
-            CardinalAppScaffold(
-                scaffoldState = scaffoldState, peekHeight = state.peekHeight,
-                content = {
-                    DirectionsScreen(
-                        viewModel = viewModel,
-                        onPeekHeightChange = {
-                            if (topOfBackStack == backStackEntry) {
-                                state.peekHeight = it
-                            }
-                        },
-                        onBack = { navController.popBackStack() },
-                        onFullExpansionRequired = {
-                            state.coroutineScope.launch {
-                                scaffoldState.bottomSheetState.expand()
-                            }
-                        },
-                        navController = navController,
-                        hasLocationPermission = hasLocationPermission,
-                        onRequestLocationPermission = onRequestLocationPermission,
-                        hasNotificationPermission = hasNotificationPermission,
-                        onRequestNotificationPermission = onRequestNotificationPermission,
-                        appPreferences = appPreferenceRepository
-                    )
-                },
-                showToolbar = false,
-                fabHeightCallback = {
-                    if (topOfBackStack == backStackEntry) {
-                        state.fabHeight = it
-                    }
-                },
-            )
+            DirectionsRoute(state, mapViewModel, navController, topOfBackStack, appPreferenceRepository, hasLocationPermission, onRequestLocationPermission, hasNotificationPermission, onRequestNotificationPermission, backStackEntry)
         }
 
         composable(
             Screen.TRANSIT_ITINERARY_DETAIL,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            state.showToolbar = false
-
-            val bottomSheetState = rememberBottomSheetState(
-                initialValue = BottomSheetValue.Collapsed
-            )
-            val scaffoldState =
-                rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
-
-            LaunchedEffect(key1 = Unit) {
-                state.coroutineScope.launch {
-                    scaffoldState.bottomSheetState.collapse()
-                }
-            }
-
-            val itineraryJson = backStackEntry.arguments?.getString("itinerary")
-            val itinerary = itineraryJson?.let {
-                Gson().fromJson(Uri.decode(it), earth.maps.cardinal.transit.Itinerary::class.java)
-            }
-
-            itinerary?.let { itinerary ->
-                LaunchedEffect(itinerary) {
-                    // Set current transit itinerary for map display
-                    state.currentTransitItinerary = itinerary
-
-                    // Extract all leg geometries and calculate bounding box
-                    val allPositions = mutableListOf<Position>()
-
-                    itinerary.legs.forEach { leg ->
-                        leg.legGeometry?.let { geometry ->
-                            try {
-                                val positions =
-                                    earth.maps.cardinal.data.PolylineUtils.decodePolyline(
-                                        geometry.points, geometry.precision
-                                    )
-                                allPositions.addAll(positions)
-                            } catch (e: Exception) {
-                                // Ignore decoding errors for individual legs
-                            }
-                        }
-                    }
-
-                    // If we have route geometry, fit camera to the route
-                    if (allPositions.isNotEmpty()) {
-                        earth.maps.cardinal.data.PolylineUtils.calculateBoundingBox(allPositions)
-                            ?.let { boundingBox ->
-                                state.coroutineScope.launch {
-                                    state.cameraState.animateTo(
-                                        boundingBox = BoundingBox(
-                                            west = boundingBox.west,
-                                            south = boundingBox.south,
-                                            east = boundingBox.east,
-                                            north = boundingBox.north
-                                        ),
-                                        padding = PaddingValues(
-                                            start = state.screenWidthDp / 8,
-                                            top = state.screenHeightDp / 8,
-                                            end = state.screenWidthDp / 8,
-                                            bottom = min(
-                                                3f * state.screenHeightDp / 4,
-                                                state.peekHeight + state.screenHeightDp / 8
-                                            )
-                                        ),
-                                        duration = appPreferenceRepository.animationSpeedDurationValue
-                                    )
-                                }
-                            }
-                    }
-
-                    // Clear any existing pins
-                    state.mapPins.clear()
-                }
-
-                DisposableEffect(key1 = Unit) {
-                    onDispose {
-                        state.currentTransitItinerary = null
-                    }
-                }
-
-                CardinalAppScaffold(
-                    scaffoldState = scaffoldState,
-                    peekHeight = state.peekHeight,
-                    content = {
-                        earth.maps.cardinal.ui.directions.TransitItineraryDetailScreen(
-                            itinerary = itinerary, onBack = {
-                                navController.popBackStack()
-                            }, appPreferences = appPreferenceRepository
-                        )
-                    },
-                    showToolbar = false,
-                    fabHeightCallback = {
-                        if (topOfBackStack == backStackEntry) {
-                            state.fabHeight = it
-                        }
-                    },
-                )
-            }
+            TransitItineraryDetailRoute(state, navController, topOfBackStack, appPreferenceRepository, backStackEntry)
         }
 
         composable(Screen.TURN_BY_TURN) { backStackEntry ->
-            state.showToolbar = false
-            val routeId = backStackEntry.arguments?.getString("routeId")
-            val routingModeJson = backStackEntry.arguments?.getString("routingMode")
-
-            val ferrostarRoute = routeId?.let {
-                try {
-                    routeRepository.getRoute(it)
-                } catch (_: Exception) {
-                    null
-                }
-            }
-
-            val routingMode = routingModeJson?.let {
-                try {
-                    Gson().fromJson(it, RoutingMode::class.java)
-                } catch (_: Exception) {
-                    RoutingMode.AUTO
-                }
-            } ?: RoutingMode.AUTO
-
-            port?.let { port ->
-                TurnByTurnNavigationScreen(
-                    port = port,
-                    mode = routingMode,
-                    route = ferrostarRoute,
-                )
-            }
+            TurnByTurnRoute(state, routeRepository, port, backStackEntry)
         }
     }
 
@@ -842,6 +377,601 @@ fun AppContent(
         ) {
             CardinalToolbar(navController, onSearchDoublePress = { homeViewModel.expandSearch() })
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeRoute(
+    state: AppContentState,
+    homeViewModel: HomeViewModel,
+    navController: NavHostController,
+    topOfBackStack: NavBackStackEntry?,
+    appPreferenceRepository: AppPreferenceRepository,
+    backStackEntry: NavBackStackEntry
+) {
+    state.showToolbar = true
+    HomeScreenComposable(
+        viewModel = homeViewModel,
+        cameraState = state.cameraState,
+        mapPins = state.mapPins,
+        peekHeight = state.peekHeight,
+        navController = navController,
+        onPeekHeightChange = {
+            state.peekHeight = it
+        },
+        onFabHeightChange = {
+            state.fabHeight = it
+        },
+        topOfBackStack = topOfBackStack,
+        backStackEntry = backStackEntry,
+        screenWidthDp = state.screenWidthDp,
+        screenHeightDp = state.screenHeightDp,
+        appPreferenceRepository = appPreferenceRepository
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NearbyPoiRoute(
+    state: AppContentState,
+    nearbyViewModel: NearbyViewModel,
+    navController: NavHostController,
+    topOfBackStack: NavBackStackEntry?,
+    backStackEntry: NavBackStackEntry
+) {
+    state.showToolbar = true
+    val bottomSheetState = rememberBottomSheetState(
+        initialValue = BottomSheetValue.Collapsed
+    )
+    val scaffoldState =
+        rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
+
+    CardinalAppScaffold(
+        scaffoldState = scaffoldState, peekHeight = state.screenHeightDp / 3,
+        content = {
+            NearbyScreenContent(viewModel = nearbyViewModel, onPlaceSelected = {
+                NavigationUtils.navigate(navController, Screen.PlaceCard(it))
+            })
+        },
+        fabHeightCallback = {
+            if (topOfBackStack == backStackEntry) {
+                state.fabHeight = it
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NearbyTransitRoute(
+    state: AppContentState,
+    transitViewModel: TransitScreenViewModel,
+    navController: NavHostController,
+    topOfBackStack: NavBackStackEntry?,
+    backStackEntry: NavBackStackEntry
+) {
+    state.showToolbar = true
+
+    val bottomSheetState = rememberBottomSheetState(
+        initialValue = BottomSheetValue.Collapsed
+    )
+    val scaffoldState =
+        rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
+
+    CardinalAppScaffold(
+        scaffoldState = scaffoldState, peekHeight = state.screenHeightDp / 3,
+        content = {
+            TransitScreenContent(viewModel = transitViewModel, onRouteClicked = {
+                NavigationUtils.navigate(navController, Screen.PlaceCard(it))
+            })
+        },
+        fabHeightCallback = {
+            if (topOfBackStack == backStackEntry) {
+                state.fabHeight = it
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsRoute(state: AppContentState, navController: NavHostController) {
+    state.showToolbar = true
+    val viewModel = hiltViewModel<SettingsViewModel>()
+    SettingsScreen(navController = navController, viewModel = viewModel)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PrivacySettingsRoute(state: AppContentState, navController: NavHostController) {
+    state.showToolbar = true
+    val viewModel: SettingsViewModel = hiltViewModel()
+    PrivacySettingsScreen(
+        viewModel = viewModel,
+        onDismiss = { navController.popBackStack() },
+        onNavigateToOfflineAreas = {
+            NavigationUtils.navigate(
+                navController, Screen.OfflineAreas
+            )
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccessibilitySettingsRoute(state: AppContentState, navController: NavHostController) {
+    state.showToolbar = true
+    val viewModel: SettingsViewModel = hiltViewModel()
+    AccessibilitySettingsScreen(viewModel = viewModel, onDismiss = { navController.popBackStack() })
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AdvancedSettingsRoute(state: AppContentState, navController: NavHostController) {
+    state.showToolbar = true
+    val viewModel: SettingsViewModel = hiltViewModel()
+    AdvancedSettingsScreen(viewModel = viewModel)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RoutingProfilesRoute(state: AppContentState, navController: NavHostController) {
+    state.showToolbar = true
+    RoutingProfilesScreen(navController = navController)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProfileEditorRoute(state: AppContentState, navController: NavHostController, backStackEntry: NavBackStackEntry) {
+    LaunchedEffect(key1 = Unit) {
+        state.mapPins.clear()
+    }
+
+    val snackBarHostState = remember { SnackbarHostState() }
+
+    val profileId = backStackEntry.arguments?.getString("profileId")
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackBarHostState) },
+        contentWindowInsets = WindowInsets.safeDrawing,
+        content = { padding ->
+            Box(modifier = Modifier.padding(padding)) {
+                ProfileEditorScreen(
+                    navController = navController,
+                    profileId = profileId,
+                    snackBarHostState = snackBarHostState
+                )
+            }
+        })
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ManagePlacesRoute(state: AppContentState, navController: NavHostController, backStackEntry: NavBackStackEntry) {
+    state.showToolbar = true
+
+    val listIdRaw = backStackEntry.arguments?.getString("listId")
+    val listId = if (listIdRaw.isNullOrBlank()) {
+        null
+    } else {
+        listIdRaw
+    }
+    val parentsGson = backStackEntry.arguments?.getString("parents")?.let { Uri.decode(it) }
+    val parents: List<String> = parentsGson?.let {
+        Gson().fromJson(it, object : TypeToken<List<String>>() {}.type)
+    } ?: emptyList()
+    ManagePlacesScreen(
+        navController = navController,
+        listId = listId,
+        parents = parents,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlaceCardRoute(
+    state: AppContentState,
+    navController: NavHostController,
+    topOfBackStack: NavBackStackEntry?,
+    appPreferenceRepository: AppPreferenceRepository,
+    backStackEntry: NavBackStackEntry
+) {
+    state.showToolbar = false
+
+    val bottomSheetState = rememberBottomSheetState(
+        initialValue = BottomSheetValue.Collapsed
+    )
+    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
+
+    LaunchedEffect(key1 = Unit) {
+        // The place card starts partially expanded.
+        state.coroutineScope.launch {
+            scaffoldState.bottomSheetState.collapse()
+        }
+    }
+
+    val viewModel: PlaceCardViewModel = hiltViewModel()
+    val placeJson = backStackEntry.arguments?.getString("place")
+    val place = placeJson?.let { Gson().fromJson(it, Place::class.java) }
+    place?.let { place ->
+        viewModel.setPlace(place)
+        LaunchedEffect(place) {
+            // Clear any existing pins and add the new one to ensure only one pin is shown at a time
+            state.mapPins.clear()
+            state.mapPins.add(place)
+
+            val previousBackStackEntry = navController.previousBackStackEntry
+            val shouldFlyToPoi =
+                previousBackStackEntry?.destination?.route?.startsWith(Screen.DIRECTIONS) != true
+
+            // Only animate if we're entering from the home screen, as opposed to e.g. popping from the
+            // settings screen. This is brittle and may break if we end up with more entry points.
+            if (shouldFlyToPoi) {
+                state.coroutineScope.launch {
+                    state.cameraState.animateTo(
+                        CameraPosition(
+                            target = Position(
+                                latitude = place.latLng.latitude,
+                                longitude = place.latLng.longitude
+                            ), zoom = 15.0, padding = PaddingValues(
+                                start = state.screenWidthDp / 8,
+                                top = state.screenHeightDp / 8,
+                                end = state.screenWidthDp / 8,
+                                bottom = min(
+                                    3f * state.screenHeightDp / 4,
+                                    state.peekHeight + state.screenHeightDp / 8
+                                )
+                            )
+                        ),
+                        duration = appPreferenceRepository.animationSpeedDurationValue,
+                    )
+                }
+            }
+        }
+
+        CardinalAppScaffold(
+            scaffoldState = scaffoldState, peekHeight = state.peekHeight,
+            content = {
+                PlaceCardScreen(place = place, viewModel = viewModel, onBack = {
+                    navController.popBackStack()
+                }, onGetDirections = { place ->
+                    NavigationUtils.navigate(
+                        navController, Screen.Directions(fromPlace = null, toPlace = place)
+                    )
+                }, onPeekHeightChange = {
+                    if (topOfBackStack == backStackEntry) {
+                        state.peekHeight = it
+                    }
+                })
+            },
+            showToolbar = false,
+            fabHeightCallback = {
+                if (topOfBackStack == backStackEntry) {
+                    state.fabHeight = it
+                }
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OfflineAreasRoute(
+    state: AppContentState,
+    navController: NavHostController,
+    topOfBackStack: NavBackStackEntry?,
+    appPreferenceRepository: AppPreferenceRepository,
+    backStackEntry: NavBackStackEntry
+) {
+    state.showToolbar = true
+    val bottomSheetState = rememberBottomSheetState(
+        initialValue = BottomSheetValue.Collapsed
+    )
+    val scaffoldState =
+        rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
+
+    LaunchedEffect(key1 = Unit) {
+        state.mapPins.clear()
+        state.peekHeight = state.screenHeightDp / 3 // Approx, empirical
+        state.coroutineScope.launch {
+            scaffoldState.bottomSheetState.collapse()
+        }
+    }
+    DisposableEffect(key1 = Unit) {
+        onDispose {
+            state.selectedOfflineArea = null
+        }
+    }
+    val viewModel: OfflineAreasViewModel = hiltViewModel()
+    val snackBarHostState = remember { SnackbarHostState() }
+
+    // Track the current viewport reactively
+    var currentViewport by remember { mutableStateOf(state.cameraState.projection?.queryVisibleRegion()) }
+
+    // Update viewport when camera state changes
+    LaunchedEffect(state.cameraState.position) {
+        currentViewport = state.cameraState.projection?.queryVisibleRegion()
+    }
+
+    currentViewport?.let { visibleRegion ->
+        CardinalAppScaffold(
+            scaffoldState = scaffoldState,
+            peekHeight = state.peekHeight,
+            fabHeightCallback = {
+                if (topOfBackStack == backStackEntry) {
+                    state.fabHeight = it
+                }
+            },
+            content = {
+                OfflineAreasScreen(
+                    currentViewport = visibleRegion,
+                    currentZoom = state.cameraState.position.zoom,
+                    viewModel = viewModel,
+                    snackBarHostState = snackBarHostState,
+                    onDismiss = {
+                        navController.popBackStack()
+                    },
+                    onAreaSelected = { area ->
+                        state.coroutineScope.launch {
+                            scaffoldState.bottomSheetState.collapse()
+                            state.cameraState.animateTo(
+                                boundingBox = BoundingBox(
+                                    area.west, area.south, area.east, area.north
+                                ),
+                                padding = PaddingValues(
+                                    start = state.screenWidthDp / 8,
+                                    top = state.screenHeightDp / 8,
+                                    end = state.screenWidthDp / 8,
+                                    bottom = min(
+                                        3f * state.screenHeightDp / 4,
+                                        state.peekHeight + state.screenHeightDp / 8
+                                    )
+                                ),
+                                duration = appPreferenceRepository.animationSpeedDurationValue
+                            )
+                        }
+                        state.selectedOfflineArea = area
+                    })
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DirectionsRoute(
+    state: AppContentState,
+    mapViewModel: MapViewModel,
+    navController: NavHostController,
+    topOfBackStack: NavBackStackEntry?,
+    appPreferenceRepository: AppPreferenceRepository,
+    hasLocationPermission: Boolean,
+    onRequestLocationPermission: () -> Unit,
+    hasNotificationPermission: Boolean,
+    onRequestNotificationPermission: () -> Unit,
+    backStackEntry: NavBackStackEntry
+) {
+    state.showToolbar = false
+    val bottomSheetState =
+        rememberBottomSheetState(initialValue = BottomSheetValue.Collapsed)
+    val scaffoldState =
+        rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
+
+    val viewModel: DirectionsViewModel = hiltViewModel()
+    mapViewModel.locationFlow.collectAsState().value
+
+    // Handle initial place setup
+    LaunchedEffect(key1 = Unit) {
+        val fromPlaceJson = backStackEntry.arguments?.getString("fromPlace")
+        val fromPlace =
+            fromPlaceJson?.let { Gson().fromJson(Uri.decode(it), Place::class.java) }
+        val toPlaceJson = backStackEntry.arguments?.getString("toPlace")
+        val toPlace =
+            toPlaceJson?.let { Gson().fromJson(Uri.decode(it), Place::class.java) }
+
+        if (fromPlace != null) {
+            viewModel.updateFromPlace(fromPlace)
+        }
+        viewModel.updateToPlace(toPlace)
+    }
+
+    val polylinePadding = PaddingValues(
+        start = state.screenWidthDp / 8,
+        top = state.screenHeightDp / 8,
+        end = state.screenWidthDp / 8,
+        bottom = min(
+            3f * state.screenHeightDp / 4,
+            state.peekHeight + state.screenHeightDp / 8
+        )
+    )
+
+    // Handle route display and camera animation
+    RouteDisplayHandler(
+        viewModel = viewModel,
+        cameraState = state.cameraState,
+        appPreferences = appPreferenceRepository,
+        padding = polylinePadding,
+        onRouteUpdate = { route -> state.currentRoute = route })
+    DisposableEffect(key1 = Unit) {
+        onDispose {
+            state.currentRoute = null
+        }
+    }
+
+    CardinalAppScaffold(
+        scaffoldState = scaffoldState, peekHeight = state.peekHeight,
+        content = {
+            DirectionsScreen(
+                viewModel = viewModel,
+                onPeekHeightChange = {
+                    if (topOfBackStack == backStackEntry) {
+                        state.peekHeight = it
+                    }
+                },
+                onBack = { navController.popBackStack() },
+                onFullExpansionRequired = {
+                    state.coroutineScope.launch {
+                        scaffoldState.bottomSheetState.expand()
+                    }
+                },
+                navController = navController,
+                hasLocationPermission = hasLocationPermission,
+                onRequestLocationPermission = onRequestLocationPermission,
+                hasNotificationPermission = hasNotificationPermission,
+                onRequestNotificationPermission = onRequestNotificationPermission,
+                appPreferences = appPreferenceRepository
+            )
+        },
+        showToolbar = false,
+        fabHeightCallback = {
+            if (topOfBackStack == backStackEntry) {
+                state.fabHeight = it
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TransitItineraryDetailRoute(
+    state: AppContentState,
+    navController: NavHostController,
+    topOfBackStack: NavBackStackEntry?,
+    appPreferenceRepository: AppPreferenceRepository,
+    backStackEntry: NavBackStackEntry
+) {
+    state.showToolbar = false
+
+    val bottomSheetState = rememberBottomSheetState(
+        initialValue = BottomSheetValue.Collapsed
+    )
+    val scaffoldState =
+        rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
+
+    LaunchedEffect(key1 = Unit) {
+        state.coroutineScope.launch {
+            scaffoldState.bottomSheetState.collapse()
+        }
+    }
+
+    val itineraryJson = backStackEntry.arguments?.getString("itinerary")
+    val itinerary = itineraryJson?.let {
+        Gson().fromJson(Uri.decode(it), earth.maps.cardinal.transit.Itinerary::class.java)
+    }
+
+    itinerary?.let { itinerary ->
+        LaunchedEffect(itinerary) {
+            // Set current transit itinerary for map display
+            state.currentTransitItinerary = itinerary
+
+            // Extract all leg geometries and calculate bounding box
+            val allPositions = mutableListOf<Position>()
+
+            itinerary.legs.forEach { leg ->
+                leg.legGeometry?.let { geometry ->
+                    try {
+                        val positions =
+                            earth.maps.cardinal.data.PolylineUtils.decodePolyline(
+                                geometry.points, geometry.precision
+                            )
+                        allPositions.addAll(positions)
+                    } catch (e: Exception) {
+                        // Ignore decoding errors for individual legs
+                    }
+                }
+            }
+
+            // If we have route geometry, fit camera to the route
+            if (allPositions.isNotEmpty()) {
+                earth.maps.cardinal.data.PolylineUtils.calculateBoundingBox(allPositions)
+                    ?.let { boundingBox ->
+                        state.coroutineScope.launch {
+                            state.cameraState.animateTo(
+                                boundingBox = BoundingBox(
+                                    west = boundingBox.west,
+                                    south = boundingBox.south,
+                                    east = boundingBox.east,
+                                    north = boundingBox.north
+                                ),
+                                padding = PaddingValues(
+                                    start = state.screenWidthDp / 8,
+                                    top = state.screenHeightDp / 8,
+                                    end = state.screenWidthDp / 8,
+                                    bottom = min(
+                                        3f * state.screenHeightDp / 4,
+                                        state.peekHeight + state.screenHeightDp / 8
+                                    )
+                                ),
+                                duration = appPreferenceRepository.animationSpeedDurationValue
+                            )
+                        }
+                    }
+            }
+
+            // Clear any existing pins
+            state.mapPins.clear()
+        }
+
+        DisposableEffect(key1 = Unit) {
+            onDispose {
+                state.currentTransitItinerary = null
+            }
+        }
+
+        CardinalAppScaffold(
+            scaffoldState = scaffoldState,
+            peekHeight = state.peekHeight,
+            content = {
+                earth.maps.cardinal.ui.directions.TransitItineraryDetailScreen(
+                    itinerary = itinerary, onBack = {
+                        navController.popBackStack()
+                    }, appPreferences = appPreferenceRepository
+                )
+            },
+            showToolbar = false,
+            fabHeightCallback = {
+                if (topOfBackStack == backStackEntry) {
+                    state.fabHeight = it
+                }
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TurnByTurnRoute(
+    state: AppContentState,
+    routeRepository: RouteRepository,
+    port: Int?,
+    backStackEntry: NavBackStackEntry
+) {
+    state.showToolbar = false
+    val routeId = backStackEntry.arguments?.getString("routeId")
+    val routingModeJson = backStackEntry.arguments?.getString("routingMode")
+
+    val ferrostarRoute = routeId?.let {
+        try {
+            routeRepository.getRoute(it)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    val routingMode = routingModeJson?.let {
+        try {
+            Gson().fromJson(it, RoutingMode::class.java)
+        } catch (_: Exception) {
+            RoutingMode.AUTO
+        }
+    } ?: RoutingMode.AUTO
+
+    port?.let { port ->
+        TurnByTurnNavigationScreen(
+            port = port,
+            mode = routingMode,
+            route = ferrostarRoute,
+        )
     }
 }
 
