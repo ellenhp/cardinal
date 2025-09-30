@@ -63,7 +63,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -105,7 +104,6 @@ import earth.maps.cardinal.data.AppPreferenceRepository
 import earth.maps.cardinal.data.Place
 import earth.maps.cardinal.data.PolylineUtils
 import earth.maps.cardinal.data.RoutingMode
-import earth.maps.cardinal.data.room.OfflineArea
 import earth.maps.cardinal.routing.RouteRepository
 import earth.maps.cardinal.ui.directions.DirectionsScreen
 import earth.maps.cardinal.ui.directions.DirectionsViewModel
@@ -134,8 +132,6 @@ import io.github.dellisd.spatialk.geojson.Position
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.CameraState
-import org.maplibre.compose.camera.rememberCameraState
-import uniffi.ferrostar.Route
 
 val TOOLBAR_HEIGHT_DP = 64.dp
 
@@ -152,54 +148,36 @@ fun AppContent(
     hasNotificationPermission: Boolean,
     routeRepository: RouteRepository,
     appPreferenceRepository: AppPreferenceRepository,
+    state: AppContentState = rememberAppContentState(),
 ) {
-    val mapPins = remember { mutableStateListOf<Place>() }
-    val cameraState = rememberCameraState()
-    var fabHeight by remember { mutableStateOf(0.dp) }
-    val coroutineScope = rememberCoroutineScope()
-    val density = LocalDensity.current
-    var selectedOfflineArea by remember { mutableStateOf<OfflineArea?>(null) }
-
-    var showToolbar by remember { mutableStateOf(true) }
-
-    // Route state for displaying on map
-    var currentRoute by remember { mutableStateOf<Route?>(null) }
-    var currentTransitItinerary by remember {
-        mutableStateOf<earth.maps.cardinal.transit.Itinerary?>(
-            null
-        )
-    }
-
-    val droppedPinName = stringResource(string.dropped_pin)
-    var screenHeightDp by remember { mutableStateOf(0.dp) }
-    var screenWidthDp by remember { mutableStateOf(0.dp) }
-    var peekHeight by remember { mutableStateOf(0.dp) }
 
     val homeViewModel: HomeViewModel = hiltViewModel()
     val transitViewModel: TransitScreenViewModel = hiltViewModel()
     val nearbyViewModel: NearbyViewModel = hiltViewModel()
 
+    val droppedPinName = stringResource(string.dropped_pin)
+
     // This is used by nav destinations to determine if it is appropriate of them to update peekHeight.
     val topOfBackStack by navController.currentBackStackEntryAsState()
 
     // See comment below in onGloballyPositioned for why this is necessary. I'm not happy about it either.
-    LaunchedEffect(peekHeight) {
-        mapViewModel.peekHeight = peekHeight
+    LaunchedEffect(state.peekHeight) {
+        mapViewModel.peekHeight = state.peekHeight
     }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .onGloballyPositioned {
-                screenHeightDp = with(density) { it.size.height.toDp() }
-                screenWidthDp = with(density) { it.size.width.toDp() }
+                state.screenHeightDp = with(state.density) { it.size.height.toDp() }
+                state.screenWidthDp = with(state.density) { it.size.width.toDp() }
                 // For very annoying reasons, this ViewModel needs to know the size of the screen.
                 // Specifically, it is responsible for tracking the state of the "locate me" button across
                 // a permission request lifecycle. When the permission request is done, it has zero
                 // business calling back into the view to perform the animateTo operation, and in order
                 // to perform the animateTo you need to calculate padding based on screen size and peek
                 // height. :(
-                mapViewModel.screenWidth = screenWidthDp
-                mapViewModel.screenHeight = screenHeightDp
+                mapViewModel.screenWidth = state.screenWidthDp
+                mapViewModel.screenHeight = state.screenHeightDp
             },
 
         ) {
@@ -229,18 +207,21 @@ fun AppContent(
                 onRequestLocationPermission = onRequestLocationPermission,
                 hasLocationPermission = hasLocationPermission,
                 fabInsets = PaddingValues(
-                    start = 0.dp, top = 0.dp, end = 0.dp, bottom = if (screenHeightDp > fabHeight) {
-                        screenHeightDp - fabHeight
+                    start = 0.dp,
+                    top = 0.dp,
+                    end = 0.dp,
+                    bottom = if (state.screenHeightDp > state.fabHeight) {
+                        state.screenHeightDp - state.fabHeight
                     } else {
                         0.dp
                     }
                 ),
-                cameraState = cameraState,
-                mapPins = mapPins,
+                cameraState = state.cameraState,
+                mapPins = state.mapPins,
                 appPreferences = appPreferenceRepository,
-                selectedOfflineArea = selectedOfflineArea,
-                currentRoute = currentRoute,
-                currentTransitItinerary = currentTransitItinerary
+                selectedOfflineArea = state.selectedOfflineArea,
+                currentRoute = state.currentRoute,
+                currentTransitItinerary = state.currentTransitItinerary
             )
         } else {
             LaunchedEffect(key1 = port) {
@@ -262,23 +243,23 @@ fun AppContent(
             Screen.HOME_SEARCH,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            showToolbar = true
+            state.showToolbar = true
             HomeScreenComposable(
                 viewModel = homeViewModel,
-                cameraState = cameraState,
-                mapPins = mapPins,
-                peekHeight = peekHeight,
+                cameraState = state.cameraState,
+                mapPins = state.mapPins,
+                peekHeight = state.peekHeight,
                 navController = navController,
                 onPeekHeightChange = {
-                    peekHeight = it
+                    state.peekHeight = it
                 },
                 onFabHeightChange = {
-                    fabHeight = it
+                    state.fabHeight = it
                 },
                 topOfBackStack = topOfBackStack,
                 backStackEntry = backStackEntry,
-                screenWidthDp = screenWidthDp,
-                screenHeightDp = screenHeightDp,
+                screenWidthDp = state.screenWidthDp,
+                screenHeightDp = state.screenHeightDp,
                 appPreferenceRepository = appPreferenceRepository
             )
         }
@@ -287,7 +268,7 @@ fun AppContent(
             Screen.NEARBY_POI,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            showToolbar = true
+            state.showToolbar = true
 
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
@@ -296,7 +277,7 @@ fun AppContent(
                 rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
 
             CardinalAppScaffold(
-                scaffoldState = scaffoldState, peekHeight = screenHeightDp / 3,
+                scaffoldState = scaffoldState, peekHeight = state.screenHeightDp / 3,
                 content = {
                     NearbyScreenContent(viewModel = nearbyViewModel, onPlaceSelected = {
                         NavigationUtils.navigate(navController, Screen.PlaceCard(it))
@@ -304,7 +285,7 @@ fun AppContent(
                 },
                 fabHeightCallback = {
                     if (topOfBackStack == backStackEntry) {
-                        fabHeight = it
+                        state.fabHeight = it
                     }
                 },
             )
@@ -315,7 +296,7 @@ fun AppContent(
             Screen.NEARBY_TRANSIT,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            showToolbar = true
+            state.showToolbar = true
 
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
@@ -324,7 +305,7 @@ fun AppContent(
                 rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
 
             CardinalAppScaffold(
-                scaffoldState = scaffoldState, peekHeight = screenHeightDp / 3,
+                scaffoldState = scaffoldState, peekHeight = state.screenHeightDp / 3,
                 content = {
                     TransitScreenContent(viewModel = transitViewModel, onRouteClicked = {
                         NavigationUtils.navigate(navController, Screen.PlaceCard(it))
@@ -332,7 +313,7 @@ fun AppContent(
                 },
                 fabHeightCallback = {
                     if (topOfBackStack == backStackEntry) {
-                        fabHeight = it
+                        state.fabHeight = it
                     }
                 },
             )
@@ -342,7 +323,7 @@ fun AppContent(
             Screen.PLACE_CARD,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            showToolbar = false
+            state.showToolbar = false
 
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
@@ -352,7 +333,7 @@ fun AppContent(
 
             LaunchedEffect(key1 = Unit) {
                 // The place card starts partially expanded.
-                coroutineScope.launch {
+                state.coroutineScope.launch {
                     scaffoldState.bottomSheetState.collapse()
                 }
             }
@@ -364,8 +345,8 @@ fun AppContent(
                 viewModel.setPlace(place)
                 LaunchedEffect(place) {
                     // Clear any existing pins and add the new one to ensure only one pin is shown at a time
-                    mapPins.clear()
-                    mapPins.add(place)
+                    state.mapPins.clear()
+                    state.mapPins.add(place)
 
                     val previousBackStackEntry = navController.previousBackStackEntry
                     val shouldFlyToPoi =
@@ -374,18 +355,19 @@ fun AppContent(
                     // Only animate if we're entering from the home screen, as opposed to e.g. popping from the
                     // settings screen. This is brittle and may break if we end up with more entry points.
                     if (shouldFlyToPoi) {
-                        coroutineScope.launch {
-                            cameraState.animateTo(
+                        state.coroutineScope.launch {
+                            state.cameraState.animateTo(
                                 CameraPosition(
                                     target = Position(
                                         latitude = place.latLng.latitude,
                                         longitude = place.latLng.longitude
                                     ), zoom = 15.0, padding = PaddingValues(
-                                        start = screenWidthDp / 8,
-                                        top = screenHeightDp / 8,
-                                        end = screenWidthDp / 8,
+                                        start = state.screenWidthDp / 8,
+                                        top = state.screenHeightDp / 8,
+                                        end = state.screenWidthDp / 8,
                                         bottom = min(
-                                            3f * screenHeightDp / 4, peekHeight + screenHeightDp / 8
+                                            3f * state.screenHeightDp / 4,
+                                            state.peekHeight + state.screenHeightDp / 8
                                         )
                                     )
                                 ),
@@ -396,7 +378,7 @@ fun AppContent(
                 }
 
                 CardinalAppScaffold(
-                    scaffoldState = scaffoldState, peekHeight = peekHeight,
+                    scaffoldState = scaffoldState, peekHeight = state.peekHeight,
                     content = {
                         PlaceCardScreen(place = place, viewModel = viewModel, onBack = {
                             navController.popBackStack()
@@ -406,14 +388,14 @@ fun AppContent(
                             )
                         }, onPeekHeightChange = {
                             if (topOfBackStack == backStackEntry) {
-                                peekHeight = it
+                                state.peekHeight = it
                             }
                         })
                     },
                     showToolbar = false,
                     fabHeightCallback = {
                         if (topOfBackStack == backStackEntry) {
-                            fabHeight = it
+                            state.fabHeight = it
                         }
                     },
                 )
@@ -424,7 +406,7 @@ fun AppContent(
             Screen.OFFLINE_AREAS,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            showToolbar = true
+            state.showToolbar = true
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
             )
@@ -432,66 +414,66 @@ fun AppContent(
                 rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
 
             LaunchedEffect(key1 = Unit) {
-                mapPins.clear()
-                peekHeight = screenHeightDp / 3 // Approx, empirical
-                coroutineScope.launch {
+                state.mapPins.clear()
+                state.peekHeight = state.screenHeightDp / 3 // Approx, empirical
+                state.coroutineScope.launch {
                     scaffoldState.bottomSheetState.collapse()
                 }
             }
             DisposableEffect(key1 = Unit) {
                 onDispose {
-                    selectedOfflineArea = null
+                    state.selectedOfflineArea = null
                 }
             }
             val viewModel: OfflineAreasViewModel = hiltViewModel()
             val snackBarHostState = remember { SnackbarHostState() }
 
             // Track the current viewport reactively
-            var currentViewport by remember { mutableStateOf(cameraState.projection?.queryVisibleRegion()) }
+            var currentViewport by remember { mutableStateOf(state.cameraState.projection?.queryVisibleRegion()) }
 
             // Update viewport when camera state changes
-            LaunchedEffect(cameraState.position) {
-                currentViewport = cameraState.projection?.queryVisibleRegion()
+            LaunchedEffect(state.cameraState.position) {
+                currentViewport = state.cameraState.projection?.queryVisibleRegion()
             }
 
             currentViewport?.let { visibleRegion ->
                 CardinalAppScaffold(
                     scaffoldState = scaffoldState,
-                    peekHeight = peekHeight,
+                    peekHeight = state.peekHeight,
                     fabHeightCallback = {
                         if (topOfBackStack == backStackEntry) {
-                            fabHeight = it
+                            state.fabHeight = it
                         }
                     },
                     content = {
                         OfflineAreasScreen(
                             currentViewport = visibleRegion,
-                            currentZoom = cameraState.position.zoom,
+                            currentZoom = state.cameraState.position.zoom,
                             viewModel = viewModel,
                             snackBarHostState = snackBarHostState,
                             onDismiss = {
                                 navController.popBackStack()
                             },
                             onAreaSelected = { area ->
-                                coroutineScope.launch {
+                                state.coroutineScope.launch {
                                     scaffoldState.bottomSheetState.collapse()
-                                    cameraState.animateTo(
+                                    state.cameraState.animateTo(
                                         boundingBox = BoundingBox(
                                             area.west, area.south, area.east, area.north
                                         ),
                                         padding = PaddingValues(
-                                            start = screenWidthDp / 8,
-                                            top = screenHeightDp / 8,
-                                            end = screenWidthDp / 8,
+                                            start = state.screenWidthDp / 8,
+                                            top = state.screenHeightDp / 8,
+                                            end = state.screenWidthDp / 8,
                                             bottom = min(
-                                                3f * screenHeightDp / 4,
-                                                peekHeight + screenHeightDp / 8
+                                                3f * state.screenHeightDp / 4,
+                                                state.peekHeight + state.screenHeightDp / 8
                                             )
                                         ),
                                         duration = appPreferenceRepository.animationSpeedDurationValue
                                     )
                                 }
-                                selectedOfflineArea = area
+                                state.selectedOfflineArea = area
                             })
                     },
                 )
@@ -505,7 +487,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            showToolbar = true
+            state.showToolbar = true
             SettingsScreen(
                 navController = navController,
                 viewModel = hiltViewModel(),
@@ -519,7 +501,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            showToolbar = true
+            state.showToolbar = true
             val viewModel: SettingsViewModel = hiltViewModel()
             PrivacySettingsScreen(
                 viewModel = viewModel,
@@ -539,7 +521,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            showToolbar = true
+            state.showToolbar = true
             val viewModel: SettingsViewModel = hiltViewModel()
             AccessibilitySettingsScreen(
                 viewModel = viewModel, onDismiss = { navController.popBackStack() })
@@ -553,7 +535,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            showToolbar = true
+            state.showToolbar = true
             val viewModel: SettingsViewModel = hiltViewModel()
             AdvancedSettingsScreen(
                 viewModel = viewModel
@@ -567,7 +549,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) {
-            showToolbar = true
+            state.showToolbar = true
             RoutingProfilesScreen(
                 navController = navController
             )
@@ -581,7 +563,7 @@ fun AppContent(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) { backStackEntry ->
             LaunchedEffect(key1 = Unit) {
-                mapPins.clear()
+                state.mapPins.clear()
             }
 
             val snackBarHostState = remember { SnackbarHostState() }
@@ -608,7 +590,7 @@ fun AppContent(
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
         ) { backStackEntry ->
-            showToolbar = true
+            state.showToolbar = true
 
             val listIdRaw = backStackEntry.arguments?.getString("listId")
             // The screen is set up to take a real value, or null. What we end up with at this point (sometimes?)
@@ -633,7 +615,7 @@ fun AppContent(
             Screen.DIRECTIONS,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            showToolbar = false
+            state.showToolbar = false
             val bottomSheetState =
                 rememberBottomSheetState(initialValue = BottomSheetValue.Collapsed)
             val scaffoldState =
@@ -658,38 +640,41 @@ fun AppContent(
             }
 
             val polylinePadding = PaddingValues(
-                start = screenWidthDp / 8,
-                top = screenHeightDp / 8,
-                end = screenWidthDp / 8,
-                bottom = min(3f * screenHeightDp / 4, peekHeight + screenHeightDp / 8)
+                start = state.screenWidthDp / 8,
+                top = state.screenHeightDp / 8,
+                end = state.screenWidthDp / 8,
+                bottom = min(
+                    3f * state.screenHeightDp / 4,
+                    state.peekHeight + state.screenHeightDp / 8
+                )
             )
 
             // Handle route display and camera animation
             RouteDisplayHandler(
                 viewModel = viewModel,
-                cameraState = cameraState,
+                cameraState = state.cameraState,
                 appPreferences = appPreferenceRepository,
                 padding = polylinePadding,
-                onRouteUpdate = { route -> currentRoute = route })
+                onRouteUpdate = { route -> state.currentRoute = route })
             DisposableEffect(key1 = Unit) {
                 onDispose {
-                    currentRoute = null
+                    state.currentRoute = null
                 }
             }
 
             CardinalAppScaffold(
-                scaffoldState = scaffoldState, peekHeight = peekHeight,
+                scaffoldState = scaffoldState, peekHeight = state.peekHeight,
                 content = {
                     DirectionsScreen(
                         viewModel = viewModel,
                         onPeekHeightChange = {
                             if (topOfBackStack == backStackEntry) {
-                                peekHeight = it
+                                state.peekHeight = it
                             }
                         },
                         onBack = { navController.popBackStack() },
                         onFullExpansionRequired = {
-                            coroutineScope.launch {
+                            state.coroutineScope.launch {
                                 scaffoldState.bottomSheetState.expand()
                             }
                         },
@@ -704,7 +689,7 @@ fun AppContent(
                 showToolbar = false,
                 fabHeightCallback = {
                     if (topOfBackStack == backStackEntry) {
-                        fabHeight = it
+                        state.fabHeight = it
                     }
                 },
             )
@@ -714,7 +699,7 @@ fun AppContent(
             Screen.TRANSIT_ITINERARY_DETAIL,
             enterTransition = { slideInVertically(initialOffsetY = { it }) },
             exitTransition = { fadeOut(animationSpec = tween(600)) }) { backStackEntry ->
-            showToolbar = false
+            state.showToolbar = false
 
             val bottomSheetState = rememberBottomSheetState(
                 initialValue = BottomSheetValue.Collapsed
@@ -723,7 +708,7 @@ fun AppContent(
                 rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
 
             LaunchedEffect(key1 = Unit) {
-                coroutineScope.launch {
+                state.coroutineScope.launch {
                     scaffoldState.bottomSheetState.collapse()
                 }
             }
@@ -736,7 +721,7 @@ fun AppContent(
             itinerary?.let { itinerary ->
                 LaunchedEffect(itinerary) {
                     // Set current transit itinerary for map display
-                    currentTransitItinerary = itinerary
+                    state.currentTransitItinerary = itinerary
 
                     // Extract all leg geometries and calculate bounding box
                     val allPositions = mutableListOf<Position>()
@@ -759,8 +744,8 @@ fun AppContent(
                     if (allPositions.isNotEmpty()) {
                         earth.maps.cardinal.data.PolylineUtils.calculateBoundingBox(allPositions)
                             ?.let { boundingBox ->
-                                coroutineScope.launch {
-                                    cameraState.animateTo(
+                                state.coroutineScope.launch {
+                                    state.cameraState.animateTo(
                                         boundingBox = BoundingBox(
                                             west = boundingBox.west,
                                             south = boundingBox.south,
@@ -768,12 +753,12 @@ fun AppContent(
                                             north = boundingBox.north
                                         ),
                                         padding = PaddingValues(
-                                            start = screenWidthDp / 8,
-                                            top = screenHeightDp / 8,
-                                            end = screenWidthDp / 8,
+                                            start = state.screenWidthDp / 8,
+                                            top = state.screenHeightDp / 8,
+                                            end = state.screenWidthDp / 8,
                                             bottom = min(
-                                                3f * screenHeightDp / 4,
-                                                peekHeight + screenHeightDp / 8
+                                                3f * state.screenHeightDp / 4,
+                                                state.peekHeight + state.screenHeightDp / 8
                                             )
                                         ),
                                         duration = appPreferenceRepository.animationSpeedDurationValue
@@ -783,18 +768,18 @@ fun AppContent(
                     }
 
                     // Clear any existing pins
-                    mapPins.clear()
+                    state.mapPins.clear()
                 }
 
                 DisposableEffect(key1 = Unit) {
                     onDispose {
-                        currentTransitItinerary = null
+                        state.currentTransitItinerary = null
                     }
                 }
 
                 CardinalAppScaffold(
                     scaffoldState = scaffoldState,
-                    peekHeight = peekHeight,
+                    peekHeight = state.peekHeight,
                     content = {
                         earth.maps.cardinal.ui.directions.TransitItineraryDetailScreen(
                             itinerary = itinerary, onBack = {
@@ -805,7 +790,7 @@ fun AppContent(
                     showToolbar = false,
                     fabHeightCallback = {
                         if (topOfBackStack == backStackEntry) {
-                            fabHeight = it
+                            state.fabHeight = it
                         }
                     },
                 )
@@ -813,7 +798,7 @@ fun AppContent(
         }
 
         composable(Screen.TURN_BY_TURN) { backStackEntry ->
-            showToolbar = false
+            state.showToolbar = false
             val routeId = backStackEntry.arguments?.getString("routeId")
             val routingModeJson = backStackEntry.arguments?.getString("routingMode")
 
@@ -847,7 +832,7 @@ fun AppContent(
         // Animated toolbar positioned below the scaffold
         AnimatedVisibility(
             modifier = Modifier.align(Alignment.BottomCenter),
-            visible = showToolbar,
+            visible = state.showToolbar,
             enter = slideInVertically(
                 initialOffsetY = { it }, animationSpec = tween(300)
             ),
