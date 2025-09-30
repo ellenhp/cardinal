@@ -122,10 +122,70 @@ fun DirectionsScreen(
     val coroutineScope = rememberCoroutineScope()
 
     // Auto-retry location request when permissions are granted
+    AutoRetryMyLocation(
+        hasLocationPermission = hasLocationPermission,
+        pendingLocationRequest = pendingLocationRequest,
+        coroutineScope = coroutineScope,
+        viewModel = viewModel,
+        appPreferences = appPreferences,
+        onCompletion = {
+            fieldFocusState = FieldFocusState.NONE
+        }
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = dimensionResource(dimen.padding))
+    ) {
+        if (isAnyFieldFocused) {
+            DirectionsScreenFocusedField(
+                viewModel = viewModel,
+                fieldFocusState = fieldFocusState,
+                onFieldFocusStateChange = {
+                    fieldFocusState = it
+                    if (fieldFocusState != FieldFocusState.NONE) {
+                        onFullExpansionRequired()
+                    }
+                },
+                savedPlaces = savedPlaces,
+                hasLocationPermission = hasLocationPermission,
+                onRequestLocationPermission = {
+                    pendingLocationRequest = fieldFocusState
+                    onRequestLocationPermission()
+                },
+                coroutineScope = coroutineScope
+            )
+        } else {
+            DirectionsScreenFullUI(
+                viewModel = viewModel,
+                onPeekHeightChange = onPeekHeightChange,
+                onBack = onBack,
+                navController = navController,
+                onFieldFocusStateChange = { fieldFocusState = it },
+                fieldFocusState = fieldFocusState,
+                routeState = routeState,
+                availableProfiles = availableProfiles,
+                appPreferences = appPreferences,
+                hasNotificationPermission = hasNotificationPermission,
+                onRequestNotificationPermission = onRequestNotificationPermission
+            )
+        }
+    }
+}
+
+@Composable
+private fun AutoRetryMyLocation(
+    hasLocationPermission: Boolean,
+    pendingLocationRequest: FieldFocusState?,
+    coroutineScope: CoroutineScope,
+    viewModel: DirectionsViewModel,
+    appPreferences: AppPreferenceRepository,
+    onCompletion: () -> Unit,
+) {
     LaunchedEffect(hasLocationPermission, pendingLocationRequest) {
         if (hasLocationPermission && pendingLocationRequest != null) {
-            val targetField = pendingLocationRequest!!
-            pendingLocationRequest = null // Clear the pending request
+            val targetField = pendingLocationRequest
 
             // Automatically fetch location for the target field
             coroutineScope.launch {
@@ -137,49 +197,13 @@ fun DirectionsScreen(
                     } else {
                         viewModel.updateToPlace(place)
                     }
-                    // Clear focus state after selection
-                    fieldFocusState = FieldFocusState.NONE
+                    onCompletion()
                 }
             }
         } else if (hasLocationPermission && appPreferences.continuousLocationTracking.value) {
             coroutineScope.launch {
                 viewModel.initializeDeparture()
             }
-        }
-    }
-
-    stringResource(string.change_start_location_to_my_location)
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = dimensionResource(dimen.padding))
-    ) {
-        if (!isAnyFieldFocused) {
-            DirectionsScreenFullUI(
-                viewModel = viewModel,
-                onPeekHeightChange = onPeekHeightChange,
-                onBack = onBack,
-                onFullExpansionRequired = onFullExpansionRequired,
-                navController = navController,
-                onFieldFocusStateChange = { fieldFocusState = it },
-                fieldFocusState = fieldFocusState,
-                routeState = routeState,
-                availableProfiles = availableProfiles,
-                appPreferences = appPreferences,
-                hasNotificationPermission = hasNotificationPermission,
-                onRequestNotificationPermission = onRequestNotificationPermission
-            )
-        } else {
-            DirectionsScreenFocusedField(
-                viewModel = viewModel,
-                fieldFocusState = fieldFocusState,
-                savedPlaces = savedPlaces,
-                hasLocationPermission = hasLocationPermission,
-                onRequestLocationPermission = onRequestLocationPermission,
-                pendingLocationRequest = pendingLocationRequest,
-                coroutineScope = coroutineScope
-            )
         }
     }
 }
@@ -189,7 +213,6 @@ private fun DirectionsScreenFullUI(
     viewModel: DirectionsViewModel,
     onPeekHeightChange: (Dp) -> Unit,
     onBack: () -> Unit,
-    onFullExpansionRequired: () -> Job,
     navController: NavController,
     onFieldFocusStateChange: (FieldFocusState) -> Unit,
     fieldFocusState: FieldFocusState,
@@ -324,7 +347,12 @@ private fun DirectionsRouteResults(
 ) {
     val planState = viewModel.planState
     if (viewModel.selectedRoutingMode == RoutingMode.PUBLIC_TRANSPORT) {
-        TransitRouteResults(planState = planState, navController = navController, viewModel = viewModel, appPreferences = appPreferences)
+        TransitRouteResults(
+            planState = planState,
+            navController = navController,
+            viewModel = viewModel,
+            appPreferences = appPreferences
+        )
     } else {
         NonTransitRouteResults(
             routeState = routeState,
@@ -445,10 +473,10 @@ private fun NonTransitRouteResults(
 private fun DirectionsScreenFocusedField(
     viewModel: DirectionsViewModel,
     fieldFocusState: FieldFocusState,
+    onFieldFocusStateChange: (FieldFocusState) -> Unit,
     savedPlaces: List<Place>,
     hasLocationPermission: Boolean,
     onRequestLocationPermission: () -> Unit,
-    pendingLocationRequest: FieldFocusState?,
     coroutineScope: CoroutineScope
 ) {
     // Show only the focused field and search results when a field is focused
@@ -464,7 +492,11 @@ private fun DirectionsScreenFocusedField(
         },
         onTextChange = { viewModel.updateSearchQuery(it) },
         onTextFieldFocusChange = { isFocused ->
-
+            if (isFocused) {
+                onFieldFocusStateChange(fieldFocusState)
+            } else {
+                onFieldFocusStateChange(FieldFocusState.NONE)
+            }
         },
         isFocused = true,
         modifier = Modifier
@@ -479,8 +511,8 @@ private fun DirectionsScreenFocusedField(
         savedPlaces = savedPlaces,
         hasLocationPermission = hasLocationPermission,
         onRequestLocationPermission = onRequestLocationPermission,
-        pendingLocationRequest = pendingLocationRequest,
-        coroutineScope = coroutineScope
+        coroutineScope = coroutineScope,
+        onFieldFocusStateChange = onFieldFocusStateChange,
     )
 }
 
@@ -488,10 +520,10 @@ private fun DirectionsScreenFocusedField(
 private fun FocusedFieldContent(
     viewModel: DirectionsViewModel,
     fieldFocusState: FieldFocusState,
+    onFieldFocusStateChange: (FieldFocusState) -> Unit,
     savedPlaces: List<Place>,
     hasLocationPermission: Boolean,
     onRequestLocationPermission: () -> Unit,
-    pendingLocationRequest: FieldFocusState?,
     coroutineScope: CoroutineScope
 ) {
     when {
@@ -506,15 +538,16 @@ private fun FocusedFieldContent(
                 savedPlaces = savedPlaces,
                 hasLocationPermission = hasLocationPermission,
                 onRequestLocationPermission = onRequestLocationPermission,
-                pendingLocationRequest = pendingLocationRequest,
-                coroutineScope = coroutineScope
+                coroutineScope = coroutineScope,
+                onFieldFocusStateChange = onFieldFocusStateChange,
             )
         }
 
         else -> {
             SearchResultsContent(
                 viewModel = viewModel,
-                fieldFocusState = fieldFocusState
+                fieldFocusState = fieldFocusState,
+                onFieldFocusStateChange = onFieldFocusStateChange,
             )
         }
     }
@@ -523,7 +556,7 @@ private fun FocusedFieldContent(
 @Composable
 private fun SearchingIndicator() {
     Text(
-        text = "Searching...",
+        text = stringResource(string.searching),
         modifier = Modifier
             .fillMaxWidth()
             .padding(dimensionResource(dimen.padding))
@@ -534,10 +567,10 @@ private fun SearchingIndicator() {
 private fun QuickSuggestionsContent(
     viewModel: DirectionsViewModel,
     fieldFocusState: FieldFocusState,
+    onFieldFocusStateChange: (FieldFocusState) -> Unit,
     savedPlaces: List<Place>,
     hasLocationPermission: Boolean,
     onRequestLocationPermission: () -> Unit,
-    pendingLocationRequest: FieldFocusState?,
     coroutineScope: CoroutineScope
 ) {
     QuickSuggestions(
@@ -546,11 +579,13 @@ private fun QuickSuggestionsContent(
             fieldFocusState = fieldFocusState,
             hasLocationPermission = hasLocationPermission,
             onRequestLocationPermission = onRequestLocationPermission,
-            coroutineScope = coroutineScope
+            coroutineScope = coroutineScope,
+            onFieldFocusStateChange = onFieldFocusStateChange,
         ),
         savedPlaces = savedPlaces,
         onSavedPlaceSelected = { place ->
             updatePlaceForField(viewModel, fieldFocusState, place)
+            onFieldFocusStateChange(FieldFocusState.NONE)
         },
         isGettingLocation = viewModel.isGettingLocation,
         modifier = Modifier.fillMaxWidth()
@@ -560,6 +595,7 @@ private fun QuickSuggestionsContent(
 @Composable
 private fun SearchResultsContent(
     viewModel: DirectionsViewModel,
+    onFieldFocusStateChange: (FieldFocusState) -> Unit,
     fieldFocusState: FieldFocusState
 ) {
     SearchResults(
@@ -567,6 +603,7 @@ private fun SearchResultsContent(
         geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value),
         onPlaceSelected = { place ->
             updatePlaceForField(viewModel, fieldFocusState, place)
+            onFieldFocusStateChange(FieldFocusState.NONE)
         },
         modifier = Modifier.fillMaxWidth()
     )
@@ -589,6 +626,7 @@ private fun handleMyLocationSelected(
     fieldFocusState: FieldFocusState,
     hasLocationPermission: Boolean,
     onRequestLocationPermission: () -> Unit,
+    onFieldFocusStateChange: (FieldFocusState) -> Unit,
     coroutineScope: CoroutineScope
 ): () -> Unit = {
     if (hasLocationPermission) {
@@ -596,6 +634,7 @@ private fun handleMyLocationSelected(
             val myLocationPlace = viewModel.getCurrentLocationAsPlace()
             myLocationPlace?.let { place ->
                 updatePlaceForField(viewModel, fieldFocusState, place)
+                onFieldFocusStateChange(FieldFocusState.NONE)
             }
         }
     } else {
