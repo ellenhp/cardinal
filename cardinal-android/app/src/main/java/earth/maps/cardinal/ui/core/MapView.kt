@@ -167,178 +167,15 @@ fun MapView(
                 val savedPlaces by mapViewModel.savedPlacesFlow.collectAsState(FeatureCollection())
                 location?.let { LocationPuck(it) }
 
-                // Show user favorites
-                val textColor = MaterialTheme.colorScheme.onSurface
-                SymbolLayer(
-                    id = "user_favorites",
-                    source = rememberGeoJsonSource(GeoJsonData.Features(savedPlaces)),
-                    iconImage = image(
-                        if (isSystemInDarkTheme()) {
-                            painterResource(drawable.ic_stars_dark)
-                        } else {
-                            painterResource(drawable.ic_stars_light)
-                        }
-                    ),
-                    iconSize = const(0.8f),
-                    textField = org.maplibre.compose.expressions.dsl.Feature["name"].cast(),
-                    textSize = const(0.8.em),
-                    textColor = rgbColor(
-                        const((textColor.red * 255.0f).toInt()),
-                        const((textColor.green * 255.0f).toInt()),
-                        const((textColor.blue * 255.0f).toInt()),
-                    ),
-                    textAnchor = const(SymbolAnchor.Top),
-                    textOffset = offset(0.em, 0.8.em),
-                    textOptional = const(true),
-                )
+                FavoritesLayer(savedPlaces, isSystemInDarkTheme())
 
-                // Show offline download bounds if an area is selected
-                selectedOfflineArea?.let { area ->
-                    val boundsPolygon = Polygon(
-                        listOf(
-                            listOf(
-                                Position(area.west, area.north),  // Northwest
-                                Position(area.east, area.north),  // Northeast
-                                Position(area.east, area.south),  // Southeast
-                                Position(area.west, area.south),  // Southwest
-                                Position(area.west, area.north)   // Close the polygon
-                            )
-                        )
-                    )
-                    val boundsFeature = Feature(geometry = boundsPolygon)
-                    val offlineDownloadBoundsSource = rememberGeoJsonSource(
-                        GeoJsonData.Features(FeatureCollection(features = listOf(boundsFeature)))
-                    )
+                OfflineBoundsLayer(selectedOfflineArea)
 
-                    val color = MaterialTheme.colorScheme.onSurface
-                    LineLayer(
-                        id = "offline_download_bounds",
-                        source = offlineDownloadBoundsSource,
-                        color = rgbColor(
-                            const((color.red * 255).toInt()),
-                            const((color.green * 255).toInt()),
-                            const((color.blue * 255).toInt())
-                        ),
-                        width = const(3.dp)
-                    )
-                }
+                RouteLayer(currentRoute)
 
-                // Display route if available
-                currentRoute?.let { route ->
-                    val routePositions = route.geometry.map { coord ->
-                        Position(coord.lng, coord.lat) // [longitude, latitude]
-                    }
-                    val routeLineString = LineString(routePositions)
-                    val routeFeature = Feature(geometry = routeLineString)
-                    val routeSource = rememberGeoJsonSource(
-                        GeoJsonData.Features(FeatureCollection(features = listOf(routeFeature)))
-                    )
+                TransitLayer(currentTransitItinerary)
 
-                    val polylineColor = colorResource(R.color.polyline_color)
-                    val polylineCasingColor =
-                        colorResource(R.color.polyline_casing_color)
-
-                    LineLayer(
-                        id = "route_line_casing", source = routeSource,
-                        color = rgbColor(
-                            const((polylineCasingColor.red * 255.0).toInt()), // Blue color
-                            const((polylineCasingColor.green * 255.0).toInt()),
-                            const((polylineCasingColor.blue * 255.0).toInt())
-                        ),
-                        width = const(8.dp),
-                        opacity = const(1f),
-                        cap = const(LineCap.Round),
-                        join = const(LineJoin.Round),
-                    )
-                    LineLayer(
-                        id = "route_line", source = routeSource,
-                        color = rgbColor(
-                            const((polylineColor.red * 255.0).toInt()), // Blue color
-                            const((polylineColor.green * 255.0).toInt()),
-                            const((polylineColor.blue * 255.0).toInt())
-                        ),
-                        width = const(6.dp),
-                        opacity = const(1f),
-                        cap = const(LineCap.Round),
-                        join = const(LineJoin.Round),
-                    )
-                }
-
-                // Display transit itinerary polylines if available
-                currentTransitItinerary?.let { itinerary ->
-                    itinerary.legs.forEachIndexed { legIndex, leg ->
-                        leg.legGeometry?.let { geometry ->
-                            val positions = PolylineUtils.decodePolyline(
-                                encoded = geometry.points,
-                                precision = geometry.precision
-                            )
-                            if (positions.isNotEmpty()) {
-                                val lineString = LineString(positions)
-                                val feature = Feature(geometry = lineString)
-                                val source = rememberGeoJsonSource(
-                                    GeoJsonData.Features(FeatureCollection(features = listOf(feature)))
-                                )
-
-                                // Parse route color or use default based on mode
-                                val routeColor = try {
-                                    leg.routeColor?.let {
-                                        androidx.compose.ui.graphics.Color("#$it".toColorInt())
-                                    } ?: getDefaultModeColor(leg.mode)
-                                } catch (e: Exception) {
-                                    getDefaultModeColor(leg.mode)
-                                }
-
-                                // Different styling for walking vs transit legs
-                                val (lineWidth, dashArray) = when (leg.mode) {
-                                    Mode.WALK, Mode.BIKE -> Pair(4.dp, null) // Solid line, thinner
-                                    else -> Pair(6.dp, null) // Solid line, thicker for transit
-                                }
-
-                                // Line casing for better visibility
-                                LineLayer(
-                                    id = "transit_leg_${legIndex}_casing",
-                                    source = source,
-                                    color = rgbColor(
-                                        const((routeColor.red * 127).toInt()),
-                                        const((routeColor.green * 127).toInt()),
-                                        const((routeColor.blue * 127).toInt())
-                                    ),
-                                    width = const(lineWidth + 2.dp),
-                                    opacity = const(0.8f),
-                                    cap = const(LineCap.Round),
-                                    join = const(LineJoin.Round),
-                                )
-
-                                // Main line
-                                LineLayer(
-                                    id = "transit_leg_$legIndex",
-                                    source = source,
-                                    color = rgbColor(
-                                        const((routeColor.red * 255).toInt()),
-                                        const((routeColor.green * 255).toInt()),
-                                        const((routeColor.blue * 255).toInt())
-                                    ),
-                                    width = const(lineWidth),
-                                    opacity = const(1f),
-                                    cap = const(LineCap.Round),
-                                    join = const(LineJoin.Round),
-                                )
-                            }
-                        }
-                    }
-                }
-
-                SymbolLayer(
-                    id = "map_pins",
-                    source = rememberGeoJsonSource(GeoJsonData.Features(FeatureCollection(features = pinFeatures))),
-                    iconImage = image(
-                        if (isSystemInDarkTheme()) {
-                            painterResource(drawable.map_pin_dark)
-                        } else {
-                            painterResource(drawable.map_pin_light)
-                        }
-                    ),
-                )
+                PinsLayer(pinFeatures, isSystemInDarkTheme())
             }
         } else {
             // Handle invalid port - could show an error message
@@ -362,6 +199,190 @@ fun MapView(
             context = context
         )
     }
+}
+
+@Composable
+private fun FavoritesLayer(savedPlaces: FeatureCollection, isSystemInDarkTheme: Boolean) {
+    val textColor = MaterialTheme.colorScheme.onSurface
+    SymbolLayer(
+        id = "user_favorites",
+        source = rememberGeoJsonSource(GeoJsonData.Features(savedPlaces)),
+        iconImage = image(
+            if (isSystemInDarkTheme) {
+                painterResource(drawable.ic_stars_dark)
+            } else {
+                painterResource(drawable.ic_stars_light)
+            }
+        ),
+        iconSize = const(0.8f),
+        textField = org.maplibre.compose.expressions.dsl.Feature["name"].cast(),
+        textSize = const(0.8.em),
+        textColor = rgbColor(
+            const((textColor.red * 255.0f).toInt()),
+            const((textColor.green * 255.0f).toInt()),
+            const((textColor.blue * 255.0f).toInt()),
+        ),
+        textAnchor = const(SymbolAnchor.Top),
+        textOffset = offset(0.em, 0.8.em),
+        textOptional = const(true),
+    )
+}
+
+@Composable
+private fun OfflineBoundsLayer(selectedOfflineArea: OfflineArea?) {
+    selectedOfflineArea?.let { area ->
+        val boundsPolygon = Polygon(
+            listOf(
+                listOf(
+                    Position(area.west, area.north),  // Northwest
+                    Position(area.east, area.north),  // Northeast
+                    Position(area.east, area.south),  // Southeast
+                    Position(area.west, area.south),  // Southwest
+                    Position(area.west, area.north)   // Close the polygon
+                )
+            )
+        )
+        val boundsFeature = Feature(geometry = boundsPolygon)
+        val offlineDownloadBoundsSource = rememberGeoJsonSource(
+            GeoJsonData.Features(FeatureCollection(features = listOf(boundsFeature)))
+        )
+
+        val color = MaterialTheme.colorScheme.onSurface
+        LineLayer(
+            id = "offline_download_bounds",
+            source = offlineDownloadBoundsSource,
+            color = rgbColor(
+                const((color.red * 255).toInt()),
+                const((color.green * 255).toInt()),
+                const((color.blue * 255).toInt())
+            ),
+            width = const(3.dp)
+        )
+    }
+}
+
+@Composable
+private fun RouteLayer(currentRoute: Route?) {
+    currentRoute?.let { route ->
+        val routePositions = route.geometry.map { coord ->
+            Position(coord.lng, coord.lat) // [longitude, latitude]
+        }
+        val routeLineString = LineString(routePositions)
+        val routeFeature = Feature(geometry = routeLineString)
+        val routeSource = rememberGeoJsonSource(
+            GeoJsonData.Features(FeatureCollection(features = listOf(routeFeature)))
+        )
+
+        val polylineColor = colorResource(R.color.polyline_color)
+        val polylineCasingColor =
+            colorResource(R.color.polyline_casing_color)
+
+        LineLayer(
+            id = "route_line_casing", source = routeSource,
+            color = rgbColor(
+                const((polylineCasingColor.red * 255.0).toInt()), // Blue color
+                const((polylineCasingColor.green * 255.0).toInt()),
+                const((polylineCasingColor.blue * 255.0).toInt())
+            ),
+            width = const(8.dp),
+            opacity = const(1f),
+            cap = const(LineCap.Round),
+            join = const(LineJoin.Round),
+        )
+        LineLayer(
+            id = "route_line", source = routeSource,
+            color = rgbColor(
+                const((polylineColor.red * 255.0).toInt()), // Blue color
+                const((polylineColor.green * 255.0).toInt()),
+                const((polylineColor.blue * 255.0).toInt())
+            ),
+            width = const(6.dp),
+            opacity = const(1f),
+            cap = const(LineCap.Round),
+            join = const(LineJoin.Round),
+        )
+    }
+}
+
+@Composable
+private fun TransitLayer(currentTransitItinerary: Itinerary?) {
+    currentTransitItinerary?.let { itinerary ->
+        itinerary.legs.forEachIndexed { legIndex, leg ->
+            leg.legGeometry?.let { geometry ->
+                val positions = PolylineUtils.decodePolyline(
+                    encoded = geometry.points,
+                    precision = geometry.precision
+                )
+                if (positions.isNotEmpty()) {
+                    val lineString = LineString(positions)
+                    val feature = Feature(geometry = lineString)
+                    val source = rememberGeoJsonSource(
+                        GeoJsonData.Features(FeatureCollection(features = listOf(feature)))
+                    )
+
+                    // Parse route color or use default based on mode
+                    val routeColor = try {
+                        leg.routeColor?.let {
+                            androidx.compose.ui.graphics.Color("#$it".toColorInt())
+                        } ?: getDefaultModeColor(leg.mode)
+                    } catch (e: Exception) {
+                        getDefaultModeColor(leg.mode)
+                    }
+
+                    // Different styling for walking vs transit legs
+                    val (lineWidth, dashArray) = when (leg.mode) {
+                        Mode.WALK, Mode.BIKE -> Pair(4.dp, null) // Solid line, thinner
+                        else -> Pair(6.dp, null) // Solid line, thicker for transit
+                    }
+
+                    // Line casing for better visibility
+                    LineLayer(
+                        id = "transit_leg_${legIndex}_casing",
+                        source = source,
+                        color = rgbColor(
+                            const((routeColor.red * 127).toInt()),
+                            const((routeColor.green * 127).toInt()),
+                            const((routeColor.blue * 127).toInt())
+                        ),
+                        width = const(lineWidth + 2.dp),
+                        opacity = const(0.8f),
+                        cap = const(LineCap.Round),
+                        join = const(LineJoin.Round),
+                    )
+
+                    // Main line
+                    LineLayer(
+                        id = "transit_leg_$legIndex",
+                        source = source,
+                        color = rgbColor(
+                            const((routeColor.red * 255).toInt()),
+                            const((routeColor.green * 255).toInt()),
+                            const((routeColor.blue * 255).toInt())
+                        ),
+                        width = const(lineWidth),
+                        opacity = const(1f),
+                        cap = const(LineCap.Round),
+                        join = const(LineJoin.Round),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PinsLayer(pinFeatures: List<Feature>, isSystemInDarkTheme: Boolean) {
+    SymbolLayer(
+        id = "map_pins",
+        source = rememberGeoJsonSource(GeoJsonData.Features(FeatureCollection(features = pinFeatures))),
+        iconImage = image(
+            if (isSystemInDarkTheme) {
+                painterResource(drawable.map_pin_dark)
+            } else {
+                painterResource(drawable.map_pin_light)
+            }
+        ),
+    )
 }
 
 /**
