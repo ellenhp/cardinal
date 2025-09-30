@@ -1,0 +1,129 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-android-build
+      cancel-in-progress: true
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        lfs: true
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: 36
+
+    - name: Install NDK
+      run: sdkmanager "ndk;26.1.10909125"
+
+    - name: Configure Android NDK environment
+      run: |
+        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV
+        echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV
+        echo "NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install Rust Android targets
+      run: |
+        rustup target add aarch64-linux-android
+        rustup target add x86_64-linux-android
+
+    - name: Cache Rust dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          cardinal-geocoder/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Cache Gradle dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+          cardinal-android/.gradle
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Configure Gradle for CI
+      run: |
+        mkdir -p ~/.gradle
+        echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+        echo "org.gradle.parallel=true" >> ~/.gradle/gradle.properties
+        echo "org.gradle.configureondemand=true" >> ~/.gradle/gradle.properties
+        echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError" >> ~/.gradle/gradle.properties
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x cardinal-android/gradlew
+
+    - name: Install cargo-ndk
+      run: cargo install cargo-ndk
+
+    - name: Verify Android SDK and NDK setup
+      run: |
+        echo "=== Environment Variables ==="
+        echo "ANDROID_HOME: $ANDROID_HOME"
+        echo "ANDROID_NDK_HOME: $ANDROID_NDK_HOME"
+        echo "ANDROID_NDK_ROOT: $ANDROID_NDK_ROOT"
+        echo "NDK_HOME: $NDK_HOME"
+        echo ""
+        echo "=== Android SDK Structure ==="
+        ls -la $ANDROID_HOME || echo "ANDROID_HOME not found"
+        echo ""
+        echo "=== NDK Installation ==="
+        ls -la $ANDROID_NDK_HOME || echo "NDK not found at $ANDROID_NDK_HOME"
+        echo ""
+        echo "=== Rust Targets ==="
+        rustup target list --installed | grep android || echo "No Android targets found"
+        echo ""
+        echo "=== Cargo NDK Version ==="
+        cargo ndk --version || echo "cargo-ndk not found"
+
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+
+    - name: Build with Gradle
+      working-directory: cardinal-android
+      run: |
+        touch local.properties
+        ./gradlew detekt lint
+      env:
+        ANDROID_HOME: ${{ env.ANDROID_HOME }}
+        ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+        ANDROID_NDK_ROOT: ${{ env.ANDROID_NDK_ROOT }}
+        NDK_HOME: ${{ env.NDK_HOME }}
+
+    - name: Upload build logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs
+        path: |
+          cardinal-android/app/build/reports/
+          ~/.gradle/daemon/*/daemon-*.out.log
+        retention-days: 3
