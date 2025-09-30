@@ -27,6 +27,7 @@ valhallaMobileConfig = "0.0.9"
 ferrostar = "0.41.0"
 okhttp3 = "5.1.0"
 material3 = "1.5.0-alpha04"
+detekt = "2.0.0-alpha.0"
 
 [libraries]
 androidaddressformatter = { module = "com.github.woheller69:AndroidAddressFormatter", version.ref = "androidaddressformatter" }
@@ -81,3 +82,4 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hiltPlugin" }
 cargo-ndk = { id = "com.github.willir.rust.cargo-ndk-android", version.ref = "cargo-ndk" }
+detekt = { id = "dev.detekt", version.ref = "detekt" }

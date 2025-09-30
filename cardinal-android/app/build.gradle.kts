@@ -25,6 +25,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.cargo.ndk)
+    alias(libs.plugins.detekt)
     kotlin("plugin.serialization") version "2.2.10"
 }
 
@@ -153,6 +154,12 @@ cargoNdk {
     librariesNames = arrayListOf("libcardinal_geocoder.so")
     buildType = "release"
     extraCargoBuildArguments = arrayListOf("-p", "cardinal-geocoder")
+}
+
+detekt {
+    parallel = true
+    config.setFrom("detekt.yml")
+    allRules = true
 }
 
 dependencies {

@@ -128,125 +128,28 @@ fun ProfileEditorScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Custom app bar using Row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = dimensionResource(dimen.padding), vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { handleBackNavigation() }) {
-                Icon(
-                    painter = painterResource(drawable.ic_arrow_back),
-                    contentDescription = stringResource(
-                        string.content_description_back
-                    )
-                )
-            }
-
-            Text(
-                text = if (isNewProfile) "Create Profile" else "Edit Profile",
-                style = MaterialTheme.typography.titleLarge
-            )
-
-            if (!isLoading) {
-                IconButton(
-                    onClick = {
-                        viewModel.saveProfile {
-                            navController.popBackStack()
-                        }
-                    }
-                ) {
-                    Icon(painter = painterResource(drawable.ic_save), contentDescription = "Save")
-                }
-            } else {
-                // Placeholder to maintain layout
-                IconButton(onClick = {}, enabled = false) {
-                    Icon(
-                        painter = painterResource(drawable.ic_add),
-                        contentDescription = null,
-                        tint = Color.Transparent
-                    )
+        ProfileEditorAppBar(
+            onBack = { handleBackNavigation() },
+            title = if (isNewProfile) "Create Profile" else "Edit Profile",
+            isLoading = isLoading,
+            onSave = {
+                viewModel.saveProfile {
+                    navController.popBackStack()
                 }
             }
-        }
+        )
 
         if (isLoading) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = dimensionResource(dimen.padding)), // Reduced padding since we removed TopAppBar
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            LoadingView()
         } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = dimensionResource(dimen.padding)) // Reduced padding since we removed TopAppBar
-                    .verticalScroll(rememberScrollState())
-                    .padding(dimensionResource(dimen.padding)),
-                verticalArrangement = Arrangement.spacedBy(dimensionResource(dimen.padding))
-            ) {
-                // Profile Name
-                OutlinedTextField(
-                    value = profileName,
-                    onValueChange = { viewModel.updateProfileName(it) },
-                    label = { Text("Profile Name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                // Routing Mode Selector
-                RoutingModeSelector(
-                    selectedMode = selectedMode,
-                    onModeSelected = { viewModel.updateRoutingMode(it) }
-                )
-
-                // Options Editor based on mode
-                when (selectedMode) {
-                    RoutingMode.AUTO -> AutoOptionsEditor(routingOptions as AutoRoutingOptions) {
-                        viewModel.updateRoutingOptions(
-                            it
-                        )
-                    }
-
-                    RoutingMode.TRUCK -> TruckOptionsEditor(routingOptions as TruckRoutingOptions) {
-                        viewModel.updateRoutingOptions(
-                            it
-                        )
-                    }
-
-                    RoutingMode.MOTOR_SCOOTER -> MotorScooterOptionsEditor(routingOptions as MotorScooterRoutingOptions) {
-                        viewModel.updateRoutingOptions(
-                            it
-                        )
-                    }
-
-                    RoutingMode.MOTORCYCLE -> MotorcycleOptionsEditor(routingOptions as MotorcycleRoutingOptions) {
-                        viewModel.updateRoutingOptions(
-                            it
-                        )
-                    }
-
-                    RoutingMode.BICYCLE -> CyclingOptionsEditor(routingOptions as CyclingRoutingOptions) {
-                        viewModel.updateRoutingOptions(
-                            it
-                        )
-                    }
-
-                    RoutingMode.PEDESTRIAN -> PedestrianOptionsEditor(routingOptions as PedestrianRoutingOptions) {
-                        viewModel.updateRoutingOptions(
-                            it
-                        )
-                    }
-
-                    RoutingMode.PUBLIC_TRANSPORT -> {}
-                }
-            }
+            ProfileEditorContent(
+                profileName = profileName,
+                onProfileNameChange = { viewModel.updateProfileName(it) },
+                selectedMode = selectedMode,
+                onModeSelected = { viewModel.updateRoutingMode(it) },
+                routingOptions = routingOptions,
+                onRoutingOptionsChange = { viewModel.updateRoutingOptions(it) }
+            )
         }
     }
 
@@ -965,6 +868,107 @@ private fun <T : Enum<T>> EnumDropdownOption(
                     }
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ProfileEditorAppBar(
+    onBack: () -> Unit,
+    title: String,
+    isLoading: Boolean,
+    onSave: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = dimensionResource(dimen.padding), vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(
+                painter = painterResource(drawable.ic_arrow_back),
+                contentDescription = stringResource(string.content_description_back)
+            )
+        }
+
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        if (!isLoading) {
+            IconButton(onClick = onSave) {
+                Icon(painter = painterResource(drawable.ic_save), contentDescription = "Save")
+            }
+        } else {
+            // Placeholder to maintain layout
+            IconButton(onClick = {}, enabled = false) {
+                Icon(
+                    painter = painterResource(drawable.ic_add),
+                    contentDescription = null,
+                    tint = Color.Transparent
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingView() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = dimensionResource(dimen.padding)),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+@Composable
+private fun ProfileEditorContent(
+    profileName: String,
+    onProfileNameChange: (String) -> Unit,
+    selectedMode: RoutingMode,
+    onModeSelected: (RoutingMode) -> Unit,
+    routingOptions: RoutingOptions,
+    onRoutingOptionsChange: (RoutingOptions) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = dimensionResource(dimen.padding))
+            .verticalScroll(rememberScrollState())
+            .padding(dimensionResource(dimen.padding)),
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(dimen.padding))
+    ) {
+        // Profile Name
+        OutlinedTextField(
+            value = profileName,
+            onValueChange = onProfileNameChange,
+            label = { Text("Profile Name") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        // Routing Mode Selector
+        RoutingModeSelector(
+            selectedMode = selectedMode,
+            onModeSelected = onModeSelected
+        )
+
+        // Options Editor based on mode
+        when (selectedMode) {
+            RoutingMode.AUTO -> AutoOptionsEditor(routingOptions as AutoRoutingOptions, onRoutingOptionsChange)
+            RoutingMode.TRUCK -> TruckOptionsEditor(routingOptions as TruckRoutingOptions, onRoutingOptionsChange)
+            RoutingMode.MOTOR_SCOOTER -> MotorScooterOptionsEditor(routingOptions as MotorScooterRoutingOptions, onRoutingOptionsChange)
+            RoutingMode.MOTORCYCLE -> MotorcycleOptionsEditor(routingOptions as MotorcycleRoutingOptions, onRoutingOptionsChange)
+            RoutingMode.BICYCLE -> CyclingOptionsEditor(routingOptions as CyclingRoutingOptions, onRoutingOptionsChange)
+            RoutingMode.PEDESTRIAN -> PedestrianOptionsEditor(routingOptions as PedestrianRoutingOptions, onRoutingOptionsChange)
+            RoutingMode.PUBLIC_TRANSPORT -> {}
         }
     }
 }

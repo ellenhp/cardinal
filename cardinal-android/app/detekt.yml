@@ -1,0 +1,12 @@
+naming:
+  FunctionNaming:
+    ignoreAnnotated: [ 'Composable' ]
+    excludes: [ '**/cardinal/bottomsheet/**' ]
+
+complexity:
+  LongParameterList:
+    active: true
+    ignoreDefaultParameters: true
+  CognitiveComplexMethod:
+    active: true
+    excludes: [ '**/cardinal/bottomsheet/**' ]

@@ -129,109 +129,180 @@ private fun SearchPanelContent(
             .padding(dimensionResource(dimen.padding))
     ) {
         val density = LocalDensity.current
+        val textFieldRequester = remember { FocusRequester() }
 
         // Measure the height of this row for peekHeight
-        Column(
+        PeekHeightContent(
+            searchQuery = searchQuery,
+            onSearchQueryChange = onSearchQueryChange,
+            onSearchFocusChange = onSearchFocusChange,
+            onSearchEvent = onSearchEvent,
+            textFieldRequester = textFieldRequester,
+            homeInSearchScreen = homeInSearchScreen,
+            pinnedPlaces = pinnedPlaces,
+            onPlaceSelected = onPlaceSelected,
+            onPeekHeightChange = onPeekHeightChange,
+            density = density
+        )
+
+        ContentBelow(
+            homeInSearchScreen = homeInSearchScreen,
+            geocodePlaces = geocodePlaces,
+            onPlaceSelected = onPlaceSelected,
+            addressFormatter = addressFormatter
+        )
+    }
+}
+
+@Composable
+private fun PeekHeightContent(
+    searchQuery: TextFieldValue,
+    onSearchQueryChange: (TextFieldValue) -> Unit,
+    onSearchFocusChange: (Boolean) -> Unit,
+    onSearchEvent: () -> Unit,
+    textFieldRequester: FocusRequester,
+    homeInSearchScreen: Boolean,
+    pinnedPlaces: List<Place>,
+    onPlaceSelected: (Place) -> Unit,
+    onPeekHeightChange: (Dp) -> Unit,
+    density: androidx.compose.ui.unit.Density,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { coordinates ->
+                val heightInDp = with(density) { coordinates.size.height.toDp() }
+                onPeekHeightChange(heightInDp)
+            }
+    ) {
+        SearchTextField(
+            searchQuery = searchQuery,
+            onSearchQueryChange = onSearchQueryChange,
+            onSearchFocusChange = onSearchFocusChange,
+            onSearchEvent = onSearchEvent,
+            textFieldRequester = textFieldRequester,
+            homeInSearchScreen = homeInSearchScreen
+        )
+
+        PinnedPlacesRow(
+            pinnedPlaces = pinnedPlaces,
+            homeInSearchScreen = homeInSearchScreen,
+            onPlaceSelected = onPlaceSelected
+        )
+
+        HorizontalDivider(
             modifier = Modifier
                 .fillMaxWidth()
-                .onGloballyPositioned { coordinates ->
-                    val heightInDp = with(density) { coordinates.size.height.toDp() }
-                    onPeekHeightChange(heightInDp)
-                }) {
-            val textField = remember { FocusRequester() }
-            // Search box with "Where to?" placeholder
-            TextField(
-                value = searchQuery,
-                onValueChange = onSearchQueryChange,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { onSearchEvent() }),
-                singleLine = true,
+                .padding(vertical = dimensionResource(dimen.padding) / 2),
+            thickness = DividerDefaults.Thickness,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+    }
+}
+
+@Composable
+private fun SearchTextField(
+    searchQuery: TextFieldValue,
+    onSearchQueryChange: (TextFieldValue) -> Unit,
+    onSearchFocusChange: (Boolean) -> Unit,
+    onSearchEvent: () -> Unit,
+    textFieldRequester: FocusRequester,
+    homeInSearchScreen: Boolean,
+) {
+    TextField(
+        value = searchQuery,
+        onValueChange = onSearchQueryChange,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { onSearchEvent() }),
+        singleLine = true,
+        modifier = Modifier
+            .focusRequester(textFieldRequester)
+            .fillMaxWidth()
+            .padding(bottom = dimensionResource(dimen.padding))
+            .onFocusChanged { focusState ->
+                onSearchFocusChange(focusState.isFocused)
+            },
+        placeholder = { Text(stringResource(string.where_to)) },
+        leadingIcon = {
+            Icon(
+                painter = painterResource(drawable.ic_search),
+                contentDescription = stringResource(string.content_description_search)
+            )
+        },
+        trailingIcon = {
+            if (searchQuery.text.isNotEmpty()) {
+                FilledTonalIconButton(
+                    onClick = { onSearchQueryChange(TextFieldValue()) },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(drawable.ic_close),
+                        contentDescription = stringResource(string.content_description_clear_search)
+                    )
+                }
+            }
+        },
+        colors = TextFieldDefaults.colors(
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent
+        ),
+        shape = RoundedCornerShape(dimensionResource(dimen.icon_size))
+    )
+
+    LaunchedEffect(homeInSearchScreen) {
+        if (homeInSearchScreen) {
+            textFieldRequester.requestFocus()
+        }
+    }
+}
+
+@Composable
+private fun PinnedPlacesRow(
+    pinnedPlaces: List<Place>,
+    homeInSearchScreen: Boolean,
+    onPlaceSelected: (Place) -> Unit,
+) {
+    AnimatedVisibility(
+        visible = pinnedPlaces.isNotEmpty()
+    ) {
+        if (!homeInSearchScreen) {
+            FlowRow(
                 modifier = Modifier
-                    .focusRequester(textField)
                     .fillMaxWidth()
                     .padding(bottom = dimensionResource(dimen.padding))
-                    .onFocusChanged { focusState ->
-                        onSearchFocusChange(focusState.isFocused)
-                    },
-                placeholder = { Text(stringResource(string.where_to)) },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(drawable.ic_search),
-                        contentDescription = stringResource(string.content_description_search)
-                    )
-                },
-                trailingIcon = {
-                    if (searchQuery.text.isNotEmpty()) {
-                        FilledTonalIconButton(
-                            onClick = { onSearchQueryChange(TextFieldValue()) },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(drawable.ic_close),
-                                contentDescription = stringResource(string.content_description_clear_search)
-                            )
-                        }
-                    }
-                },
-                colors = TextFieldDefaults.colors(
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent
-                ),
-                shape = RoundedCornerShape(dimensionResource(dimen.icon_size))
-            )
-
-            // This block is responsible for returning focus to the search bar after we pop back to the search panel from a place card.
-            LaunchedEffect(homeInSearchScreen) {
-                if (homeInSearchScreen) {
-                    textField.requestFocus()
-                }
-            }
-
-            AnimatedVisibility(
-                visible = pinnedPlaces.isNotEmpty()
             ) {
-                // The homeInSearchScreen isn't part of the animated visibility condition because it looks weird.
-                if (!homeInSearchScreen) {
-                    FlowRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = dimensionResource(dimen.padding))
-                    ) {
-                        for (place in pinnedPlaces)
-                            NavigationIcon(
-                                place = place,
-                                onPlaceSelected = onPlaceSelected
-                            )
-                    }
-                }
-            }
-
-            // Inset horizontal divider
-            HorizontalDivider(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = dimensionResource(dimen.padding) / 2),
-                thickness = DividerDefaults.Thickness,
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
-        }
-
-        if (homeInSearchScreen) {
-            LazyColumn {
-                items(geocodePlaces) {
-                    SearchResultItem(
-                        addressFormatter = addressFormatter,
-                        it,
-                        onPlaceSelected
+                for (place in pinnedPlaces)
+                    NavigationIcon(
+                        place = place,
+                        onPlaceSelected = onPlaceSelected
                     )
-                }
             }
-            Spacer(modifier = Modifier.fillMaxSize())
-        } else {
-            val savedPlacesViewModel = hiltViewModel<SavedPlacesViewModel>()
-            SavedPlacesList(savedPlacesViewModel, onPlaceSelected = onPlaceSelected)
         }
+    }
+}
+
+@Composable
+private fun ContentBelow(
+    homeInSearchScreen: Boolean,
+    geocodePlaces: List<Place>,
+    onPlaceSelected: (Place) -> Unit,
+    addressFormatter: AddressFormatter,
+) {
+    if (homeInSearchScreen) {
+        LazyColumn {
+            items(geocodePlaces) {
+                SearchResultItem(
+                    addressFormatter = addressFormatter,
+                    it,
+                    onPlaceSelected
+                )
+            }
+        }
+        Spacer(modifier = Modifier.fillMaxSize())
+    } else {
+        val savedPlacesViewModel = hiltViewModel<SavedPlacesViewModel>()
+        SavedPlacesList(savedPlacesViewModel, onPlaceSelected = onPlaceSelected)
     }
 }
 

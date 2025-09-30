@@ -82,6 +82,7 @@ import earth.maps.cardinal.ui.core.Screen
 import earth.maps.cardinal.ui.place.SearchResults
 import earth.maps.cardinal.ui.saved.QuickSuggestions
 import io.github.dellisd.spatialk.geojson.BoundingBox
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import uniffi.ferrostar.Route
@@ -154,316 +155,451 @@ fun DirectionsScreen(
             .fillMaxSize()
             .padding(horizontal = dimensionResource(dimen.padding))
     ) {
-        val density = androidx.compose.ui.platform.LocalDensity.current
-
-        // Conditionally show UI based on field focus
         if (!isAnyFieldFocused) {
-            // Show full UI when no field is focused
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onGloballyPositioned { coordinates ->
-                        val heightInDp = with(density) { coordinates.size.height.toDp() }
-                        onPeekHeightChange(heightInDp)
-                    }) {
-                // Header with back button
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            painter = painterResource(drawable.ic_arrow_back),
-                            contentDescription = stringResource(string.back)
-                        )
-                    }
-
-                    Text(
-                        text = stringResource(string.directions),
-                        style = MaterialTheme.typography.headlineSmall
-                    )
-
-                    // Spacer to balance the row
-                    Box(modifier = Modifier.size(48.dp))
-                }
-
-                // From and To fields
-                PlaceField(
-                    label = stringResource(string.from),
-                    place = viewModel.fromPlace,
-                    onCleared = {
-                        viewModel.updateFromPlace(null)
-
-                    },
-                    onTextChange = {
-                        viewModel.updateSearchQuery(it)
-                    },
-                    onTextFieldFocusChange = {
-                        fieldFocusState = if (it) {
-                            onFullExpansionRequired()
-                            FieldFocusState.FROM
-                        } else {
-                            FieldFocusState.NONE
-                        }
-                    },
-                    isFocused = fieldFocusState == FieldFocusState.FROM,
-                    showRecalculateButton = viewModel.fromPlace != null && viewModel.toPlace != null,
-                    onRecalculateClick = { viewModel.recalculateDirections() },
-                    isRouteLoading = routeState.isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp)
-                )
-
-                PlaceField(
-                    label = stringResource(string.to),
-                    place = viewModel.toPlace,
-                    onCleared = {
-                        viewModel.updateToPlace(null)
-                    },
-                    onTextChange = {
-                        viewModel.updateSearchQuery(it)
-                    },
-                    onTextFieldFocusChange = {
-                        fieldFocusState = if (it) {
-                            onFullExpansionRequired()
-                            FieldFocusState.TO
-                        } else {
-                            FieldFocusState.NONE
-                        }
-                    },
-                    isFocused = fieldFocusState == FieldFocusState.TO,
-                    showFlipButton = viewModel.fromPlace != null && viewModel.toPlace != null,
-                    onFlipClick = { viewModel.flipDestinations() },
-                    isRouteLoading = routeState.isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = dimensionResource(dimen.padding))
-                )
-
-                val availableRoutingModes by viewModel.getAvailableRoutingModes().collectAsState(
-                    initial = listOf(
-                        RoutingMode.PUBLIC_TRANSPORT,
-                        RoutingMode.BICYCLE,
-                        RoutingMode.PEDESTRIAN,
-                        RoutingMode.AUTO,
-                    )
-                )
-
-                RoutingModeSelector(
-                    availableModes = availableRoutingModes,
-                    selectedMode = viewModel.selectedRoutingMode,
-                    onModeSelected = { viewModel.updateRoutingMode(it) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = dimensionResource(dimen.padding_minor))
-                )
-
-                RoutingProfileSelector(
-                    modifier = Modifier.fillMaxWidth(),
-                    viewModel = viewModel,
-                    availableProfiles = availableProfiles
-                )
-
-                // Inset horizontal divider
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = dimensionResource(dimen.padding) / 2),
-                    thickness = DividerDefaults.Thickness,
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
-            }
-
-            // Route results
-            if (viewModel.selectedRoutingMode == RoutingMode.PUBLIC_TRANSPORT) {
-                val planState = viewModel.planState
-                when {
-                    planState.isLoading -> {
-                        Text(
-                            text = stringResource(string.calculating_route_in_progress),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(dimensionResource(dimen.padding))
-                        )
-                    }
-
-                    planState.error != null -> {
-                        Text(
-                            text = stringResource(string.directions_error, planState.error),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(dimensionResource(dimen.padding))
-                        )
-                    }
-
-                    planState.planResponse != null -> {
-                        TransitDirectionsScreen(
-                            viewModel = viewModel, onItineraryClick = { itinerary ->
-                                NavigationUtils.navigate(
-                                    navController, Screen.TransitItineraryDetail(itinerary)
-                                )
-                            }, appPreferences = appPreferences
-                        )
-                    }
-
-                    else -> {
-                        // No plan calculated yet
-                        Text(
-                            text = stringResource(string.enter_start_and_end_locations_to_get_directions),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(dimensionResource(dimen.padding))
-                        )
-                    }
-                }
-            } else {
-                when {
-                    routeState.isLoading -> {
-                        Text(
-                            text = stringResource(string.calculating_route_in_progress),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(dimensionResource(dimen.padding))
-                        )
-                    }
-
-                    routeState.error != null -> {
-                        Text(
-                            text = stringResource(string.directions_error, routeState.error),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(dimensionResource(dimen.padding))
-                        )
-                    }
-
-                    routeState.route != null -> {
-                        FerrostarRouteResults(
-                            ferrostarRoute = routeState.route,
-                            viewModel = viewModel,
-                            modifier = Modifier.fillMaxWidth(),
-                            navController = navController,
-                            distanceUnit = appPreferences.distanceUnit.collectAsState().value,
-                            availableProfiles = viewModel.getAvailableProfilesForCurrentMode()
-                                .collectAsState(initial = emptyList()).value,
-                            hasNotificationPermission = hasNotificationPermission,
-                            onRequestNotificationPermission = onRequestNotificationPermission
-                        )
-                    }
-
-                    else -> {
-                        // No route calculated yet
-                        Text(
-                            text = stringResource(string.enter_start_and_end_locations_to_get_directions),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(dimensionResource(dimen.padding))
-                        )
-                    }
-                }
-            }
+            DirectionsScreenFullUI(
+                viewModel = viewModel,
+                onPeekHeightChange = onPeekHeightChange,
+                onBack = onBack,
+                onFullExpansionRequired = onFullExpansionRequired,
+                navController = navController,
+                onFieldFocusStateChange = { fieldFocusState = it },
+                fieldFocusState = fieldFocusState,
+                routeState = routeState,
+                availableProfiles = availableProfiles,
+                appPreferences = appPreferences,
+                hasNotificationPermission = hasNotificationPermission,
+                onRequestNotificationPermission = onRequestNotificationPermission
+            )
         } else {
-            // Show only the focused field and search results when a field is focused
-            val currentFocusState = fieldFocusState
-            PlaceField(
-                label = if (currentFocusState == FieldFocusState.FROM) "From" else "To",
-                place = if (currentFocusState == FieldFocusState.FROM) viewModel.fromPlace else viewModel.toPlace,
-                onCleared = {
-                    if (currentFocusState == FieldFocusState.FROM) {
-                        viewModel.updateFromPlace(null)
-                    } else {
-                        viewModel.updateToPlace(null)
-                    }
-                },
-                onTextChange = {
-                    viewModel.updateSearchQuery(it)
-                },
-                onTextFieldFocusChange = { isFocused ->
-                    fieldFocusState = if (isFocused) {
-                        currentFocusState
-                    } else {
-                        FieldFocusState.NONE
-                    }
-                },
-                isFocused = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
+            DirectionsScreenFocusedField(
+                viewModel = viewModel,
+                fieldFocusState = fieldFocusState,
+                savedPlaces = savedPlaces,
+                hasLocationPermission = hasLocationPermission,
+                onRequestLocationPermission = onRequestLocationPermission,
+                pendingLocationRequest = pendingLocationRequest,
+                coroutineScope = coroutineScope
+            )
+        }
+    }
+}
+
+@Composable
+private fun DirectionsScreenFullUI(
+    viewModel: DirectionsViewModel,
+    onPeekHeightChange: (Dp) -> Unit,
+    onBack: () -> Unit,
+    onFullExpansionRequired: () -> Job,
+    navController: NavController,
+    onFieldFocusStateChange: (FieldFocusState) -> Unit,
+    fieldFocusState: FieldFocusState,
+    routeState: RouteState,
+    availableProfiles: List<RoutingProfile>,
+    appPreferences: AppPreferenceRepository,
+    hasNotificationPermission: Boolean,
+    onRequestNotificationPermission: () -> Unit
+) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+
+    // Show full UI when no field is focused
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { coordinates ->
+                val heightInDp = with(density) { coordinates.size.height.toDp() }
+                onPeekHeightChange(heightInDp)
+            }) {
+        // Header with back button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    painter = painterResource(drawable.ic_arrow_back),
+                    contentDescription = stringResource(string.back)
+                )
+            }
+
+            Text(
+                text = stringResource(string.directions),
+                style = MaterialTheme.typography.headlineSmall
             )
 
-            // Show search results or quick suggestions based on search query
-            if (viewModel.isSearching) {
-                Text(
-                    text = "Searching...",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(dimensionResource(dimen.padding))
-                )
-            } else if (viewModel.searchQuery.isEmpty()) {
-                // Show quick suggestions when no search query
-                QuickSuggestions(
-                    onMyLocationSelected = {
-                        // Check permissions before attempting to get location
-                        if (hasLocationPermission) {
-                            // Launch coroutine to get current location
-                            coroutineScope.launch {
-                                val myLocationPlace = viewModel.getCurrentLocationAsPlace()
-                                myLocationPlace?.let { place ->
-                                    // Update the appropriate place based on which field is focused
-                                    if (fieldFocusState == FieldFocusState.FROM) {
-                                        viewModel.updateFromPlace(place)
-                                    } else {
-                                        viewModel.updateToPlace(place)
-                                    }
-                                    // Clear focus state after selection
-                                    fieldFocusState = FieldFocusState.NONE
-                                }
-                            }
-                        } else {
-                            // Set pending request for auto-retry after permission grant
-                            pendingLocationRequest = fieldFocusState
-                            // Request location permission
-                            onRequestLocationPermission()
-                        }
-                    },
-                    savedPlaces = savedPlaces,
-                    onSavedPlaceSelected = { place ->
-                        // Update the appropriate place based on which field is focused
-                        if (fieldFocusState == FieldFocusState.FROM) {
-                            viewModel.updateFromPlace(place)
-                        } else {
-                            viewModel.updateToPlace(place)
-                        }
-                        // Clear focus state after selection
-                        fieldFocusState = FieldFocusState.NONE
-                    },
-                    isGettingLocation = viewModel.isGettingLocation,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            // Spacer to balance the row
+            Box(modifier = Modifier.size(48.dp))
+        }
+
+        // From and To fields
+        PlaceField(
+            label = stringResource(string.from),
+            place = viewModel.fromPlace,
+            onCleared = { viewModel.updateFromPlace(null) },
+            onTextChange = { viewModel.updateSearchQuery(it) },
+            onTextFieldFocusChange = {
+                onFieldFocusStateChange(if (it) FieldFocusState.FROM else FieldFocusState.NONE)
+            },
+            isFocused = fieldFocusState == FieldFocusState.FROM,
+            showRecalculateButton = viewModel.fromPlace != null && viewModel.toPlace != null,
+            onRecalculateClick = { viewModel.recalculateDirections() },
+            isRouteLoading = routeState.isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+        )
+
+        PlaceField(
+            label = stringResource(string.to),
+            place = viewModel.toPlace,
+            onCleared = { viewModel.updateToPlace(null) },
+            onTextChange = { viewModel.updateSearchQuery(it) },
+            onTextFieldFocusChange = {
+                onFieldFocusStateChange(if (it) FieldFocusState.TO else FieldFocusState.NONE)
+            },
+            isFocused = fieldFocusState == FieldFocusState.TO,
+            showFlipButton = viewModel.fromPlace != null && viewModel.toPlace != null,
+            onFlipClick = { viewModel.flipDestinations() },
+            isRouteLoading = routeState.isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = dimensionResource(dimen.padding))
+        )
+
+        val availableRoutingModes by viewModel.getAvailableRoutingModes().collectAsState(
+            initial = listOf(
+                RoutingMode.PUBLIC_TRANSPORT,
+                RoutingMode.BICYCLE,
+                RoutingMode.PEDESTRIAN,
+                RoutingMode.AUTO,
+            )
+        )
+
+        RoutingModeSelector(
+            availableModes = availableRoutingModes,
+            selectedMode = viewModel.selectedRoutingMode,
+            onModeSelected = { viewModel.updateRoutingMode(it) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = dimensionResource(dimen.padding_minor))
+        )
+
+        RoutingProfileSelector(
+            modifier = Modifier.fillMaxWidth(),
+            viewModel = viewModel,
+            availableProfiles = availableProfiles
+        )
+
+        // Inset horizontal divider
+        HorizontalDivider(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = dimensionResource(dimen.padding) / 2),
+            thickness = DividerDefaults.Thickness,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+    }
+
+    // Route results
+    DirectionsRouteResults(
+        viewModel = viewModel,
+        routeState = routeState,
+        navController = navController,
+        appPreferences = appPreferences,
+        hasNotificationPermission = hasNotificationPermission,
+        onRequestNotificationPermission = onRequestNotificationPermission
+    )
+}
+
+@Composable
+private fun DirectionsRouteResults(
+    viewModel: DirectionsViewModel,
+    routeState: RouteState,
+    navController: NavController,
+    appPreferences: AppPreferenceRepository,
+    hasNotificationPermission: Boolean,
+    onRequestNotificationPermission: () -> Unit
+) {
+    val planState = viewModel.planState
+    if (viewModel.selectedRoutingMode == RoutingMode.PUBLIC_TRANSPORT) {
+        TransitRouteResults(planState = planState, navController = navController, viewModel = viewModel, appPreferences = appPreferences)
+    } else {
+        NonTransitRouteResults(
+            routeState = routeState,
+            viewModel = viewModel,
+            navController = navController,
+            appPreferences = appPreferences,
+            hasNotificationPermission = hasNotificationPermission,
+            onRequestNotificationPermission = onRequestNotificationPermission
+        )
+    }
+}
+
+@Composable
+private fun TransitRouteResults(
+    planState: TransitPlanState,
+    navController: NavController,
+    viewModel: DirectionsViewModel,
+    appPreferences: AppPreferenceRepository
+) {
+    when {
+        planState.isLoading -> {
+            Text(
+                text = stringResource(string.calculating_route_in_progress),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(dimensionResource(dimen.padding))
+            )
+        }
+
+        planState.error != null -> {
+            Text(
+                text = stringResource(string.directions_error, planState.error),
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(dimensionResource(dimen.padding))
+            )
+        }
+
+        planState.planResponse != null -> {
+            TransitDirectionsScreen(
+                viewModel = viewModel, onItineraryClick = { itinerary ->
+                    NavigationUtils.navigate(
+                        navController, Screen.TransitItineraryDetail(itinerary)
+                    )
+                }, appPreferences = appPreferences
+            )
+        }
+
+        else -> {
+            // No plan calculated yet
+            Text(
+                text = stringResource(string.enter_start_and_end_locations_to_get_directions),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(dimensionResource(dimen.padding))
+            )
+        }
+    }
+}
+
+@Composable
+private fun NonTransitRouteResults(
+    routeState: RouteState,
+    viewModel: DirectionsViewModel,
+    navController: NavController,
+    appPreferences: AppPreferenceRepository,
+    hasNotificationPermission: Boolean,
+    onRequestNotificationPermission: () -> Unit
+) {
+    when {
+        routeState.isLoading -> {
+            Text(
+                text = stringResource(string.calculating_route_in_progress),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(dimensionResource(dimen.padding))
+            )
+        }
+
+        routeState.error != null -> {
+            Text(
+                text = stringResource(string.directions_error, routeState.error),
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(dimensionResource(dimen.padding))
+            )
+        }
+
+        routeState.route != null -> {
+            FerrostarRouteResults(
+                ferrostarRoute = routeState.route,
+                viewModel = viewModel,
+                modifier = Modifier.fillMaxWidth(),
+                navController = navController,
+                distanceUnit = appPreferences.distanceUnit.collectAsState().value,
+                availableProfiles = viewModel.getAvailableProfilesForCurrentMode()
+                    .collectAsState(initial = emptyList()).value,
+                hasNotificationPermission = hasNotificationPermission,
+                onRequestNotificationPermission = onRequestNotificationPermission
+            )
+        }
+
+        else -> {
+            // No route calculated yet
+            Text(
+                text = stringResource(string.enter_start_and_end_locations_to_get_directions),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(dimensionResource(dimen.padding))
+            )
+        }
+    }
+}
+
+@Composable
+private fun DirectionsScreenFocusedField(
+    viewModel: DirectionsViewModel,
+    fieldFocusState: FieldFocusState,
+    savedPlaces: List<Place>,
+    hasLocationPermission: Boolean,
+    onRequestLocationPermission: () -> Unit,
+    pendingLocationRequest: FieldFocusState?,
+    coroutineScope: CoroutineScope
+) {
+    // Show only the focused field and search results when a field is focused
+    PlaceField(
+        label = if (fieldFocusState == FieldFocusState.FROM) "From" else "To",
+        place = if (fieldFocusState == FieldFocusState.FROM) viewModel.fromPlace else viewModel.toPlace,
+        onCleared = {
+            if (fieldFocusState == FieldFocusState.FROM) {
+                viewModel.updateFromPlace(null)
             } else {
-                // Show search results when there's a query
-                SearchResults(
-                    viewModel = hiltViewModel(),
-                    geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value),
-                    onPlaceSelected = { place ->
-                        // Update the appropriate place based on which field is focused
-                        if (fieldFocusState == FieldFocusState.FROM) {
-                            viewModel.updateFromPlace(place)
-                        } else {
-                            viewModel.updateToPlace(place)
-                        }
-                        // Clear focus state after selection
-                        fieldFocusState = FieldFocusState.NONE
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                viewModel.updateToPlace(null)
+            }
+        },
+        onTextChange = { viewModel.updateSearchQuery(it) },
+        onTextFieldFocusChange = { isFocused ->
+
+        },
+        isFocused = true,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+    )
+
+    // Show search results or quick suggestions based on search query
+    FocusedFieldContent(
+        viewModel = viewModel,
+        fieldFocusState = fieldFocusState,
+        savedPlaces = savedPlaces,
+        hasLocationPermission = hasLocationPermission,
+        onRequestLocationPermission = onRequestLocationPermission,
+        pendingLocationRequest = pendingLocationRequest,
+        coroutineScope = coroutineScope
+    )
+}
+
+@Composable
+private fun FocusedFieldContent(
+    viewModel: DirectionsViewModel,
+    fieldFocusState: FieldFocusState,
+    savedPlaces: List<Place>,
+    hasLocationPermission: Boolean,
+    onRequestLocationPermission: () -> Unit,
+    pendingLocationRequest: FieldFocusState?,
+    coroutineScope: CoroutineScope
+) {
+    when {
+        viewModel.isSearching -> {
+            SearchingIndicator()
+        }
+
+        viewModel.searchQuery.isEmpty() -> {
+            QuickSuggestionsContent(
+                viewModel = viewModel,
+                fieldFocusState = fieldFocusState,
+                savedPlaces = savedPlaces,
+                hasLocationPermission = hasLocationPermission,
+                onRequestLocationPermission = onRequestLocationPermission,
+                pendingLocationRequest = pendingLocationRequest,
+                coroutineScope = coroutineScope
+            )
+        }
+
+        else -> {
+            SearchResultsContent(
+                viewModel = viewModel,
+                fieldFocusState = fieldFocusState
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchingIndicator() {
+    Text(
+        text = "Searching...",
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(dimensionResource(dimen.padding))
+    )
+}
+
+@Composable
+private fun QuickSuggestionsContent(
+    viewModel: DirectionsViewModel,
+    fieldFocusState: FieldFocusState,
+    savedPlaces: List<Place>,
+    hasLocationPermission: Boolean,
+    onRequestLocationPermission: () -> Unit,
+    pendingLocationRequest: FieldFocusState?,
+    coroutineScope: CoroutineScope
+) {
+    QuickSuggestions(
+        onMyLocationSelected = handleMyLocationSelected(
+            viewModel = viewModel,
+            fieldFocusState = fieldFocusState,
+            hasLocationPermission = hasLocationPermission,
+            onRequestLocationPermission = onRequestLocationPermission,
+            coroutineScope = coroutineScope
+        ),
+        savedPlaces = savedPlaces,
+        onSavedPlaceSelected = { place ->
+            updatePlaceForField(viewModel, fieldFocusState, place)
+        },
+        isGettingLocation = viewModel.isGettingLocation,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+private fun SearchResultsContent(
+    viewModel: DirectionsViewModel,
+    fieldFocusState: FieldFocusState
+) {
+    SearchResults(
+        viewModel = hiltViewModel(),
+        geocodeResults = deduplicateSearchResults(viewModel.geocodeResults.value),
+        onPlaceSelected = { place ->
+            updatePlaceForField(viewModel, fieldFocusState, place)
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+private fun updatePlaceForField(
+    viewModel: DirectionsViewModel,
+    fieldFocusState: FieldFocusState,
+    place: Place
+) {
+    if (fieldFocusState == FieldFocusState.FROM) {
+        viewModel.updateFromPlace(place)
+    } else {
+        viewModel.updateToPlace(place)
+    }
+}
+
+private fun handleMyLocationSelected(
+    viewModel: DirectionsViewModel,
+    fieldFocusState: FieldFocusState,
+    hasLocationPermission: Boolean,
+    onRequestLocationPermission: () -> Unit,
+    coroutineScope: CoroutineScope
+): () -> Unit = {
+    if (hasLocationPermission) {
+        coroutineScope.launch {
+            val myLocationPlace = viewModel.getCurrentLocationAsPlace()
+            myLocationPlace?.let { place ->
+                updatePlaceForField(viewModel, fieldFocusState, place)
             }
         }
+    } else {
+        onRequestLocationPermission()
     }
 }
 
@@ -836,19 +972,47 @@ private fun FerrostarRouteResults(
         }
     }
 
-    // Profile selection dialog
-    if (showProfileDialog) {
+    // Dialogs
+    ProfileSelectionDialog(
+        showDialog = showProfileDialog,
+        onDismiss = { showProfileDialog = false },
+        selectedProfile = selectedProfile,
+        availableProfiles = availableProfiles,
+        onProfileSelected = { profile ->
+            viewModel.selectRoutingProfile(profile)
+            showProfileDialog = false
+        }
+    )
+
+    NotificationRequestDialog(
+        showDialog = showNotificationDialog,
+        onDismiss = { showNotificationDialog = false },
+        onConfirm = {
+            showNotificationDialog = false
+            pendingNavigation = true
+            onRequestNotificationPermission()
+        }
+    )
+}
+
+@Composable
+private fun ProfileSelectionDialog(
+    showDialog: Boolean,
+    onDismiss: () -> Unit,
+    selectedProfile: RoutingProfile?,
+    availableProfiles: List<RoutingProfile>,
+    onProfileSelected: (RoutingProfile?) -> Unit
+) {
+    if (showDialog) {
         AlertDialog(
-            onDismissRequest = { showProfileDialog = false },
+            onDismissRequest = onDismiss,
             title = { Text(stringResource(string.select_routing_profile)) },
             text = {
                 Column {
                     // Default option
                     TextButton(
-                        onClick = {
-                            viewModel.selectRoutingProfile(null)
-                            showProfileDialog = false
-                        }, modifier = Modifier.fillMaxWidth()
+                        onClick = { onProfileSelected(null) },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
                             text = stringResource(string.default_profile),
@@ -859,10 +1023,8 @@ private fun FerrostarRouteResults(
                     // Custom profiles
                     availableProfiles.forEach { profile ->
                         TextButton(
-                            onClick = {
-                                viewModel.selectRoutingProfile(profile)
-                                showProfileDialog = false
-                            }, modifier = Modifier.fillMaxWidth()
+                            onClick = { onProfileSelected(profile) },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = profile.name,
@@ -873,29 +1035,31 @@ private fun FerrostarRouteResults(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showProfileDialog = false }) {
+                TextButton(onClick = onDismiss) {
                     Text(stringResource(string.cancel_change_routing_profile))
                 }
             })
     }
+}
 
-    // Notification permission dialog
-    if (showNotificationDialog) {
+@Composable
+private fun NotificationRequestDialog(
+    showDialog: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    if (showDialog) {
         AlertDialog(
-            onDismissRequest = { showNotificationDialog = false },
+            onDismissRequest = onDismiss,
             title = { Text(stringResource(string.notification_ask_title)) },
             text = { Text(stringResource(string.notification_ask_body)) },
             confirmButton = {
-                TextButton(onClick = {
-                    showNotificationDialog = false
-                    pendingNavigation = true
-                    onRequestNotificationPermission()
-                }) {
+                TextButton(onClick = onConfirm) {
                     Text(stringResource(string.got_it))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showNotificationDialog = false }) {
+                TextButton(onClick = onDismiss) {
                     Text(stringResource(string.cancel))
                 }
             })

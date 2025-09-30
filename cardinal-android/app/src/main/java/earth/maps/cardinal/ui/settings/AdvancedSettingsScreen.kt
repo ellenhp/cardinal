@@ -62,6 +62,355 @@ import earth.maps.cardinal.R.dimen
 import earth.maps.cardinal.R.string
 import earth.maps.cardinal.ui.core.TOOLBAR_HEIGHT_DP
 
+@Composable
+private fun ContinuousLocationTrackingSetting(viewModel: SettingsViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = dimensionResource(dimen.padding),
+                vertical = dimensionResource(dimen.padding_minor)
+            )
+    ) {
+        Text(
+            text = stringResource(string.continuous_location_tracking_disabled_title),
+            style = MaterialTheme.typography.titleMedium
+        )
+        Text(
+            text = stringResource(string.continuous_location_tracking_disabled_help_text),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        val continuousLocationTracking by viewModel.continuousLocationTracking.collectAsState()
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (continuousLocationTracking) stringResource(string.enabled) else stringResource(
+                    string.disabled
+                ), style = MaterialTheme.typography.bodyMedium
+            )
+            Switch(
+                checked = continuousLocationTracking,
+                onCheckedChange = { newValue ->
+                    viewModel.setContinuousLocationTrackingEnabled(newValue)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ShowZoomFabsSetting(viewModel: SettingsViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = dimensionResource(dimen.padding),
+                vertical = dimensionResource(dimen.padding_minor)
+            )
+    ) {
+        Text(
+            text = stringResource(string.show_zoom_fabs_title),
+            style = MaterialTheme.typography.titleMedium
+        )
+        Text(
+            text = stringResource(string.show_zoom_fabs_help_text),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        val showZoomFabs by viewModel.showZoomFabs.collectAsState()
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (showZoomFabs) stringResource(string.enabled) else stringResource(
+                    string.disabled
+                ), style = MaterialTheme.typography.bodyMedium
+            )
+            Switch(
+                checked = showZoomFabs,
+                onCheckedChange = { newValue ->
+                    viewModel.setShowZoomFabsEnabled(newValue)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimeFormatSetting(viewModel: SettingsViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = dimensionResource(dimen.padding),
+                vertical = dimensionResource(dimen.padding_minor)
+            )
+    ) {
+        Text(
+            text = stringResource(string.time_format_title),
+            style = MaterialTheme.typography.titleMedium
+        )
+        Text(
+            text = stringResource(string.time_format_help_text),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        val use24HourFormat by viewModel.use24HourFormat.collectAsState()
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val formatText = if (use24HourFormat) {
+                "24\u2011hour"
+            } else {
+                "12\u2011hour"
+            }
+            Text(
+                text = formatText,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Switch(
+                checked = use24HourFormat,
+                onCheckedChange = { newValue ->
+                    viewModel.setUse24HourFormat(newValue)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun DistanceUnitSetting(viewModel: SettingsViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = dimensionResource(dimen.padding),
+                vertical = dimensionResource(dimen.padding_minor)
+            )
+    ) {
+
+        Text(
+            text = stringResource(string.distance_unit_title),
+            style = MaterialTheme.typography.titleMedium
+        )
+        Text(
+            text = stringResource(string.distance_unit_help_text),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        val distanceUnit by viewModel.distanceUnit.collectAsState()
+        val isMetric = distanceUnit == 0
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val unitText = if (isMetric) {
+                stringResource(string.metric)
+            } else {
+                stringResource(string.imperial)
+            }
+            Text(
+                text = unitText,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Switch(
+                checked = isMetric,
+                onCheckedChange = { newValue ->
+                    val newUnit = if (newValue) 0 else 1
+                    viewModel.setDistanceUnit(newUnit)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun PeliasBaseUrlSetting(viewModel: SettingsViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = dimensionResource(dimen.padding),
+                vertical = dimensionResource(dimen.padding_minor)
+            )
+    ) {
+        Text(
+            text = stringResource(string.pelias_base_url_title),
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        val currentPeliasConfig by viewModel.peliasApiConfig.collectAsState()
+        var peliasBaseUrl by remember { mutableStateOf(currentPeliasConfig.baseUrl) }
+
+        // Update state when config changes from outside
+        LaunchedEffect(currentPeliasConfig) {
+            peliasBaseUrl = currentPeliasConfig.baseUrl
+        }
+
+        OutlinedTextField(
+            value = peliasBaseUrl,
+            onValueChange = { newValue ->
+                peliasBaseUrl = newValue
+                viewModel.setPeliasBaseUrl(newValue)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
+        )
+    }
+}
+
+@Composable
+private fun PeliasApiKeySetting(viewModel: SettingsViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = dimensionResource(dimen.padding),
+                vertical = dimensionResource(dimen.padding_minor)
+            )
+    ) {
+        Text(
+            text = stringResource(string.pelias_api_key_title),
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        val currentPeliasConfig by viewModel.peliasApiConfig.collectAsState()
+        var peliasApiKey by remember {
+            mutableStateOf(
+                currentPeliasConfig.apiKey ?: ""
+            )
+        }
+
+        // Update state when config changes from outside
+        LaunchedEffect(currentPeliasConfig) {
+            peliasApiKey = currentPeliasConfig.apiKey ?: ""
+        }
+
+        OutlinedTextField(
+            value = peliasApiKey,
+            onValueChange = { newValue ->
+                peliasApiKey = newValue
+                viewModel.setPeliasApiKey(if (newValue.isNotEmpty()) newValue else null)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+        )
+    }
+}
+
+@Composable
+private fun ValhallaBaseUrlSetting(viewModel: SettingsViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = dimensionResource(dimen.padding),
+                vertical = dimensionResource(dimen.padding_minor)
+            )
+    ) {
+        Text(
+            text = stringResource(string.valhalla_base_url_title),
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        val currentValhallaConfig by viewModel.valhallaApiConfig.collectAsState()
+        var valhallaBaseUrl by remember { mutableStateOf(currentValhallaConfig.baseUrl) }
+
+        // Update state when config changes from outside
+        LaunchedEffect(currentValhallaConfig) {
+            valhallaBaseUrl = currentValhallaConfig.baseUrl
+        }
+
+        OutlinedTextField(
+            value = valhallaBaseUrl,
+            onValueChange = { newValue ->
+                valhallaBaseUrl = newValue
+                viewModel.setValhallaBaseUrl(newValue)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
+        )
+    }
+}
+
+@Composable
+private fun ValhallaApiKeySetting(viewModel: SettingsViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = dimensionResource(dimen.padding),
+                vertical = dimensionResource(dimen.padding_minor)
+            )
+    ) {
+        Text(
+            text = stringResource(string.valhalla_api_key_title),
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        val currentValhallaConfig by viewModel.valhallaApiConfig.collectAsState()
+        var valhallaApiKey by remember {
+            mutableStateOf(
+                currentValhallaConfig.apiKey ?: ""
+            )
+        }
+
+        // Update state when config changes from outside
+        LaunchedEffect(currentValhallaConfig) {
+            valhallaApiKey = currentValhallaConfig.apiKey ?: ""
+        }
+
+        OutlinedTextField(
+            value = valhallaApiKey,
+            onValueChange = { newValue ->
+                valhallaApiKey = newValue
+                viewModel.setValhallaApiKey(if (newValue.isNotEmpty()) newValue else null)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedSettingsScreen(
@@ -96,47 +445,7 @@ fun AdvancedSettingsScreen(
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
 
-                    // Continuous Location Tracking
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = dimensionResource(dimen.padding),
-                                vertical = dimensionResource(dimen.padding_minor)
-                            )
-                    ) {
-                        Text(
-                            text = stringResource(string.continuous_location_tracking_disabled_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = stringResource(string.continuous_location_tracking_disabled_help_text),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        val continuousLocationTracking by viewModel.continuousLocationTracking.collectAsState()
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = if (continuousLocationTracking) stringResource(string.enabled) else stringResource(
-                                    string.disabled
-                                ), style = MaterialTheme.typography.bodyMedium
-                            )
-                            Switch(
-                                checked = continuousLocationTracking,
-                                onCheckedChange = { newValue ->
-                                    viewModel.setContinuousLocationTrackingEnabled(newValue)
-                                }
-                            )
-                        }
-                    }
+                    ContinuousLocationTrackingSetting(viewModel)
 
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -144,47 +453,7 @@ fun AdvancedSettingsScreen(
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
 
-                    // Show Zoom FABs
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = dimensionResource(dimen.padding),
-                                vertical = dimensionResource(dimen.padding_minor)
-                            )
-                    ) {
-                        Text(
-                            text = stringResource(string.show_zoom_fabs_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = stringResource(string.show_zoom_fabs_help_text),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        val showZoomFabs by viewModel.showZoomFabs.collectAsState()
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = if (showZoomFabs) stringResource(string.enabled) else stringResource(
-                                    string.disabled
-                                ), style = MaterialTheme.typography.bodyMedium
-                            )
-                            Switch(
-                                checked = showZoomFabs,
-                                onCheckedChange = { newValue ->
-                                    viewModel.setShowZoomFabsEnabled(newValue)
-                                }
-                            )
-                        }
-                    }
+                    ShowZoomFabsSetting(viewModel)
 
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -192,51 +461,7 @@ fun AdvancedSettingsScreen(
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
 
-                    // Time Format
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = dimensionResource(dimen.padding),
-                                vertical = dimensionResource(dimen.padding_minor)
-                            )
-                    ) {
-                        Text(
-                            text = stringResource(string.time_format_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = stringResource(string.time_format_help_text),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        val use24HourFormat by viewModel.use24HourFormat.collectAsState()
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val formatText = if (use24HourFormat) {
-                                "24\u2011hour"
-                            } else {
-                                "12\u2011hour"
-                            }
-                            Text(
-                                text = formatText,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Switch(
-                                checked = use24HourFormat,
-                                onCheckedChange = { newValue ->
-                                    viewModel.setUse24HourFormat(newValue)
-                                }
-                            )
-                        }
-                    }
+                    TimeFormatSetting(viewModel)
 
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -244,54 +469,7 @@ fun AdvancedSettingsScreen(
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
 
-                    // Distance Unit
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = dimensionResource(dimen.padding),
-                                vertical = dimensionResource(dimen.padding_minor)
-                            )
-                    ) {
-
-                        Text(
-                            text = stringResource(string.distance_unit_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = stringResource(string.distance_unit_help_text),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        val distanceUnit by viewModel.distanceUnit.collectAsState()
-                        val isMetric = distanceUnit == 0
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val unitText = if (isMetric) {
-                                stringResource(string.metric)
-                            } else {
-                                stringResource(string.imperial)
-                            }
-                            Text(
-                                text = unitText,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Switch(
-                                checked = isMetric,
-                                onCheckedChange = { newValue ->
-                                    val newUnit = if (newValue) 0 else 1
-                                    viewModel.setDistanceUnit(newUnit)
-                                }
-                            )
-                        }
-                    }
+                    DistanceUnitSetting(viewModel)
 
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -301,41 +479,7 @@ fun AdvancedSettingsScreen(
 
                     // NEW SETTINGS GO HERE.
 
-                    // Pelias Base URL
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = dimensionResource(dimen.padding),
-                                vertical = dimensionResource(dimen.padding_minor)
-                            )
-                    ) {
-                        Text(
-                            text = stringResource(string.pelias_base_url_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-
-                        val currentPeliasConfig by viewModel.peliasApiConfig.collectAsState()
-                        var peliasBaseUrl by remember { mutableStateOf(currentPeliasConfig.baseUrl) }
-
-                        // Update state when config changes from outside
-                        LaunchedEffect(currentPeliasConfig) {
-                            peliasBaseUrl = currentPeliasConfig.baseUrl
-                        }
-
-                        OutlinedTextField(
-                            value = peliasBaseUrl,
-                            onValueChange = { newValue ->
-                                peliasBaseUrl = newValue
-                                viewModel.setPeliasBaseUrl(newValue)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
-                        )
-                    }
+                    PeliasBaseUrlSetting(viewModel)
 
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -343,46 +487,7 @@ fun AdvancedSettingsScreen(
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
 
-                    // Pelias API Key
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = dimensionResource(dimen.padding),
-                                vertical = dimensionResource(dimen.padding_minor)
-                            )
-                    ) {
-                        Text(
-                            text = stringResource(string.pelias_api_key_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-
-                        val currentPeliasConfig by viewModel.peliasApiConfig.collectAsState()
-                        var peliasApiKey by remember {
-                            mutableStateOf(
-                                currentPeliasConfig.apiKey ?: ""
-                            )
-                        }
-
-                        // Update state when config changes from outside
-                        LaunchedEffect(currentPeliasConfig) {
-                            peliasApiKey = currentPeliasConfig.apiKey ?: ""
-                        }
-
-                        OutlinedTextField(
-                            value = peliasApiKey,
-                            onValueChange = { newValue ->
-                                peliasApiKey = newValue
-                                viewModel.setPeliasApiKey(if (newValue.isNotEmpty()) newValue else null)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                        )
-                    }
+                    PeliasApiKeySetting(viewModel)
 
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -390,41 +495,7 @@ fun AdvancedSettingsScreen(
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
 
-                    // Valhalla Base URL
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = dimensionResource(dimen.padding),
-                                vertical = dimensionResource(dimen.padding_minor)
-                            )
-                    ) {
-                        Text(
-                            text = stringResource(string.valhalla_base_url_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-
-                        val currentValhallaConfig by viewModel.valhallaApiConfig.collectAsState()
-                        var valhallaBaseUrl by remember { mutableStateOf(currentValhallaConfig.baseUrl) }
-
-                        // Update state when config changes from outside
-                        LaunchedEffect(currentValhallaConfig) {
-                            valhallaBaseUrl = currentValhallaConfig.baseUrl
-                        }
-
-                        OutlinedTextField(
-                            value = valhallaBaseUrl,
-                            onValueChange = { newValue ->
-                                valhallaBaseUrl = newValue
-                                viewModel.setValhallaBaseUrl(newValue)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
-                        )
-                    }
+                    ValhallaBaseUrlSetting(viewModel)
 
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -432,46 +503,7 @@ fun AdvancedSettingsScreen(
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
 
-                    // Valhalla API Key
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = dimensionResource(dimen.padding),
-                                vertical = dimensionResource(dimen.padding_minor)
-                            )
-                    ) {
-                        Text(
-                            text = stringResource(string.valhalla_api_key_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-
-                        val currentValhallaConfig by viewModel.valhallaApiConfig.collectAsState()
-                        var valhallaApiKey by remember {
-                            mutableStateOf(
-                                currentValhallaConfig.apiKey ?: ""
-                            )
-                        }
-
-                        // Update state when config changes from outside
-                        LaunchedEffect(currentValhallaConfig) {
-                            valhallaApiKey = currentValhallaConfig.apiKey ?: ""
-                        }
-
-                        OutlinedTextField(
-                            value = valhallaApiKey,
-                            onValueChange = { newValue ->
-                                valhallaApiKey = newValue
-                                viewModel.setValhallaApiKey(if (newValue.isNotEmpty()) newValue else null)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                        )
-                    }
+                    ValhallaApiKeySetting(viewModel)
 
                     Spacer(
                         modifier = Modifier

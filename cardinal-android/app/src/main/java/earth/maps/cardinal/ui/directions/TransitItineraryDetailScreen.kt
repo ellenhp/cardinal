@@ -217,183 +217,170 @@ private fun DetailedLegCard(
                 .fillMaxWidth()
                 .padding(dimensionResource(dimen.padding))
         ) {
-            // Leg header with mode and route info
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Mode icon with route color
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            color = parseRouteColor(leg.routeColor)
-                                ?: MaterialTheme.colorScheme.primary,
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(leg.mode.getIcon()),
-                        contentDescription = null,
-                        tint = parseRouteColor(leg.routeTextColor)
-                            ?: MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(dimensionResource(dimen.padding)))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    // Route name and headsign
-                    val routeText = leg.routeShortName ?: leg.mode.name.lowercase()
-                        .replaceFirstChar { it.uppercase() }
-                    Text(
-                        text = if (leg.headsign != null) "$routeText to ${leg.headsign}" else routeText,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    // Agency
-                    leg.agencyName?.let { agency ->
-                        Text(
-                            text = agency,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                // Duration
-                Text(
-                    text = formatDuration(leg.duration),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            LegHeader(leg)
 
             Spacer(modifier = Modifier.height(dimensionResource(dimen.padding)))
 
-            // Journey details
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "From",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = leg.fromTransitPlace.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    leg.fromTransitPlace.departure?.let { departure ->
-                        Text(
-                            text = "Depart: ${departure.formatTime(use24HourFormat)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+            JourneyDetails(leg, use24HourFormat)
 
-                Icon(
-                    painter = painterResource(drawable.ic_arrow_forward),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .align(Alignment.CenterVertically)
-                        .padding(horizontal = dimensionResource(dimen.padding_minor)),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+            LegAdditionalDetails(leg, distanceUnit)
+
+            LegAlerts(leg)
+        }
+    }
+}
+
+@Composable
+private fun LegHeader(leg: Leg) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Mode icon with route color
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(
+                    color = parseRouteColor(leg.routeColor)
+                        ?: MaterialTheme.colorScheme.primary,
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(leg.mode.getIcon()),
+                contentDescription = null,
+                tint = parseRouteColor(leg.routeTextColor)
+                    ?: MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(dimensionResource(dimen.padding)))
+
+        Column(modifier = Modifier.weight(1f)) {
+            // Route name and headsign
+            val routeText = leg.routeShortName ?: leg.mode.name.lowercase()
+                .replaceFirstChar { it.uppercase() }
+            Text(
+                text = if (leg.headsign != null) "$routeText to ${leg.headsign}" else routeText,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            // Agency
+            leg.agencyName?.let { agency ->
+                Text(
+                    text = agency,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
 
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.End
+        // Duration
+        Text(
+            text = formatDuration(leg.duration),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun JourneyDetails(leg: Leg, use24HourFormat: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "From",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = leg.fromTransitPlace.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            leg.fromTransitPlace.departure?.let { departure ->
+                Text(
+                    text = "Depart: ${departure.formatTime(use24HourFormat)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Icon(
+            painter = painterResource(drawable.ic_arrow_forward),
+            contentDescription = null,
+            modifier = Modifier
+                .align(Alignment.CenterVertically)
+                .padding(horizontal = dimensionResource(dimen.padding_minor)),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.End
+        ) {
+            Text(
+                text = "To",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = leg.toTransitPlace.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            leg.toTransitPlace.arrival?.let { arrival ->
+                Text(
+                    text = "Arrive: ${arrival.formatTime(use24HourFormat)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegAdditionalDetails(leg: Leg, distanceUnit: Int) {
+    when (leg.mode) {
+        Mode.WALK, Mode.BIKE -> {
+            leg.distance?.let { distance ->
+                Spacer(modifier = Modifier.height(dimensionResource(dimen.padding_minor)))
+                HorizontalDivider(
+                    thickness = DividerDefaults.Thickness,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+                Spacer(modifier = Modifier.height(dimensionResource(dimen.padding_minor)))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "To",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Distance:",
+                        style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = leg.toTransitPlace.name,
+                        text = GeoUtils.formatDistance(distance, distanceUnit),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium
                     )
-                    leg.toTransitPlace.arrival?.let { arrival ->
-                        Text(
-                            text = "Arrive: ${arrival.formatTime(use24HourFormat)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
+        }
 
-            // Additional details based on mode
-            when (leg.mode) {
-                Mode.WALK, Mode.BIKE -> {
-                    leg.distance?.let { distance ->
-                        Spacer(modifier = Modifier.height(dimensionResource(dimen.padding_minor)))
-                        HorizontalDivider(
-                            thickness = DividerDefaults.Thickness,
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
-                        Spacer(modifier = Modifier.height(dimensionResource(dimen.padding_minor)))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Distance:",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = GeoUtils.formatDistance(distance, distanceUnit),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                }
-
-                else -> {
-                    // Transit leg details
-                    leg.intermediateStops?.let { stops ->
-                        if (stops.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(dimensionResource(dimen.padding_minor)))
-                            HorizontalDivider(
-                                thickness = DividerDefaults.Thickness,
-                                color = MaterialTheme.colorScheme.outlineVariant
-                            )
-                            Spacer(modifier = Modifier.height(dimensionResource(dimen.padding_minor)))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = stringResource(string.stops),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Text(
-                                    text = stringResource(string.stops_qty, stops.size),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Show alerts if any
-            leg.alerts?.let { alerts ->
-                if (alerts.isNotEmpty()) {
+        else -> {
+            // Transit leg details
+            leg.intermediateStops?.let { stops ->
+                if (stops.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(dimensionResource(dimen.padding_minor)))
                     HorizontalDivider(
                         thickness = DividerDefaults.Thickness,
@@ -401,26 +388,55 @@ private fun DetailedLegCard(
                     )
                     Spacer(modifier = Modifier.height(dimensionResource(dimen.padding_minor)))
 
-                    alerts.forEach { alert ->
-                        alert.headerText?.let { header ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    painter = painterResource(drawable.ic_close), // Using close as warning icon
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(dimensionResource(dimen.padding_minor)))
-                                Text(
-                                    text = header,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = stringResource(string.stops),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = stringResource(string.stops_qty, stops.size),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegAlerts(leg: Leg) {
+    leg.alerts?.let { alerts ->
+        if (alerts.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(dimensionResource(dimen.padding_minor)))
+            HorizontalDivider(
+                thickness = DividerDefaults.Thickness,
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+            Spacer(modifier = Modifier.height(dimensionResource(dimen.padding_minor)))
+
+            alerts.forEach { alert ->
+                alert.headerText?.let { header ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(drawable.ic_close), // Using close as warning icon
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(dimensionResource(dimen.padding_minor)))
+                        Text(
+                            text = header,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             }

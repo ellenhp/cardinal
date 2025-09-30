@@ -102,89 +102,9 @@ fun PlaceCardScreen(
                     onPeekHeightChange(heightInDp)
                 },
         ) {
-            // Place name and type
-            Text(
-                text = displayedPlace.name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = displayedPlace.description,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
-            // Address information
-            displayedPlace.address?.let { address ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(drawable.ic_location_on),
-                        contentDescription = null,
-                        modifier = Modifier.size(dimensionResource(dimen.icon_size))
-                    )
-                    Text(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = dimensionResource(dimen.padding)),
-                        text = displayedPlace.address.format(addressFormatter)
-                            ?: stringResource(string.address_unavailable)
-                    )
-                }
-            }
-
-            // Action buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Get directions button
-                Button(
-                    onClick = { onGetDirections(displayedPlace) }, modifier = Modifier.padding(
-                        start = dimensionResource(dimen.padding_minor), end = 0.dp
-                    )
-                ) {
-                    Text(stringResource(string.get_directions))
-                }
-
-                // Save/Unsave button
-                Button(
-                    onClick = {
-                        if (viewModel.isPlaceSaved.value) {
-                            // Show confirmation dialog for unsaving
-                            showUnsaveConfirmationDialog = true
-                        } else {
-                            viewModel.savePlace(place)
-                        }
-                    }, modifier = Modifier.padding(start = dimensionResource(dimen.padding_minor))
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = if (viewModel.isPlaceSaved.value)
-                                painterResource(drawable.ic_heart_minus)
-                            else
-                                painterResource(drawable.ic_heart),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (viewModel.isPlaceSaved.value) {
-                                stringResource(string.unsave_place)
-                            } else {
-                                stringResource(string.save_place)
-                            }
-                        )
-                    }
-                }
-            }
+            PlaceHeader(displayedPlace)
+            PlaceAddress(displayedPlace, addressFormatter)
+            PlaceActions(displayedPlace, viewModel, place, onGetDirections) { showUnsaveConfirmationDialog = true }
             // Inset horizontal divider
             HorizontalDivider(
                 modifier = Modifier
@@ -201,33 +121,138 @@ fun PlaceCardScreen(
             }, onRouteClicked = {})
         }
 
-        // Unsave Confirmation Dialog
-        if (showUnsaveConfirmationDialog) {
-            AlertDialog(
-                onDismissRequest = { showUnsaveConfirmationDialog = false },
-                title = { Text(stringResource(string.unsave_place)) },
-                text = {
-                    Text(
-                        stringResource(
-                            string.are_you_sure_you_want_to_delete, displayedPlace.name
-                        )
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            viewModel.unsavePlace(displayedPlace)
-                            showUnsaveConfirmationDialog = false
-                        }) {
-                        Text(stringResource(string.unsave_place))
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showUnsaveConfirmationDialog = false }) {
-                        Text(stringResource(string.cancel_button))
-                    }
-                })
+        UnsaveConfirmationDialog(displayedPlace, viewModel, showUnsaveConfirmationDialog) { showUnsaveConfirmationDialog = false }
+    }
+}
+
+@Composable
+private fun PlaceHeader(displayedPlace: Place) {
+    Text(
+        text = displayedPlace.name,
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold
+    )
+
+    Text(
+        text = displayedPlace.description,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp)
+    )
+}
+
+@Composable
+private fun PlaceAddress(displayedPlace: Place, addressFormatter: AddressFormatter) {
+    displayedPlace.address?.let { address ->
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(drawable.ic_location_on),
+                contentDescription = null,
+                modifier = Modifier.size(dimensionResource(dimen.icon_size))
+            )
+            Text(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = dimensionResource(dimen.padding)),
+                text = displayedPlace.address.format(addressFormatter)
+                    ?: stringResource(string.address_unavailable)
+            )
         }
+    }
+}
+
+@Composable
+private fun PlaceActions(
+    displayedPlace: Place,
+    viewModel: PlaceCardViewModel,
+    place: Place,
+    onGetDirections: (Place) -> Unit,
+    onShowUnsaveDialog: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Get directions button
+        Button(
+            onClick = { onGetDirections(displayedPlace) }, modifier = Modifier.padding(
+                start = dimensionResource(dimen.padding_minor), end = 0.dp
+            )
+        ) {
+            Text(stringResource(string.get_directions))
+        }
+
+        // Save/Unsave button
+        Button(
+            onClick = {
+                if (viewModel.isPlaceSaved.value) {
+                    // Show confirmation dialog for unsaving
+                    onShowUnsaveDialog()
+                } else {
+                    viewModel.savePlace(place)
+                }
+            }, modifier = Modifier.padding(start = dimensionResource(dimen.padding_minor))
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = if (viewModel.isPlaceSaved.value)
+                        painterResource(drawable.ic_heart_minus)
+                    else
+                        painterResource(drawable.ic_heart),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (viewModel.isPlaceSaved.value) {
+                        stringResource(string.unsave_place)
+                    } else {
+                        stringResource(string.save_place)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun UnsaveConfirmationDialog(
+    displayedPlace: Place,
+    viewModel: PlaceCardViewModel,
+    show: Boolean,
+    onDismiss: () -> Unit
+) {
+    if (show) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(string.unsave_place)) },
+            text = {
+                Text(
+                    stringResource(
+                        string.are_you_sure_you_want_to_delete, displayedPlace.name
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.unsavePlace(displayedPlace)
+                        onDismiss()
+                    }) {
+                    Text(stringResource(string.unsave_place))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(string.cancel_button))
+                }
+            }
+        )
     }
 }
