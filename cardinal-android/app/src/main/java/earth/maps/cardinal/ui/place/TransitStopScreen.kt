@@ -292,19 +292,10 @@ fun PageIndicator(pageCount: Int, currentPage: Int) {
 fun DepartureRow(
     stopTime: StopTime, isFirst: Boolean, use24HourFormat: Boolean,
 ) {
-    val isoFormatter = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.systemDefault())
     val textColor = MaterialTheme.colorScheme.onSurface
-
-    val bestDepartureInstant = stopTime.place.departure?.let {
-        try {
-            Instant.from(isoFormatter.parse(it))
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    val bestDepartureTime: String? =
-        stopTime.place.departure?.formatTime(use24HourFormat = use24HourFormat)
+    val stopTimeStyle = getStopTimeStyle(isFirst)
+    val departureText = getDepartureText(stopTime, use24HourFormat)
+    val indicatorText = getIndicatorText(stopTime.realTime)
 
     Row(
         modifier = Modifier
@@ -312,48 +303,71 @@ fun DepartureRow(
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val stopTimeStyle = if (isFirst) {
-            MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-        } else {
-            MaterialTheme.typography.bodyMedium
-        }
         Column(
             modifier = Modifier
                 .padding(horizontal = dimensionResource(dimen.padding))
                 .fillMaxWidth()
         ) {
             // Departure time at the bottom
-            val timeUntilDeparture =
-                bestDepartureInstant?.toKotlinInstant()?.minus(Clock.System.now())
             Text(
                 modifier = Modifier.align(Alignment.End),
-                text = if (timeUntilDeparture != null && timeUntilDeparture > 30.minutes) {
-                    bestDepartureTime ?: stringResource(string.unknown_departure)
-                } else if (timeUntilDeparture != null) {
-                    "${timeUntilDeparture.inWholeMinutes} min"
-                } else {
-                    bestDepartureTime ?: stringResource(string.unknown_departure)
-                },
+                text = departureText,
                 textAlign = TextAlign.End,
                 style = stopTimeStyle,
                 color = textColor,
                 fontWeight = if (stopTime.realTime) FontWeight.Medium else FontWeight.Normal
             )
             // Real-time or scheduled indicator
-            val isLiveIndicatorString = if (stopTime.realTime) {
-                stringResource(string.live_indicator)
-            } else {
-                stringResource(string.scheduled_indicator)
-            }
-
             Text(
-                text = isLiveIndicatorString,
+                text = indicatorText,
                 textAlign = TextAlign.End,
                 style = MaterialTheme.typography.bodySmall,
                 color = textColor,
                 modifier = Modifier.align(Alignment.End)
             )
         }
+    }
+}
+
+@Composable
+private fun getStopTimeStyle(isFirst: Boolean): androidx.compose.ui.text.TextStyle {
+    return if (isFirst) {
+        MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+    } else {
+        MaterialTheme.typography.bodyMedium
+    }
+}
+
+@OptIn(ExperimentalTime::class)
+@Composable
+private fun getDepartureText(stopTime: StopTime, use24HourFormat: Boolean): String {
+    val isoFormatter = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.systemDefault())
+    val departureInstant = stopTime.place.departure?.let {
+        try {
+            Instant.from(isoFormatter.parse(it))
+        } catch (_: Exception) {
+            null
+        }
+    }
+    val departureTime: String? =
+        stopTime.place.departure?.formatTime(use24HourFormat = use24HourFormat)
+    val timeUntilDeparture = departureInstant?.toKotlinInstant()?.minus(Clock.System.now())
+
+    return if (timeUntilDeparture != null && timeUntilDeparture > 30.minutes) {
+        departureTime ?: stringResource(string.unknown_departure)
+    } else if (timeUntilDeparture != null) {
+        "${timeUntilDeparture.inWholeMinutes} min"
+    } else {
+        departureTime ?: stringResource(string.unknown_departure)
+    }
+}
+
+@Composable
+private fun getIndicatorText(isRealTime: Boolean): String {
+    return if (isRealTime) {
+        stringResource(string.live_indicator)
+    } else {
+        stringResource(string.scheduled_indicator)
     }
 }
 
