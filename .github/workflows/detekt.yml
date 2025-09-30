@@ -7,10 +7,10 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  detekt:
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-android-build
+      group: ${{ github.workflow }}-${{ github.ref }}-android-detekt
       cancel-in-progress: true
 
     steps:
