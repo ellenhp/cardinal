@@ -17,7 +17,7 @@
   -->
 
 <resources>
-    <string name="app_name">Cardinal</string>
+    <string name="app_name">Maps</string>
 
     <string name="work">Work</string>
     <string name="home">Home</string>
