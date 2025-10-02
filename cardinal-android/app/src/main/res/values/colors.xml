@@ -27,4 +27,6 @@
 
     <color name="polyline_color">#3B81DE</color>
     <color name="polyline_casing_color">#1A4C90</color>
+
+    <color name="bright_blue">#FF2222DD</color>
 </resources>
