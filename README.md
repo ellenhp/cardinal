@@ -2,13 +2,13 @@
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/ellenhp/cardinal)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ellenhp/cardinal/build_android.yml)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/ellenhp/cardinal/total)
-<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22earth.maps.cardinal%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fellenhp%2Fcardinal%22%2C%22author%22%3A%22ellenhp%22%2C%22name%22%3A%22Cardinal%20Maps%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22filterReleaseNotesByRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22verifyLatestTag%5C%22%3Afalse%2C%5C%22sortMethodChoice%5C%22%3A%5C%22date%5C%22%2C%5C%22useLatestAssetDateAsReleaseDate%5C%22%3Afalse%2C%5C%22releaseTitleAsVersion%5C%22%3Afalse%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%22%5C%22%2C%5C%22versionDetection%5C%22%3Afalse%2C%5C%22releaseDateAsVersion%5C%22%3Afalse%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%7D%22%2C%22overrideSource%22%3Anull%7D" class="img-badge">
+<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22earth.maps.cardinal%22%2C%22url%22%3A%22https%3A%2F%2Fgitlab.e.foundation%2Fe%2Fos%2Fcardinal%22%2C%22author%22%3A%22e%22%2C%22name%22%3A%22Cardinal%22%2C%22preferredApkIndex%22%3A1%2C%22additionalSettings%22%3A%22%7B%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%22%5C%22%2C%5C%22versionDetection%5C%22%3Afalse%2C%5C%22releaseDateAsVersion%5C%22%3Afalse%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22Cardinal%20Maps%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22E%20Foundation%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%7D%22%2C%22overrideSource%22%3A%22GitLab%22%7D" class="img-badge">
     <img src="assets/obtainium.png" alt="Get it on Obtainium" height=36 />
 </a>
 
 # Cardinal Maps
 
-Cardinal Maps is a mapping application for Android designed to get out of your way and be there when you need it. We believe maps should be fast, private, and focused on what matters most—helping you navigate the world around you.
+Cardinal Maps is a mapping application for Android designed to get out of your way and be there when you need it. Maps should be fast, private, and focused on what matters most—helping you navigate the world around you.
 
 ## Key Features
 
@@ -20,19 +20,15 @@ Every decision we make puts the user first:
 - **Self-host your maps services** - Works seamlessly with [Headway](https://github.com/headwaymaps/headway) for those who want the convenience of online maps on their own terms.
 - **Modern look and feel** - Built from the ground up with Material 3 components.
 - **Smooth performance** - Using MapLibre for map rendering means Cardinal Maps is fast—much faster than you may be used if you're a FOSS maps enjoyer.
-- **Transit support (work in progress)** - Easily view departures at nearby transit stations.
+- **Transit support** - Easily view departures at nearby transit stations or plan longer journies with [Transitous](https://transitous.org/).
 
 ## Screenshots
 
 <img src="assets/screenshot_basemap.png" width="33%" alt="Basemap view" style="padding: 0; margin: 0;"><img src="assets/screenshot_place_card.png" width="33%" alt="Place card view" style="padding: 0; margin: 0;"><img src="assets/screenshot_directions.png" width="33%" alt="Directions view" style="padding: 0; margin: 0;">
 
-## Support the project
+## Note
 
-Cardinal maps is a labor of love with, currently, one committer. If you've been looking for something better in the FOSS maps space for years like me, and see the vision of Cardinal Maps, your support would mean the world. Anything from a small sponsorship on [GitHub Sponsors](https://github.com/sponsors/ellenhp) or [Liberapay](https://liberapay.com/ellenhp) to bug reports and pull requests help. Even starring the project is enough to give me a little dopamine hit and keep me motivated to continue work. 
-
-## Contributing
-
-If you'd like to help out we welcome contributions from the community! Please see our [Contributing Guidelines](CONTRIBUTING.md) for more information. Cardinal Maps is written in Rust and Kotlin and based on industry standard maps tooling, so feature work is rewarding and developer friction is low.
+Development of this project has [moved to GitLab](https://gitlab.e.foundation/e/os/cardinal/). The obtainium link has been updated, so you will need to remove it from Obtainium and add it again using the new link.
 
 ## License
 
